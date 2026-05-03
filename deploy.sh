@@ -21,7 +21,7 @@ set +a
 echo "Environment variables loaded successfully!"
 
 : "${DB_PASSWORD:?DB_PASSWORD required}"
-: "${JWT_SECRET:?JWT_SECRET required}"
+# : "${JWT_SECRET:?JWT_SECRET required}"
 
 echo "Starting ft_transcendance..."
 podman-compose up --build -d
