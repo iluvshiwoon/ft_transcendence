@@ -1,0 +1,44 @@
+version: "3.8"
+services:
+  postgres:
+    image: docker.io/library/postgres:17-alpine3.23
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres_transcendance"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    environment:
+      POSTGRES_DB: postgres_transcendance
+      POSTGRES_USER: postgres_transcendance
+      POSTGRES_PASSWORD: ${DB_PASSWORD}
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    networks:
+      - backend
+    restart: unless-stopped
+
+  # app:
+  #   build:
+  #     context: .
+  #     dockerfile: containerfile
+  #     target: prod
+  #   depends_on:
+  #     postgres:
+  #       condition: service_healthy
+  #   environment:
+  #     DB_HOST: postgres
+  #     DB_NAME: postgres_transcendance
+  #     DB_USER: postgres_transcendance
+  #     DB_PASSWORD: ${DB_PASSWORD}
+  #     JWT_SECRET: ${JWT_SECRET}
+  #   networks:
+  #       - backend
+  #       - frontend
+  #   restart: unless-stopped
+
+volumes:
+  pgdata:
+
+networks:
+  backend:
+  frontend:
