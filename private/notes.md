@@ -3,6 +3,27 @@ Pnpm : version améliorée
 
 Le multistage permet d'alléger l'image finale de production en ne gardant que le nécéssaire.
 
+Vault est un coffre-fort de secrets qui centralise le stockage et l'accès aux secrets. Il les protège avec 
+du chiffrement, un contrôle d'accès granulaire* et un journal d'audit*.
+
+*La gestion granulaire définit les permissions selon les rôles et besoins des utilisateurs -> sécurise les données 
+en accordant le strict minimum à chaque service.
+*Le journal d'audit est l'historique de toutes les actions effectuées par les utilisateurs -> possibilité de consulter 
+les logs en cas de secrets compromis.
+
+Par défaut, Vault démarre en état "sealed", à savoir scellé. En prod, il a besoin de 3 couches d'authentifications pour s'activer, ou utiliser l'auto-unseal 
+pour déléguer cette tâche à un service tier (cloud, autre cluster vault, ou hsm). En mode dev, le root suffit.
+Le Shamir's secret sharing permet également de déverouiller manuellement. Le concept : partager un mot de passe entre plusieurs personnes, dont un nombre minimum de 
+parties serait requise pour l'authentification. 
+
+"vault operator init -key-shares=? -key-threshold=?"
+-key-shares = nombre de clés Shamir partagées.
+-key-threshold = nombre minimum de clés Shamir requises.
+
+ICP_LOCK : vérouille la mémoire de vault de sorte à ce que les secrets ne soient jamais inscrits sur le disque dur.
+
+Le journal d'audit n'est pas activé par défaut.
+On crée le répertoire de logs, on donne les droits d'user et de groupe à vault uniquement puis on active l'audit.
 
 Sources :  
 
@@ -22,6 +43,8 @@ Compose :   https://blog.stephane-robert.info/docs/conteneurs/orchestrateurs/doc
         
 Postgres :  https://hub.docker.com/_/postgres
             https://www.postgresql.org/docs/current/app-pg-isready.html
+
+Vault :    https://blog.stephane-robert.info/docs/securiser/secrets/hashicorp-vault/
 
 Healthcheck : https://docs.docker.com/reference/dockerfile/#healthcheck
 
