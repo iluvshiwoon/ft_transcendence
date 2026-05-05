@@ -25,6 +25,9 @@ ICP_LOCK : vérouille la mémoire de vault de sorte à ce que les secrets ne soi
 Le journal d'audit n'est pas activé par défaut.
 On crée le répertoire de logs, on donne les droits d'user et de groupe à vault uniquement puis on active l'audit.
 
+Le certificat TLS est activé par défaut lors de la définition du port TCP, d'où la nécéssité de le désac dans le fichier 
+hcl. 
+
 Sources :  
 
 Container : https://podman.io/docs
@@ -44,7 +47,11 @@ Compose :   https://blog.stephane-robert.info/docs/conteneurs/orchestrateurs/doc
 Postgres :  https://hub.docker.com/_/postgres
             https://www.postgresql.org/docs/current/app-pg-isready.html
 
-Vault :    https://blog.stephane-robert.info/docs/securiser/secrets/hashicorp-vault/
+Vault :     https://blog.stephane-robert.info/docs/securiser/secrets/hashicorp-vault/
+            https://developer.hashicorp.com/vault/tutorials/get-started/setup
+            https://developer.hashicorp.com/vault/docs/v1.20.x/configuration
+            https://hub.docker.com/_/vault
+            https://oneuptime.com/blog/post/2026-03-18-run-vault-podman-container/view
 
 Healthcheck : https://docs.docker.com/reference/dockerfile/#healthcheck
 

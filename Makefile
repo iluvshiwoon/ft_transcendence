@@ -2,7 +2,7 @@
 # ft_transcendance — Makefile
 # ==============================================================================
 
-.PHONY: all up down build logs ps clean re help \
+.PHONY: all up down down-force build logs ps clean re help \
 		ps-all shell-app shell-postgres \
 		psql db-tables db-list \
 		volumes volume-pg images prune \
@@ -30,6 +30,10 @@ build:
 
 down:
 	podman-compose down
+
+down-force:
+	podman pod rm -f -a
+	podman rm -f -a
 
 clean:
 	podman-compose down -v
@@ -117,6 +121,7 @@ help:
 	@echo "  $(GREEN)make build$(NC)            $(GRAY)→ Lancer avec rebuild$(NC)"
 	@echo "  $(GREEN)make up$(NC)               $(GRAY)→ Lancer sans rebuild$(NC)"
 	@echo "  $(GREEN)make down$(NC)             $(GRAY)→ Arrêter les containers$(NC)"
+	@echo "  $(GREEN)make down-force$(NC)       $(GRAY)→ Arrêter les containers de force$(NC)"
 	@echo "  $(GREEN)make clean$(NC)            $(GRAY)→ Arrêter + supprimer les volumes$(NC)"
 	@echo "  $(GREEN)make re$(NC)               $(GRAY)→ Reset complet + relancer$(NC)"
 	@echo "  $(GREEN)make ps$(NC)               $(GRAY)→ État des containers actifs$(NC)"
