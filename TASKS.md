@@ -775,38 +775,43 @@ Responsible for containerization, security hardening, and deployment.
 
 ## Checklist
 
-### Foundation (Week 1)
+### Foundation
 - [ ] A1 — Scaffolding (front/ + back/ + Makefile)
-- [ ] B1 — Database schema + Drizzle
 - [ ] C1 — Docker Compose setup
 
-### Authentication & Users (Week 1–2)
-- [ ] B2 — Auth system (JWT)
+### Backend — Dev 1 (cœur du projet)
+- [ ] B1 — Database Schema & Drizzle Setup
+- [ ] B2 — Authentication System
+- [ ] B5 — WebSocket Infrastructure
+- [ ] B6 — Game Logic Engine (Puissance 4)
+- [ ] B7 — Lobby System
+- [ ] B8 — Game Sync (multiplayer)
+- [ ] B9 — AI Opponent
+
+### Backend — Dev 2 (features annexes)
 - [ ] B3 — OAuth 42
-- [ ] B4 — User management API
+- [ ] B4 — User Management API + Friends + Block
+- [ ] B10 — Real-time Chat
+- [ ] B11 — Notifications System
+- [ ] B12 — Stats (match history, win rate)
+- [ ] B13 — Game Customization (skins jetons + grille)
+
+### Backend — Commun
+- [ ] B14 — Validation, Rate limiting, Polish
+- [ ] B15 — Connexion Vault (avec la cybersec)
+
+### Frontend Roadmap
 - [ ] A2 — SSR layout & routing
 - [ ] A3 — UI design system
 - [ ] A4 — Auth pages
 - [ ] A5 — Profile & social pages
-
-### Game Core (Week 2–3)
-- [ ] B5 — Game logic engine + AI (minimax)
 - [ ] A6 — Game board UI
-
-### Real-time Infrastructure (Week 3)
-- [ ] B6 — Socket.io infrastructure
-- [ ] B7 — Lobby system + game sync
-- [ ] B8 — Chat system (DM)
-- [ ] B9 — Notification system
-
-### UI Completion (Week 3–4)
 - [ ] A7 — Game customization UI (skins)
 - [ ] A8 — Lobby UI
 - [ ] A9 — Chat UI
 - [ ] A10 — Notification UI
-- [ ] B10 — Game stats API
 
-### Security & Deployment (Week 3–5, ongoing)
+### Security & Deployment (ongoing)
 - [ ] C2 — HashiCorp Vault
 - [ ] C3 — ModSecurity WAF
 - [ ] C4 — Single-command deploy (make)
