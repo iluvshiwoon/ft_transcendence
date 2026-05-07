@@ -16,7 +16,8 @@ Application web multijoueur de **Puissance 4**. Les joueurs peuvent s'affronter 
 *   **Database :** **PostgreSQL**
 *   **Auth :** JWT en HttpOnly cookie (7 jours) + OAuth 42
 *   **Security :** ModSecurity (WAF) + HashiCorp Vault
-*   **Deployment :** **Docker Compose** + `make`
+*   **Deployment :** **Podman + podman-compose** (Docker-compatible) + `make`
+*   **Package manager :** **pnpm** (monorepo workspaces)
 
 ---
 

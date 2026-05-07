@@ -22,12 +22,13 @@ Context file for Claude Code. Read this first before generating or modifying any
 
 ## Team
 
-| # | Role(s) | Scope |
+| Name | Role(s) | Scope |
 |---|---|---|
-| 1 | Tech Lead + Developer | Backend |
-| 2 | Product Owner + Developer | Frontend |
-| 3 | Developer | Cybersecurity |
-| 4 | Project Manager + Developer | Joins later, reinforces front or back |
+| Rayane | Tech Lead + Developer | Backend (auth, users, social, sockets, chat, notifications) |
+| Killian | Product Owner + Developer | Frontend |
+| Senshy | Developer | Cybersecurity (WAF, Vault, infra) |
+| Tim | Developer | Backend (game logic, AI, lobby, stats) |
+| Adam | Project Manager + Developer | Joins later |
 
 ---
 
@@ -85,7 +86,8 @@ Context file for Claude Code. Read this first before generating or modifying any
 
 ### Infrastructure
 
-- **Containers** : Docker Compose
+- **Containers** : Podman + podman-compose (Docker-compatible CLI)
+- **Package manager** : pnpm (workspaces)
 - **Single-command deploy** : `make`
 - **Environments** : dev / prod
 
@@ -95,17 +97,26 @@ Context file for Claude Code. Read this first before generating or modifying any
 
 ```
 ft_transcendence/
-├── front/                # Astro + React app (TBD by frontend lead)
-├── back/                 # Fastify + TypeScript API
-├── docker-compose.yml
+├── apps/
+│   ├── web/              # Astro + React (frontend, TBD)
+│   └── server/           # Fastify + TypeScript API (backend)
+├── packages/             # shared code between web and server (types, etc.)
+├── infra/
+│   ├── nginx/            # Nginx + ModSecurity (cybersec)
+│   └── vault/            # HashiCorp Vault config (cybersec)
+├── scripts/              # init scripts (vault bootstrap, etc.)
+├── compose.yml           # podman-compose
+├── containerfile         # multi-stage build
 ├── Makefile
+├── pnpm-workspace.yaml
+├── package.json          # root, declares workspaces
 ├── .env                  # gitignored
 ├── .env.example
 ├── README.md             # in English
 └── CLAUDE.md             # this file
 ```
 
-Monorepo with two top-level directories. No workspaces tool needed.
+Monorepo with **pnpm workspaces**. Each app has its own `package.json`, dependencies are hoisted to the root `node_modules/`.
 
 ---
 
@@ -380,7 +391,8 @@ Monorepo with two top-level directories. No workspaces tool needed.
 
 ### File Organization
 
-- TBD per app (`back/` and `front/` will define their own internal structure)
+- `apps/server/` follows: `src/{config,db,routes,auth,game,socket,services,lib}/`
+- `apps/web/` structure TBD by frontend lead
 
 ---
 
@@ -388,13 +400,14 @@ Monorepo with two top-level directories. No workspaces tool needed.
 
 ### Single-command launch
 
-- `make` : build and run everything (Docker Compose up)
-- `make stop` : stop all containers
-- `make fclean` : full cleanup (containers, volumes, images)
+- `make` (or `make build`) : build and run everything (`podman-compose up --build -d`)
+- `make stop` (or `make down`) : stop all containers
+- `make clean` : stop + remove volumes
+- `make re` : full reset and relaunch
 
 ### Environments
 
-- **dev** : local development, hot reload, verbose logs, DB in Docker
+- **dev** : local development, hot reload, verbose logs, DB in Podman
 - **prod** : production setup, secrets from Vault, optimized builds
 
 ### Secrets
@@ -408,7 +421,7 @@ Monorepo with two top-level directories. No workspaces tool needed.
 
 - Web application with frontend, backend, and database ✓
 - Git with meaningful commits from all team members ✓
-- Single-command deployment via Docker ✓
+- Single-command deployment via Podman/Docker ✓
 - Compatible with latest stable Google Chrome ✓
 - No browser console warnings or errors
 - **Privacy Policy** and **Terms of Service** pages (TBD content, must be linked from app)
