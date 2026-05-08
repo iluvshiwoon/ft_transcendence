@@ -1,6 +1,11 @@
 Npm (node package manager) : gestionnaire de paquets de Node.js.
 Pnpm : version améliorée
 
+Par défaut, pnpm installe les fichiers en pointant vers des liens symboliques qui renvoient vers 
+les fichiers concernés. Le fichier node_module est alors composé uniquement de raccourcis. Lors de la copie 
+vers le container, le fichier node_module se retrouve vide.
+Pour forcer pnpm à intégrer les vrais fichiers, on utilise la commande "deploy". 
+
 Le multistage permet d'alléger l'image finale de production en ne gardant que le nécéssaire.
 
 Vault est un coffre-fort de secrets qui centralise le stockage et l'accès aux secrets. Il les protège avec 

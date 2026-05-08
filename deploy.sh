@@ -24,7 +24,7 @@ echo "Environment variables loaded successfully!"
 # : "${JWT_SECRET:?JWT_SECRET required}"
 
 echo "Starting ft_transcendance..."
-podman-compose up --build -d
+make build
 
 echo "Waiting for services..."
 sleep 5
