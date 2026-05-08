@@ -26,4 +26,4 @@ COPY --from=builder /app/apps/server/dist ./server/dist
 # COPY --from=builder /app/apps/web/dist ./web/dist
 
 WORKDIR /app/server
-CMD ["node", "dist/src/index.js"]
+CMD ["dumb-init", "node", "dist/src/index.js"]
