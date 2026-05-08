@@ -20,6 +20,12 @@ Pour vérifier que les services sont bien connectés, vérifiez dans le navigate
 - **Fastify** : http://localhost:3000
 - **Vault** : http://localhost:8200
 
+Pour arrêter proprement l'infrastructure et nettoyer les réseaux :
+
+```bash
+make down
+```
+
 # Serveur
 pnpm dev                 # lance Fastify
 
