@@ -1,0 +1,86 @@
+  version: "3.8"
+  services:
+    postgres:
+      image: docker.io/library/postgres:17-alpine3.23
+      healthcheck:
+        test: ["CMD-SHELL", "pg_isready -U postgres_transcendance"]
+        interval: 5s
+        timeout: 5s
+        retries: 5
+        start_period: 10s
+      environment:
+        POSTGRES_DB: postgres_transcendance
+        POSTGRES_USER: postgres_transcendance
+        POSTGRES_PASSWORD: ${DB_PASSWORD}
+      volumes:
+        - pgdata:/var/lib/postgresql/data
+      networks:
+        - backend
+      restart: unless-stopped
+
+    vault_server:
+      image: docker.io/hashicorp/vault:1.20
+      # command: server -config=/vault/config/vault.hcl
+      environment:
+        VAULT_DEV_ROOT_TOKEN_ID: ${VAULT_TOKEN}
+        VAULT_DEV_LISTEN_ADDRESS: 0.0.0.0:8200
+      ports:
+        - "8200:8200"
+      # volumes:
+      #   - ./vault/config:/vault/config
+      #   # - vlogs:/vault/logs
+      #   # - vdata:/vault/file
+      cap_add:
+        - IPC_LOCK
+      networks:
+        - backend
+      restart: unless-stopped
+      healthcheck:
+        test: ["CMD", "vault", "status", "-address=http://127.0.0.1:8200"]
+        interval: 5s
+        timeout: 5s
+        retries: 10
+        start_period: 5s
+
+    # vault_init:
+    #   image: docker.io/hashicorp/vault:1.20
+    #   depends_on:
+    #     vault_server:
+    #       condition: service_healthy
+    #   command: sh /vault/script/init.sh
+    #   volumes:
+    #     - ./vault/script:/vault/script
+    #   networks:
+    #     - backend
+
+    app:
+      build:
+        context: .
+        dockerfile: containerfile
+        target: prod
+      depends_on:
+        postgres:
+          condition: service_healthy
+        # vault_init:
+        #   condition: service_completed_successfully
+      environment:
+        DB_HOST: postgres
+        DB_NAME: postgres_transcendance
+        DB_USER: postgres_transcendance
+        DB_PASSWORD: ${DB_PASSWORD}
+        JWT_SECRET: ${JWT_SECRET}
+        VAULT_ADDR: http://vault_server:8200
+        VAULT_TOKEN: ${VAULT_TOKEN}
+      networks:
+          - backend
+          - frontend
+      restart: unless-stopped
+
+  volumes:
+    pgdata:
+    vdata:
+    vlogs:
+
+  networks:
+    backend:
+    frontend:

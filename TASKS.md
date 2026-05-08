@@ -2,7 +2,7 @@
 
 > **Goal:** Build a full-stack web application (Puissance 4 / Connect 4) with real-time multiplayer, AI opponent, lobby system, social features, notifications, and hardened security. Total: 19/19 points.
 >
-> **Stack:** Astro + React (frontend) · Fastify + Socket.io (backend) · PostgreSQL + Drizzle ORM · Docker Compose.
+> **Stack:** Astro + React (frontend) · Fastify + Socket.io (backend) · PostgreSQL + Drizzle ORM · pnpm workspaces · Podman + podman-compose.
 >
 > **Team Size:** 4 people. Each task is assigned to a category and a difficulty to help distribute work.
 
@@ -23,7 +23,7 @@
 ```
               ┌─────────────────────────────────────┐
               │  A1 / B1 / C1  — Foundation          │  (parallel)
-              │  Scaffolding · DB Schema · Docker     │
+              │  Scaffolding · DB Schema · Podman     │
               └──────────────────┬──────────────────┘
                                  │
            ┌─────────────────────┼──────────────────┐
@@ -110,17 +110,18 @@ Responsible for all UI: pages, components, game board, chat, lobby, notification
 |---|---|
 | **Difficulty** | Medium |
 | **Prerequisites** | None |
-| **Deliverable** | `front/` (Astro) and `back/` (Fastify) directories, root Makefile |
+| **Deliverable** | `apps/web/` (Astro) and `apps/server/` (Fastify) directories, pnpm workspace, root Makefile |
 
 **Instructions:**
 
-1. Create `front/` with `npm create astro@latest` — SSR mode, TypeScript, React integration.
-2. Create `back/` with `npm init`, install Fastify + TypeScript, configure `tsconfig.json`.
-3. Create root `Makefile` with targets: `all` (build + start), `stop`, `fclean`.
-4. Create `.env.example` with all required variables (no values). Add `.env` to `.gitignore`.
-5. Add `README.md` (English) with project description, prerequisites, and quick-start steps.
-6. Configure ESLint (flat config) with TypeScript + React rules in each directory.
-7. Verify `front/` dev server starts and `back/` compiles without errors.
+1. Create root `package.json` and `pnpm-workspace.yaml` declaring `apps/*` and `packages/*`.
+2. Create `apps/web/` with `pnpm create astro@latest` — SSR mode, TypeScript, React integration.
+3. Create `apps/server/` with `pnpm init`, install Fastify + TypeScript, configure `tsconfig.json`.
+4. Create root `Makefile` with targets: `all`/`build` (podman-compose up), `stop`/`down`, `clean`, `re`.
+5. Create `.env.example` with all required variables (no values). Add `.env` to `.gitignore`.
+6. Add `README.md` (English) with project description, prerequisites, and quick-start steps.
+7. Configure ESLint (flat config) with TypeScript + React rules in each app.
+8. Verify `apps/web/` dev server starts and `apps/server/` compiles without errors.
 
 **Resources:**
 - [Astro SSR setup](https://docs.astro.build/en/guides/server-side-rendering/)
@@ -363,9 +364,9 @@ Responsible for all server-side logic: database, authentication, game engine, So
 
 **Instructions:**
 
-1. Install PostgreSQL via Docker for development.
+1. Install PostgreSQL via Podman for development (or use Senshy's `compose.yml`).
 2. Install: `drizzle-orm`, `drizzle-kit`, `pg`, `@types/pg`.
-3. Create `back/src/db/schema.ts` with these tables:
+3. Create `apps/server/src/db/schema.ts` with these tables:
 
    **users:** `id`, `email` (unique), `password` (nullable for OAuth), `username` (unique), `avatar_url`, `bio`, `status` (online/offline/in_game), `is_deleted` (bool, false), `oauth_42_id` (nullable), `pawn_skin`, `grid_skin`, `games_played`, `games_won`, `games_lost`, `games_drawn`, `created_at`, `updated_at`
 
@@ -404,8 +405,8 @@ Responsible for all server-side logic: database, authentication, game engine, So
 **Instructions:**
 
 1. Install: `bcrypt`, `jsonwebtoken`, `@types/jsonwebtoken`.
-2. Create `back/src/auth/password.ts`: `hashPassword(plain)` (bcrypt, 12 rounds), `verifyPassword(plain, hash)`.
-3. Create `back/src/auth/jwt.ts`: `signToken(payload)` (7-day expiry, no refresh token), `verifyToken(token)`.
+2. Create `apps/server/src/auth/password.ts`: `hashPassword(plain)` (bcrypt, 12 rounds), `verifyPassword(plain, hash)`.
+3. Create `apps/server/src/auth/jwt.ts`: `signToken(payload)` (7-day expiry, no refresh token), `verifyToken(token)`.
 4. Create Fastify routes:
    - `POST /api/auth/signup` — validate, check uniqueness, hash password, insert user, set JWT HttpOnly cookie
    - `POST /api/auth/login` — verify credentials, set cookie
@@ -431,7 +432,7 @@ Responsible for all server-side logic: database, authentication, game engine, So
 **Instructions:**
 
 1. Register the application on [api.intra.42.fr](https://api.intra.42.fr/).
-2. Create `back/src/auth/oauth42.ts`:
+2. Create `apps/server/src/auth/oauth42.ts`:
    - `getAuthorizationUrl(): string` — build redirect URL with scopes
    - `exchangeCode(code): tokens`
    - `getUserInfo(accessToken): { id, login, email, image }`
@@ -489,18 +490,18 @@ Avatar upload: save to `public/uploads/avatars/`, store URL in DB. Auto-resize t
 
 **Instructions:**
 
-1. Create `back/src/game/board.ts`:
+1. Create `apps/server/src/game/board.ts`:
    - `createBoard(rows, cols)` — empty grid
    - `dropToken(board, col, player)` — returns `{ board, row }` or `null` if column full
    - `getValidMoves(board)` — list of playable columns
-2. Create `back/src/game/winDetection.ts`:
+2. Create `apps/server/src/game/winDetection.ts`:
    - `checkWin(board, lastRow, lastCol, connectN)` — checks 4 directions for N consecutive tokens
    - `isDraw(board)` — true if board full with no winner
-3. Create `back/src/game/ai.ts` — minimax with alpha-beta pruning:
+3. Create `apps/server/src/game/ai.ts` — minimax with alpha-beta pruning:
    - `getBestMove(board, connectN, difficulty)` — returns best column
    - Difficulty controls search depth: easy (depth 2 + 30% random), medium (depth 5), hard (depth 8)
    - Artificial delay: schedule move after 500–2000 ms random delay
-4. Create `back/src/game/gameState.ts` — `GameState` class:
+4. Create `apps/server/src/game/gameState.ts` — `GameState` class:
    - Properties: `board`, `currentPlayer`, `players`, `variant`, `status`, `timerP1`, `timerP2`
    - Methods: `makeMove(col)`, `getState()`, `loadState(data)`
 5. Write unit tests (vitest) for all game logic — board creation, win detection in all directions, draws, AI determinism at hard difficulty.
@@ -518,14 +519,14 @@ Avatar upload: save to `public/uploads/avatars/`, store URL in DB. Auto-resize t
 **Instructions:**
 
 1. Install `@fastify/socket.io`.
-2. Create `back/src/socket/index.ts`: register the Socket.io plugin on Fastify, configure CORS for the Astro dev server origin.
-3. Create `back/src/socket/auth.ts`:
+2. Create `apps/server/src/socket/index.ts`: register the Socket.io plugin on Fastify, configure CORS for the Astro dev server origin.
+3. Create `apps/server/src/socket/auth.ts`:
    - `io.use()` middleware: extract JWT from handshake cookie or query param, verify, attach user to `socket.data.user`.
    - Reject unauthenticated connections.
-4. Create `back/src/socket/roomManager.ts`:
+4. Create `apps/server/src/socket/roomManager.ts`:
    - `joinRoom(socketId, roomId)`, `leaveRoom(socketId, roomId)`, `broadcast(roomId, event, data, exclude?)`
    - `getOnlineUsers()` — users with at least one active socket
-5. Create `back/src/socket/messageRouter.ts`: route incoming events by namespace prefix (`game:*`, `chat:*`, `lobby:*`, `notification:*`).
+5. Create `apps/server/src/socket/messageRouter.ts`: route incoming events by namespace prefix (`game:*`, `chat:*`, `lobby:*`, `notification:*`).
 6. On `connection`: mark user `online`, broadcast `user:online` to friends. On `disconnect`: clean rooms, mark `offline`, broadcast `user:offline`.
 
 **Resources:**
@@ -618,7 +619,7 @@ Avatar upload: save to `public/uploads/avatars/`, store URL in DB. Auto-resize t
 
 **Instructions:**
 
-1. Create `back/src/notifications/notificationService.ts`:
+1. Create `apps/server/src/notifications/notificationService.ts`:
    - `send(userId, type, content)` — insert to DB + emit `notification:new` via Socket.io if user is online
 
 2. **Notification REST endpoints:**
@@ -674,24 +675,23 @@ Responsible for containerization, security hardening, and deployment.
 
 ---
 
-### C1 — Docker Compose Setup
+### C1 — Podman/Docker Compose Setup
 
 | | |
 |---|---|
 | **Difficulty** | Medium |
 | **Prerequisites** | A1, B1 |
-| **Deliverable** | Dockerfiles, `docker-compose.yml`, working local deployment |
+| **Deliverable** | `containerfile`(s), `compose.yml`, working local deployment |
 
 **Instructions:**
 
-1. Create `front/Dockerfile` (multi-stage: build Astro → serve with Node).
-2. Create `back/Dockerfile` (multi-stage: build TypeScript → run with Node).
-3. Create `nginx/Dockerfile` with ModSecurity (or use `owasp/modsecurity-crs:nginx` base image).
-4. Create `docker-compose.yml` with services: `postgres`, `vault`, `nginx`, `front`, `back`.
-5. Networking: all services on an internal `app-net` network. Only `nginx` exposes ports 80/443 externally.
-6. Volumes: `pgdata` for PostgreSQL persistence, `uploads` for avatar files.
-7. `back` depends on `postgres` and `vault` being healthy before starting.
-8. Verify `make` starts all services cleanly from a fresh state.
+1. Create root `containerfile` (multi-stage: build via pnpm → run with Node) — handles both `apps/web` and `apps/server` builds.
+2. Create `infra/nginx/containerfile` with ModSecurity (or use `owasp/modsecurity-crs:nginx` base image).
+3. Create `compose.yml` with services: `postgres`, `vault`, `nginx`, `app` (or `web` + `server` split).
+4. Networking: all services on an internal `backend` network. Only `nginx` exposes ports 80/443 externally.
+5. Volumes: `pgdata` for PostgreSQL persistence, `uploads` for avatar files.
+6. `app` (or `server`) depends on `postgres` and `vault` being healthy before starting.
+7. Verify `make` starts all services cleanly from a fresh state.
 
 ---
 
@@ -710,7 +710,7 @@ Responsible for containerization, security hardening, and deployment.
    - Create policy `transcendence-policy`
    - Write secrets: `secret/transcendence/db`, `secret/transcendence/jwt`, `secret/transcendence/oauth42`
    - Create AppRole role, output RoleID + SecretID
-2. In `back/src/index.ts`: on startup, use `node-vault` to authenticate via AppRole, fetch all secrets, make them available in-memory (never log them).
+2. In `apps/server/src/index.ts`: on startup, use `node-vault` to authenticate via AppRole, fetch all secrets, make them available in-memory (never log them).
 3. Fail fast if Vault is unreachable: log a clear error and `process.exit(1)`.
 4. Only secrets unavailable via Vault (e.g., Vault's own token) stay in `.env`.
 
@@ -760,56 +760,57 @@ Responsible for containerization, security hardening, and deployment.
 **Instructions:**
 
 1. `Makefile` targets:
-   - `all` : `docker compose up --build -d` + `scripts/init-vault.sh`
-   - `stop` : `docker compose stop`
-   - `fclean` : `docker compose down -v --rmi all`
+   - `all` / `build` : `podman-compose up --build -d` + `scripts/init-vault.sh`
+   - `stop` / `down` : `podman-compose down`
+   - `clean` / `fclean` : `podman-compose down -v --rmi all`
 2. `scripts/init-vault.sh` must be idempotent (safe to run multiple times).
 3. Validate required env vars in the Makefile before starting (fail with a clear message if missing).
 4. Update `README.md` with:
-   - Prerequisites (Docker, Docker Compose)
+   - Prerequisites (Podman + podman-compose, or Docker + Docker Compose)
    - Quick start: `cp .env.example .env` → fill values → `make`
-   - Dev setup (local Node.js without Docker)
+   - Dev setup (local Node.js without containers)
 5. Test: `make fclean && make` from a clean state, verify the app is accessible in the browser.
 
 ---
 
 ## Checklist
 
-### Foundation (Week 1)
-- [ ] A1 — Scaffolding (front/ + back/ + Makefile)
-- [ ] B1 — Database schema + Drizzle
-- [ ] C1 — Docker Compose setup
+### Foundation
+- [~] A1 — Scaffolding (apps/server done by Rayane, apps/web TBD)
+- [~] C1 — Compose setup (Senshy — postgres + container app, in progress)
 
-### Authentication & Users (Week 1–2)
-- [ ] B2 — Auth system (JWT)
+### Backend — Rayane (verticale "user / social")
+- [x] B1 — Database Schema & Drizzle Setup
+- [ ] B2 — Authentication System (JWT + bcrypt) — **next**
+- [ ] B6 — Socket.io Infrastructure (critical, unblocks B7/B8/B9)
 - [ ] B3 — OAuth 42
-- [ ] B4 — User management API
+- [ ] B4 — User Management API (profile, friends, block, avatar)
+- [ ] B8 — Chat System (DM)
+- [ ] B9 — Notification System
+
+### Backend — Tim (verticale "jeu temps réel")
+- [ ] B5 — Game Logic Engine (Puissance 4 + minimax AI)
+- [ ] B7 — Lobby System & Game Sync (depends on B5 + B6)
+- [ ] B10 — Game Stats API
+
+### Frontend — TBD (à attribuer à un dev front)
 - [ ] A2 — SSR layout & routing
 - [ ] A3 — UI design system
 - [ ] A4 — Auth pages
 - [ ] A5 — Profile & social pages
-
-### Game Core (Week 2–3)
-- [ ] B5 — Game logic engine + AI (minimax)
 - [ ] A6 — Game board UI
-
-### Real-time Infrastructure (Week 3)
-- [ ] B6 — Socket.io infrastructure
-- [ ] B7 — Lobby system + game sync
-- [ ] B8 — Chat system (DM)
-- [ ] B9 — Notification system
-
-### UI Completion (Week 3–4)
 - [ ] A7 — Game customization UI (skins)
 - [ ] A8 — Lobby UI
 - [ ] A9 — Chat UI
 - [ ] A10 — Notification UI
-- [ ] B10 — Game stats API
 
-### Security & Deployment (Week 3–5, ongoing)
-- [ ] C2 — HashiCorp Vault
+### Cybersec / DevOps — Senshy (+ futur cybersec dev)
+- [~] C1 — Compose Podman/Docker (partially done)
+- [~] C2 — HashiCorp Vault (started)
 - [ ] C3 — ModSecurity WAF
-- [ ] C4 — Single-command deploy (make)
+- [ ] C4 — Single-command deployment (`make`)
+
+**Légende** : `[ ]` à faire · `[~]` en cours · `[x]` terminé
 
 ---
 
