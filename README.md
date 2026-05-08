@@ -1,3 +1,25 @@
+# Container Podman
+
+Pour lancer l'infrastructure, accordez les droits au script d'éxecution :
+
+```bash
+chmod +x deploy.sh
+```
+
+Puis lancez :
+
+```bash
+bash deploy.sh
+```
+
+Une fois les containers en route, utilisez le makefile pour effectuer toutes les commandes souhaitées.
+La règle `make help` afin de voir toutes les options possibles.
+
+Pour vérifier que les services sont bien connectés, vérifiez dans le navigateur :
+- **Astro** : http://localhost:4321
+- **Fastify** : http://localhost:3000
+- **Vault** : http://localhost:8200
+
 # Serveur
 pnpm dev                 # lance Fastify
 
