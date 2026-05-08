@@ -2,6 +2,7 @@
   services:
     postgres:
       image: docker.io/library/postgres:17-alpine3.23
+      container_name: postgres
       healthcheck:
         test: ["CMD-SHELL", "pg_isready -U postgres_transcendance"]
         interval: 5s
@@ -20,6 +21,7 @@
 
     vault_server:
       image: docker.io/hashicorp/vault:1.20
+      container_name: vault
       # command: server -config=/vault/config/vault.hcl
       environment:
         VAULT_DEV_ROOT_TOKEN_ID: ${VAULT_TOKEN}
@@ -53,11 +55,12 @@
     #   networks:
     #     - backend
 
-    app:
+    server:
+      container_name: server
       build:
         context: .
         dockerfile: containerfile
-        target: prod
+        target: prod-server
       depends_on:
         postgres:
           condition: service_healthy
@@ -71,9 +74,29 @@
         JWT_SECRET: ${JWT_SECRET}
         VAULT_ADDR: http://vault_server:8200
         VAULT_TOKEN: ${VAULT_TOKEN}
+      ports:
+        - "3000:3000"
       networks:
           - backend
-          - frontend
+      restart: unless-stopped
+
+    web:
+      container_name: web
+      build:
+        context: .
+        dockerfile: containerfile
+        target: prod-web
+      depends_on:
+        - server
+      environment:
+        - BACKEND_URL=http://server:3000
+        - HOST=0.0.0.0
+        - PORT=4321
+      ports:
+        - "4321:4321"
+      networks:
+        - backend
+        - frontend
       restart: unless-stopped
 
   volumes:
