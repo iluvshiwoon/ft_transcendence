@@ -1,0 +1,9 @@
+{
+  "name": "ft_transcendance",
+  "private": true,
+  "scripts": {
+    "dev": "pnpm --parallel dev",
+    "build": "pnpm --parallel build",
+    "lint": "eslint ."
+  }
+}
