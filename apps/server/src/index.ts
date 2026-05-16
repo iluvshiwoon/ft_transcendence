@@ -1,6 +1,8 @@
+// Point d'entrée du serveur : construit l'app et la met en écoute sur le port 3000.
+
 import { buildServer } from "./server.js";
 
-const app = buildServer();
+const app = await buildServer();
 
 const PORT = 3000;
 const HOST = "0.0.0.0";
@@ -12,5 +14,3 @@ try {
   app.log.error(err);
   process.exit(1);
 }
-
-// démarre le serveur et écoute sur le port 3000
