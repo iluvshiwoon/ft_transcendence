@@ -39,6 +39,7 @@ clean:
 	podman-compose down -v
 
 re: clean build
+	sudo chown -R $USER:$USER vault/
 
 ps:
 	podman-compose ps
@@ -80,6 +81,22 @@ db-tables:
 
 db-list:
 	podman-compose exec postgres psql -U postgres_transcendance -c "\l"
+
+# ──────────────────────────────────────────
+# VAULT
+# ──────────────────────────────────────────
+
+logs-vault:
+	podman-compose logs -f vault_server
+
+logs-vault-init:
+	podman-compose logs -f vault_init
+
+shell-vault:
+	podman-compose exec vault_server sh
+
+vault-status:
+	podman-compose exec vault_server vault status
 
 # ──────────────────────────────────────────
 # VOLUMES ET IMAGES
@@ -140,6 +157,11 @@ help:
 	@echo "  $(GREEN)make db-tables$(NC)        $(GRAY)→ Lister les tables$(NC)"
 	@echo "  $(GREEN)make db-list$(NC)          $(GRAY)→ Lister les databases$(NC)"
 	@echo ""
+	@echo "$(BOLD)$(YELLOW)  ── VAULT ───────────────────────────────────$(NC)"
+	@echo "  $(GREEN)make logs-vault$(NC)       $(GRAY)→ Logs du container Vault$(NC)"
+	@echo "  $(GREEN)make logs-vault-init$(NC)  $(GRAY)→ Logs de l'initialisation Vault$(NC)"
+	@echo "  $(GREEN)make shell-vault$(NC)      $(GRAY)→ Shell dans le container Vault$(NC)"
+	@echo "  $(GREEN)make vault-status$(NC)     $(GRAY)→ État de Vault$(NC)"
 	@echo "$(BOLD)$(YELLOW)  ── VOLUMES ET IMAGES ───────────────────────$(NC)"
 	@echo "  $(GREEN)make volumes$(NC)          $(GRAY)→ Lister les volumes$(NC)"
 	@echo "  $(GREEN)make volume-pg$(NC)        $(GRAY)→ Inspecter le volume postgres$(NC)"

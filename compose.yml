@@ -3,6 +3,15 @@
     postgres:
       image: docker.io/library/postgres:17-alpine3.23
       container_name: postgres
+      command: >
+        sh -c "
+        until [ -f /vault/file/.db_pass ]; do
+          echo 'En attente du secret PostgreSQL...';
+          sleep 1;
+        done;
+        export POSTGRES_PASSWORD=$$(cat /vault/file/.db_pass);
+        rm -f /vault/file/.db_pass;
+        docker-entrypoint.sh postgres;"
       healthcheck:
         test: ["CMD-SHELL", "pg_isready -U postgres_transcendance"]
         interval: 5s
@@ -12,48 +21,61 @@
       environment:
         POSTGRES_DB: postgres_transcendance
         POSTGRES_USER: postgres_transcendance
-        POSTGRES_PASSWORD: ${DB_PASSWORD}
       volumes:
         - pgdata:/var/lib/postgresql/data
+        - vdata:/vault/file
+      depends_on:
+        vault_server:
+          condition: service_healthy
       networks:
         - backend
       restart: unless-stopped
 
     vault_server:
       image: docker.io/hashicorp/vault:1.20
-      container_name: vault
-      # command: server -config=/vault/config/vault.hcl
-      environment:
-        VAULT_DEV_ROOT_TOKEN_ID: ${VAULT_TOKEN}
-        VAULT_DEV_LISTEN_ADDRESS: 0.0.0.0:8200
+      container_name: vault_server
+      command: server
       ports:
         - "8200:8200"
-      # volumes:
-      #   - ./vault/config:/vault/config
-      #   # - vlogs:/vault/logs
-      #   # - vdata:/vault/file
-      cap_add:
-        - IPC_LOCK
+      volumes:
+        - ./vault/config:/vault/config
+        - vlogs:/vault/logs
+        - vdata:/vault/file
       networks:
         - backend
       restart: unless-stopped
       healthcheck:
-        test: ["CMD", "vault", "status", "-address=http://127.0.0.1:8200"]
+        test: ["CMD-SHELL", "vault status -address=http://127.0.0.1:8200; EXIT_CODE=$$?; [ $$EXIT_CODE -eq 0 ] || [ $$EXIT_CODE -eq 2 ] || { [ $$EXIT_CODE -eq 1 ] && vault status -address=http://127.0.0.1:8200 2>&1 | grep -q 'Initialized[[:space:]]\\+false'; }"]
         interval: 5s
         timeout: 5s
         retries: 10
         start_period: 5s
 
-    # vault_init:
-    #   image: docker.io/hashicorp/vault:1.20
-    #   depends_on:
-    #     vault_server:
-    #       condition: service_healthy
-    #   command: sh /vault/script/init.sh
-    #   volumes:
-    #     - ./vault/script:/vault/script
-    #   networks:
-    #     - backend
+    vault_init:
+      image: docker.io/hashicorp/vault:1.20
+      container_name: vault_init
+      depends_on:
+        vault_server:
+          condition: service_healthy
+      command: sh /vault/scripts/init.sh
+      volumes:
+        - ./vault/scripts:/vault/scripts
+        - vdata:/vault/file
+      networks:
+        - backend
+
+    vault_unseal:
+      image: docker.io/hashicorp/vault:1.20
+      container_name: vault_unseal
+      depends_on:
+        vault_server:
+          condition: service_healthy
+      command: sh /vault/scripts/unseal.sh
+      volumes:
+        - ./vault/scripts:/vault/scripts
+        - vdata:/vault/file 
+      networks:
+        - backend
 
     server:
       container_name: server
@@ -64,16 +86,13 @@
       depends_on:
         postgres:
           condition: service_healthy
-        # vault_init:
-        #   condition: service_completed_successfully
+        vault_server:
+          condition: service_healthy
       environment:
         DB_HOST: postgres
         DB_NAME: postgres_transcendance
         DB_USER: postgres_transcendance
-        DB_PASSWORD: ${DB_PASSWORD}
-        JWT_SECRET: ${JWT_SECRET}
         VAULT_ADDR: http://vault_server:8200
-        VAULT_TOKEN: ${VAULT_TOKEN}
       ports:
         - "3000:3000"
       networks:

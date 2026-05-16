@@ -20,14 +20,13 @@ set +a
 
 echo "Environment variables loaded successfully!"
 
-: "${DB_PASSWORD:?DB_PASSWORD required}"
-# : "${JWT_SECRET:?JWT_SECRET required}"
+: "${VAULT_TOKEN:?VAULT_TOKEN required}"
+
+echo "Setting permissions..."
+chmod +x vault/scripts/*.sh
 
 echo "Starting ft_transcendance..."
 make build
-
-echo "Waiting for services..."
-sleep 5
 
 # echo "Initializing Vault..."
 # bash scripts/init-vault.sh
