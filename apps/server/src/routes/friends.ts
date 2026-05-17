@@ -13,6 +13,7 @@ import { and, eq, or } from "drizzle-orm";
 import { db } from "../db/client.js";
 import { friendships, users, blockedUsers } from "../db/schema.js";
 import { requireAuth } from "../auth/middleware.js";
+import { sendNotification } from "../services/notification.js";
 
 interface SendRequestBody {
   userId: number;
@@ -126,7 +127,13 @@ export async function friendRoutes(app: FastifyInstance) {
         .values({ userId: me, friendId: target, status: "pending" })
         .returning();
 
-      // TODO: trigger une notification "friend_request" pour le target (quand B9 sera fait).
+      // Notif pour le target : "X t'a envoyé une demande d'ami".
+      const [meUser] = await db.select().from(users).where(eq(users.id, me));
+      await sendNotification(target, "friend_request", {
+        from: { id: me, username: meUser.username, avatarUrl: meUser.avatarUrl },
+        friendshipId: created.id,
+      });
+
       return reply.code(201).send({ id: created.id, status: created.status });
     }
   );
@@ -152,7 +159,13 @@ export async function friendRoutes(app: FastifyInstance) {
           .update(friendships)
           .set({ status: "accepted" })
           .where(eq(friendships.id, friendshipId));
-        // TODO: notif "friend_accepted" pour l'envoyeur (quand B9).
+
+        // Notif pour celui qui avait envoyé la demande : "X a accepté ton ami".
+        const [meUser] = await db.select().from(users).where(eq(users.id, me));
+        await sendNotification(req.userId, "friend_accepted", {
+          from: { id: me, username: meUser.username, avatarUrl: meUser.avatarUrl },
+        });
+
         return reply.send({ status: "accepted" });
       } else {
         // Refus = on supprime la ligne (pas d'historique des refus).
