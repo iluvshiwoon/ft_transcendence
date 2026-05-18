@@ -1,11 +1,75 @@
 ---
-import Welcome from '../components/Welcome.astro';
-import Layout from '../layouts/Layout.astro';
-
-// Welcome to Astro! Wondering what to do next? Check out the Astro documentation at https://docs.astro.build
-// Don't want to use any of this? Delete everything in this file, the `assets`, `components`, and `layouts` directories, and start fresh.
+/**
+ * Landing page — / (home).
+ *
+ * Composition:
+ *   - TopNav (in RootLayout) floats above
+ *   - sr-only <h1> for SEO + screen readers (the brand statement)
+ *   - <Headline> kicker centered above the 3-column grid
+ *   - 3-column grid (items-start so all columns share the board's top baseline):
+ *       AITelemetry (3 cols, left)
+ *       Board       (6 cols, centered)
+ *       Leaderboard (3 cols, right)
+ *   - Mobile: Headline → Board → AITelemetry → Leaderboard via order classes
+ *
+ * AITelemetry and Leaderboard each render their own <section> with a labelled
+ * h2 (the AITelemetry h2 is sr-only because the wireframe doesn't have a
+ * visible label there). Headline is an <h2 role="status"> with aria-live
+ * announcing game state changes.
+ *
+ * All three columns render SSR-only — no JS shipped today. When Tim's game
+ * module lands, this page will wrap them in a <GameDemo client:load> island
+ * that owns shared state.
+ *
+ * TODO(integration): wrap <AITelemetry/>, <Board/>, and <Leaderboard/> in a
+ * single <GameDemo client:load> island that subscribes to the AI worker,
+ * propagates board state, and emits "game:finished" so the leaderboard can
+ * replace its dashed slot with a real row + signup CTA.
+ */
+import RootLayout from "~/layouts/RootLayout.astro";
+import Headline from "~/components/Headline.astro";
+import { Board } from "~/components/Board";
+import { AITelemetry } from "~/components/AITelemetry";
+import { Leaderboard } from "~/components/Leaderboard";
 ---
 
-<Layout>
-	<Welcome />
-</Layout>
+<RootLayout
+  title="4thewin — Connect 4, but smarter"
+  description="Play Connect 4 against an AI in your browser. No signup needed to start."
+>
+  <main
+    id="main"
+    class="mx-auto w-full max-w-7xl px-margin-mobile pt-28 pb-12 md:px-margin-desktop md:pt-32"
+  >
+    {/* Visually hidden but read aloud by screen readers and indexed by search engines. */}
+    <h1 class="sr-only">4thewin — Connect 4, but smarter</h1>
+
+    {/* Hero kicker — centered above the 3-column grid */}
+    <div class="mb-10 flex justify-center md:mb-12">
+      <Headline state="your-turn" />
+    </div>
+
+    <div class="grid grid-cols-1 gap-10 md:grid-cols-12 md:gap-gutter md:items-start">
+
+      {/* AITelemetry — desktop left, mobile after the board.
+          justify-center on desktop so the panel sits in the middle of the
+          space to the left of the board, with breathing room on both sides.
+          Matches the leaderboard column layout for visual symmetry. */}
+      <div class="order-2 md:order-1 md:col-span-3 flex justify-center">
+        <AITelemetry />
+      </div>
+
+      {/* Board — centered horizontally inside its column */}
+      <div class="order-1 md:order-2 md:col-span-6 flex justify-center">
+        <Board />
+      </div>
+
+      {/* Leaderboard — desktop right, mobile last.
+          justify-center mirrors the AI telemetry column. */}
+      <div class="order-3 md:order-3 md:col-span-3 flex justify-center">
+        <Leaderboard />
+      </div>
+
+    </div>
+  </main>
+</RootLayout>
