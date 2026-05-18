@@ -39,3 +39,7 @@ pnpm db:studio           # ouvre une UI web pour explorer la DB
 podman start dev-pg      # redémarre PG si tu l'as stoppé
 podman stop dev-pg       # stoppe PG
 podman exec dev-pg psql -U postgres_transcendance -d postgres_transcendance  # shell SQL
+
+# API Backend
+
+La référence complète de l'API (HTTP + Socket.io) est dans [`apps/server/API.md`](apps/server/API.md).
