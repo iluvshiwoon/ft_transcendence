@@ -13,6 +13,7 @@ import { userRoutes } from "./routes/users.js";
 import { friendRoutes } from "./routes/friends.js";
 import { chatRoutes } from "./routes/chat.js";
 import { notificationRoutes } from "./routes/notifications.js";
+import { setupSocket } from "./socket/index.js";
 
 // Dossier racine des uploads (avatars, etc.). Créé au démarrage si absent.
 const UPLOADS_DIR = join(import.meta.dirname, "..", "uploads");
@@ -65,6 +66,9 @@ export async function buildServer() {
 
   // Routes notifications (REST only) : /api/notifications, /unread-count, /:id/read, /read-all
   await app.register(notificationRoutes, { prefix: "/api" });
+
+  // Setup Socket.io (auth + online/offline tracking + futurs events chat/game/notif).
+  await setupSocket(app);
 
   return app;
 }

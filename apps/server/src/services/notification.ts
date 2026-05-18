@@ -1,11 +1,11 @@
 // Service de notifications.
-// Sert à créer une notif depuis n'importe où dans le code (friends, chat, game...).
-// Pour l'instant : juste insert en DB. Quand B6 (Socket.io) sera prêt, on ajoutera le push live.
+// Centralisé : appelé depuis n'importe où (friends, chat, game...).
+// Insert en DB + push live via Socket.io (vers la room user:<id> du destinataire).
 
+import type { Server } from "socket.io";
 import { db } from "../db/client.js";
 import { notifications } from "../db/schema.js";
 
-// Types de notifs : doit matcher l'enum notification_type dans schema.ts.
 export type NotificationType =
   | "friend_request"
   | "friend_accepted"
@@ -13,17 +13,31 @@ export type NotificationType =
   | "game_finished"
   | "chat_message";
 
-// Crée une notif pour un user (insert en DB).
-// TODO: quand B6 est prêt, émettre aussi un event Socket.io "notification:new" pour ce user.
+// Référence vers le serveur Socket.io, injectée au démarrage par setupSocket().
+let ioRef: Server | null = null;
+
+export function setNotificationIO(io: Server) {
+  ioRef = io;
+}
+
+// Crée une notif pour un user (DB + push live si online).
 export async function sendNotification(
   userId: number,
   type: NotificationType,
   content: Record<string, unknown>
 ): Promise<void> {
-  await db.insert(notifications).values({
-    userId,
-    type,
-    content,
-    read: false,
-  });
+  const [created] = await db
+    .insert(notifications)
+    .values({
+      userId,
+      type,
+      content,
+      read: false,
+    })
+    .returning();
+
+  // Push live si Socket.io est initialisé.
+  if (ioRef) {
+    ioRef.to(`user:${userId}`).emit("notification:new", created);
+  }
 }
