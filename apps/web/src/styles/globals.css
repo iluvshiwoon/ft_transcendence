@@ -57,8 +57,8 @@
   /* --- Game-specific --- */
   --color-board: oklch(56% 0.02 80);           /* warm gray-tan plate #8b8478 */
   --color-board-cell: oklch(85% 0.01 85);      /* light empty slot #d8d4cd */
-  --color-pawn-red: oklch(36% 0.16 35);        /* brick #8b1c00 — darker than accent in light */
-  --color-pawn-yellow: oklch(73% 0.13 90);     /* deep gold #c9a419 */
+  --color-pawn-red: oklch(42% 0.19 25);        /* warm crimson — sister to brand accent (same hue 25), slightly darker so it doesn't compete with buttons */
+  --color-pawn-yellow: oklch(73% 0.16 72);     /* editorial amber gold — distinct hue from the linen bg (85) so it pops */
 
   /* --- shadcn aliases (so Dialog/Popover/Card primitives work without renaming) --- */
   --color-card: var(--color-surface);
@@ -224,6 +224,13 @@
  * ============================================================================= */
 @utility pawn-red {
   background-color: var(--color-pawn-red);
+  /* Light mode: subtle 3D dome (inset shading) + tiny lift (drop shadow).
+     Mirrors dark mode's bottom inset, swaps the glow for a quiet drop so
+     pieces read as physical tokens resting on linen, not decals. */
+  box-shadow:
+    inset 0 -2px 3px oklch(0% 0 0 / 0.18),
+    inset 0 1px 1px oklch(100% 0 0 / 0.25),
+    0 1px 2px oklch(0% 0 0 / 0.15);
 }
 .dark .pawn-red {
   box-shadow:
@@ -233,6 +240,10 @@
 
 @utility pawn-yellow {
   background-color: var(--color-pawn-yellow);
+  box-shadow:
+    inset 0 -2px 3px oklch(0% 0 0 / 0.18),
+    inset 0 1px 1px oklch(100% 0 0 / 0.25),
+    0 1px 2px oklch(0% 0 0 / 0.15);
 }
 .dark .pawn-yellow {
   box-shadow:
