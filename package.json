@@ -5,5 +5,13 @@
     "dev": "pnpm --parallel dev",
     "build": "pnpm --parallel build",
     "lint": "eslint ."
+  },
+  "pnpm": {
+    "onlyBuiltDependencies": [
+      "bcrypt",
+      "esbuild",
+      "fastify-socket.io",
+      "sharp"
+    ]
   }
 }
