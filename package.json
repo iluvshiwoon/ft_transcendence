@@ -6,6 +6,7 @@
     "build": "pnpm --parallel build",
     "lint": "eslint ."
   },
+  "packageManager": "pnpm@10.33.3",
   "pnpm": {
     "onlyBuiltDependencies": [
       "bcrypt",
