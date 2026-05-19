@@ -26,7 +26,7 @@ declare module "fastify" {
 
 export async function setupSocket(app: FastifyInstance) {
   // Configure le serveur Socket.io avec le même CORS que le back.
-  await app.register(fastifyIO, {
+  await app.register(fastifyIO as any, {
     cors: {
       origin: process.env.FRONTEND_URL ?? "http://localhost:4321",
       credentials: true,
