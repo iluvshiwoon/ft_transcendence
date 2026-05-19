@@ -59,7 +59,7 @@ export class GameState
 
     const gagnant = checkWin(this.board);
     if (gagnant !== null) {
-      this.winner = gagnant;
+      this.winner = gagnant as 1 | 2;
       this.status = "finished";
     } else if (isDraw(this.board)) {
       this.status = "finished";
