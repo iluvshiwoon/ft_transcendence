@@ -104,5 +104,5 @@ export async function loadFromVault(): Promise<void> {
     process.env.DATABASE_URL = `postgresql://${dbUser}:${db.password}@${dbHost}:5432/${dbName}`;
   }
 
-  console.log("[vault] Secrets loaded ✅");
+  console.log("[vault] Secrets loaded");
 }
