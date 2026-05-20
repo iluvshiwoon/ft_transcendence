@@ -4,11 +4,15 @@
 // Sinon les modules (jwt.ts, db/client.ts) liraient process.env trop tôt.
 
 import { loadFromVault } from "./config/vault.js";
+import { migrate } from "drizzle-orm/node-postgres/migrator"; // AJOUT DE SHEINEZ
 
 await loadFromVault();
 
 // Dynamic import : exécuté APRÈS loadFromVault, donc process.env est déjà rempli.
-const { buildServer } = await import("./server.js");
+const { db } = await import("./db/client.js");
+const { buildServer } = await import("./server.js"); // AJOUT DE SHEINEZ
+
+await migrate(db, { migrationsFolder: "./drizzle" }); // AJOUT DE SHEINEZ
 
 const app = await buildServer();
 
