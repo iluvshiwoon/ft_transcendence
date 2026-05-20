@@ -3,14 +3,10 @@
 //   - getAuthorizationUrl() : URL où on redirige le user pour qu'il se logue sur 42
 //   - exchangeCode(code)    : échange le code reçu en callback contre un access_token
 //   - getUserInfo(token)    : récupère les infos publiques du user (id, login, email, image)
-
-const CLIENT_ID = process.env.OAUTH42_CLIENT_ID;
-const CLIENT_SECRET = process.env.OAUTH42_CLIENT_SECRET;
-const REDIRECT_URI = process.env.OAUTH42_REDIRECT_URI;
-
-if (!CLIENT_ID || !CLIENT_SECRET || !REDIRECT_URI) {
-  throw new Error("Missing OAuth 42 env vars");
-}
+//
+// La validation des env vars se fait LAZY (au moment de l'usage) pour ne pas crasher
+// l'app entière au boot si OAuth 42 n'est pas configuré. Les autres routes (auth classique,
+// users, chat...) continuent de fonctionner.
 
 const AUTHORIZE_URL = "https://api.intra.42.fr/oauth/authorize";
 const TOKEN_URL = "https://api.intra.42.fr/oauth/token";
@@ -23,11 +19,24 @@ export interface OAuth42User {
   image: { link: string };
 }
 
+// Lit une env var et throw si absente. Appelée uniquement quand les fonctions
+// OAuth sont utilisées (= sur GET /api/auth/42 et /callback).
+function requireEnv(name: string): string {
+  const value = process.env[name];
+  if (!value) {
+    throw new Error(
+      `OAuth 42 not configured: missing env var ${name}. ` +
+        `Set OAUTH42_CLIENT_ID, OAUTH42_CLIENT_SECRET, OAUTH42_REDIRECT_URI in .env or Vault.`
+    );
+  }
+  return value;
+}
+
 // Construit l'URL où on redirige le user pour qu'il se logue sur 42.
 export function getAuthorizationUrl(): string {
   const params = new URLSearchParams({
-    client_id: CLIENT_ID!,
-    redirect_uri: REDIRECT_URI!,
+    client_id: requireEnv("OAUTH42_CLIENT_ID"),
+    redirect_uri: requireEnv("OAUTH42_REDIRECT_URI"),
     response_type: "code",
     scope: "public",
   });
@@ -41,10 +50,10 @@ export async function exchangeCode(code: string): Promise<string> {
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({
       grant_type: "authorization_code",
-      client_id: CLIENT_ID,
-      client_secret: CLIENT_SECRET,
+      client_id: requireEnv("OAUTH42_CLIENT_ID"),
+      client_secret: requireEnv("OAUTH42_CLIENT_SECRET"),
       code,
-      redirect_uri: REDIRECT_URI,
+      redirect_uri: requireEnv("OAUTH42_REDIRECT_URI"),
     }),
   });
 
