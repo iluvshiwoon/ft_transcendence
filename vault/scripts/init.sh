@@ -18,6 +18,9 @@ if [ "$INITIALIZED" = "false" ]; then
     echo "$INIT_STARTING" | jq -r '.unseal_keys_b64[0]' > /vault/file/unseal.key
     echo "$INIT_STARTING" | jq -r '.root_token'          > /vault/file/root.token
 
+    chmod 644 /vault/file/root.token
+    chmod 644 /vault/file/unseal.key
+
     echo "Unsealing..."
     vault operator unseal "$(cat /vault/file/unseal.key)"
 
@@ -29,17 +32,22 @@ if [ "$INITIALIZED" = "false" ]; then
     DB_PASS="$(openssl rand -base64 24)"
     JWT_SECRET="$(openssl rand -base64 48)"
 
-    echo "Injecting secrets..."
-    vault kv put -mount=secret transcendance \
-        db_password="$DB_PASS" \
-        jwt_secret="$JWT_SECRET"
+    vault kv put -mount=secret transcendence/jwt \
+        value="$JWT_SECRET"
+
+    vault kv put -mount=secret transcendence/database \
+        password="$DB_PASS"
+
+    vault kv put -mount=secret transcendence/oauth42 \
+        client_id="REPLACE_ME" \
+        client_secret="REPLACE_ME"
 else
     echo "Vault already initialized!"
     echo "Retrieving existing secrets for Postgres..."
     
     export VAULT_TOKEN="$(cat /vault/file/root.token)"
     
-    DB_PASS=$(vault kv get -format=json -mount=secret transcendance | jq -r '.data.data.db_password')
+    DB_PASS=$(vault kv get -format=json -mount=secret transcendence/database | jq -r '.data.data.db_password')
 fi
 
 echo "$DB_PASS" > /vault/file/.db_pass

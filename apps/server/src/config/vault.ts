@@ -9,6 +9,8 @@
 //   secret/transcendence/oauth42    → { client_id, client_secret }
 //   secret/transcendence/database   → { url }
 
+import fs from "fs";
+
 interface KvV2Response {
   data: { data: Record<string, string> };
 }
@@ -28,7 +30,13 @@ async function readSecret(addr: string, token: string, path: string): Promise<Re
 
 export async function loadFromVault(): Promise<void> {
   const addr = process.env.VAULT_ADDR;
-  const token = process.env.VAULT_TOKEN;
+  let token: string | undefined;
+
+  if (fs.existsSync("/vault/file/root.token")) {
+    token = fs.readFileSync("/vault/file/root.token", "utf8").trim();
+  } else {
+    token = process.env.VAULT_TOKEN;
+  }
 
   if (!addr || !token) {
     console.log("[vault] Not configured, using .env values directly");
@@ -45,7 +53,13 @@ export async function loadFromVault(): Promise<void> {
   if (oauth?.client_secret) process.env.OAUTH42_CLIENT_SECRET = oauth.client_secret;
 
   const db = await readSecret(addr, token, "transcendence/database");
-  if (db?.url) process.env.DATABASE_URL = db.url;
+  if (db?.password) {
+    const dbUser = process.env.POSTGRES_USER || "postgres_transcendance";
+    const dbName = process.env.POSTGRES_DB || "postgres_transcendance";
+    const dbHost = process.env.POSTGRES_HOST || "postgres";
+    
+    process.env.DATABASE_URL = `postgresql://${dbUser}:${db.password}@${dbHost}:5432/${dbName}`;
+  }
 
   console.log("[vault] Secrets loaded");
 }
