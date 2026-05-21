@@ -1,0 +1,40 @@
+---
+/**
+ * Signup — 4-step onboarding flow.
+ *
+ * Reads ?step=N from the URL (1..4). Defaults to 1; clamps invalid values.
+ * Each step renders inside SignupShell which carries the SignupProgress
+ * tracker. URL-driven state means back/forward buttons just work.
+ *
+ * TODO(integration):
+ *   - 42 OAuth callback should redirect new-account flows to ?step=3.
+ *     Currently /api/auth/42/callback redirects to / unconditionally;
+ *     Rayane's backend needs a way to differentiate signup-mode (e.g., a
+ *     short-lived signup_intent cookie set on /signup, read by the callback).
+ *   - Step 1 needs the carry-over score from the anonymous demo session
+ *     (TODO marker in Step1Save.astro).
+ */
+import SignupShell from "~/components/signup/SignupShell.astro";
+import Step1Save from "~/components/signup/Step1Save.astro";
+import { Step2Credentials } from "~/components/signup/Step2Credentials";
+import { Step3Profile } from "~/components/signup/Step3Profile";
+import Step4Welcome from "~/components/signup/Step4Welcome.astro";
+
+const stepParam = Astro.url.searchParams.get("step");
+const parsed = Number(stepParam);
+const step = (Number.isFinite(parsed) && parsed >= 1 && parsed <= 4 ? parsed : 1) as 1 | 2 | 3 | 4;
+
+const TITLES: Record<typeof step, string> = {
+  1: "Save your spot",
+  2: "Credentials",
+  3: "Make it yours",
+  4: "Welcome",
+};
+---
+
+<SignupShell current={step} title={TITLES[step]}>
+  {step === 1 ? <Step1Save /> : null}
+  {step === 2 ? <Step2Credentials client:load /> : null}
+  {step === 3 ? <Step3Profile client:load /> : null}
+  {step === 4 ? <Step4Welcome /> : null}
+</SignupShell>

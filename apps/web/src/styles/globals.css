@@ -105,6 +105,42 @@
   --spacing-margin-mobile: 1.25rem;           /* 20px page padding small viewports */
   --spacing-margin-desktop: 4rem;             /* 64px page padding desktop */
 
+  /* Signup progress tracker — Connect-4-themed token drop + step-4 win sequence.
+
+     Per-step: the token at the current step plays signup-token-drop on mount
+     (350ms — falls in from above with a tiny squish for "weight").
+
+     Step 4 only: after the final token drops, a connecting line draws across
+     all four tokens (left → right), then all four tokens emit a glow flash —
+     the connect-4 payoff moment. CSS sequences this purely via
+     animation-delay on elements within [data-current="4"]. */
+  --animate-signup-token-drop: signup-token-drop 380ms cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
+
+  @keyframes signup-token-drop {
+    0% {
+      transform: translateY(-12px) scale(0.7);
+      opacity: 0;
+    }
+    70% {
+      transform: translateY(0) scale(1.06, 0.88);
+      opacity: 1;
+    }
+    100% {
+      transform: translateY(0) scale(1, 1);
+      opacity: 1;
+    }
+  }
+
+  @keyframes signup-line-draw {
+    from { transform: scaleX(0); }
+    to   { transform: scaleX(1); }
+  }
+
+  @keyframes signup-token-flash {
+    0%, 100% { transform: scale(1); }
+    50%      { transform: scale(1.25); }
+  }
+
   /* Radius scale */
   --radius-sm: 0.25rem;
   --radius-md: 0.375rem;
@@ -249,4 +285,24 @@
   box-shadow:
     0 0 12px oklch(76% 0.16 85 / 0.4),
     inset 0 -2px 4px oklch(0% 0 0 / 0.4);
+}
+
+/* =============================================================================
+ * Signup progress tracker — step-4 win sequence
+ *
+ * The progress component sets data-current="N" on its wrapper. At N=4, after
+ * the final token has dropped in, the connecting line draws and the four
+ * tokens emit a synchronized glow flash. Pure CSS — sequenced via
+ * animation-delay on the line and the token-flash class.
+ * ============================================================================= */
+[data-signup-line] {
+  /* Hidden by default; only animates when parent[data-current="4"] is set. */
+  transform: scaleX(0);
+  transform-origin: left center;
+}
+[data-current="4"] [data-signup-line] {
+  animation: signup-line-draw 560ms ease-out 380ms forwards;
+}
+[data-current="4"] [data-signup-token][data-filled="true"] {
+  animation: signup-token-flash 700ms ease-in-out 980ms;
 }
