@@ -94,6 +94,13 @@
         DB_NAME: postgres_transcendance
         DB_USER: postgres_transcendance
         VAULT_ADDR: http://vault_server:8200
+        # OAuth 42 callback URI — must match exactly what's registered in the
+        # 42 intra app config. ModSec at :8080 is the public entrypoint, so
+        # 42 will redirect the user's browser there after they authenticate.
+        OAUTH42_REDIRECT_URI: http://localhost:8080/api/auth/42/callback
+        # Frontend URL — used for CORS and post-OAuth redirects back to the
+        # SPA. Same host/port via ModSec.
+        FRONTEND_URL: http://localhost:8080
       # ports:
       #   - "3000:3000"
       volumes:
