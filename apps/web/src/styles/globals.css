@@ -118,7 +118,7 @@
 
   @keyframes signup-token-drop {
     0% {
-      transform: translateY(-12px) scale(0.7);
+      transform: translateY(-20px) scale(0.7);
       opacity: 0;
     }
     70% {
@@ -287,6 +287,41 @@
   box-shadow:
     0 0 12px oklch(76% 0.16 85 / 0.4),
     inset 0 -2px 4px oklch(0% 0 0 / 0.4);
+}
+
+/* Neutral token + slot — used by the signup progress tracker. Same depth
+   recipe as pawn-red / pawn-yellow but with the foreground/muted palette so
+   the tracker reads as Connect-4 board pieces without the brand-color tax. */
+@utility pawn-neutral {
+  background-color: var(--color-foreground);
+  box-shadow:
+    inset 0 -2px 3px oklch(0% 0 0 / 0.20),
+    inset 0 1px 1px oklch(100% 0 0 / 0.22),
+    0 1px 2px oklch(0% 0 0 / 0.18);
+}
+.dark .pawn-neutral {
+  /* Foreground in dark mode is near-white — drop the inset highlight (would
+     wash out on a light surface) and add a soft glow so the token reads on
+     the dark bg. Bottom inset stays for the dome bottom. */
+  box-shadow:
+    0 0 10px oklch(100% 0 0 / 0.18),
+    inset 0 -2px 3px oklch(0% 0 0 / 0.30);
+}
+
+@utility pawn-slot {
+  /* Empty Connect-4 slot — inverted insets so it looks like a hole in the
+     board: top-dark (rim shadow) + bottom-light (floor catching light). */
+  background-color: var(--color-muted);
+  box-shadow:
+    inset 0 2px 3px oklch(0% 0 0 / 0.18),
+    inset 0 -1px 1px oklch(100% 0 0 / 0.20);
+}
+.dark .pawn-slot {
+  /* In dark mode the muted bg is darker than the page — slot reads as a
+     deeper hollow. Dial up the rim shadow, drop most of the floor highlight. */
+  box-shadow:
+    inset 0 2px 4px oklch(0% 0 0 / 0.45),
+    inset 0 -1px 1px oklch(100% 0 0 / 0.06);
 }
 
 /* =============================================================================
