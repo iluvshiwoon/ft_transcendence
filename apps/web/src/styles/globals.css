@@ -148,23 +148,12 @@
   --radius-xl: 0.75rem;
   --radius-full: 9999px;
 
-  /* AI telemetry matrix — two layered animations:
-     1. matrix-pulse: continuous left-to-right wave (200ms column stagger)
-     2. sonar-ping: best-move cell radiates a soft ring every 5s
-     Each cell reads --matrix-base-opacity (0..1, set per-cell from its score). */
-  --animate-matrix-pulse: matrix-pulse 3s ease-in-out infinite;
+  /* AI telemetry matrix — sonar ping on the best-move cell only.
+     The continuous column-wave animation was removed because its
+     trough-to-peak start-up was visible on every page refresh
+     (DESIGN.md §17.1). The score gradient is now applied as a static
+     opacity per cell. */
   --animate-sonar-ping: sonar-ping 5s ease-out infinite;
-
-  @keyframes matrix-pulse {
-    0%, 100% {
-      transform: scale(0.92);
-      opacity: calc(var(--matrix-base-opacity, 0.35) * 0.8);
-    }
-    50% {
-      transform: scale(1.04);
-      opacity: var(--matrix-base-opacity, 0.35);
-    }
-  }
 
   @keyframes sonar-ping {
     0% {

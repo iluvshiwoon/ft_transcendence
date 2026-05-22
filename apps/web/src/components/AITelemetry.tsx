@@ -60,9 +60,6 @@ interface AITelemetryProps {
 const ROWS = 6;
 const COLS = 7;
 
-/** Stagger between adjacent columns. 7 × 200ms ≈ 1400ms over a 3000ms cycle = continuous wave. */
-const COLUMN_STAGGER_MS = 200;
-
 /** Base opacity for non-marker dots (uniform decorative grid). */
 const BASE_OPACITY = 0.35;
 
@@ -105,22 +102,16 @@ export function AITelemetry({
               const baseOpacity = isLandingCell ? scoreOpacity(score) : BASE_OPACITY;
               const isBestMove = isLandingCell && c === bestColumn && score > 0;
 
-              const waveDelay = `${c * COLUMN_STAGGER_MS}ms`;
-
-              // Best-move cell still emits the sonar ping every 5s — that's
-              // the "AI is asserting its answer" beat. Other cells are static:
-              // the column-stagger wave was removed because the trough-to-peak
-              // start-up was visible on every page refresh.
+              // Per-cell opacity drives the score gradient. The best-move cell
+              // additionally gets the sonar-ping ring every 5s — that's the only
+              // motion left in the panel. The wave animation was removed (see
+              // DESIGN.md §17.1).
               const inlineStyle: React.CSSProperties = {
-                ["--matrix-base-opacity" as never]: baseOpacity.toFixed(3),
+                opacity: baseOpacity,
               };
               if (isBestMove) {
                 inlineStyle.animation = `sonar-ping 5s ease-out 0ms infinite`;
               }
-              // The waveDelay is kept in scope above for when we restore a
-              // continuous wave (probably tied to AI THINKING state in the
-              // future). Marked as referenced to satisfy the linter.
-              void waveDelay;
 
               return (
                 <span
