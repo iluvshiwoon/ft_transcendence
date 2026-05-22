@@ -122,8 +122,15 @@
       opacity: 0;
     }
     70% {
+      /* Land with a squish — wider + shorter, like a Connect-4 token hitting
+         the bottom of the slot. */
       transform: translateY(0) scale(1.06, 0.88);
       opacity: 1;
+      /* Override the bouncy global easing for the squish→idle segment.
+         Without this override, the bezier overshoots past (1, 1) and the
+         token visibly wobbles before settling. ease-out decelerates into
+         the final state without overshoot. */
+      animation-timing-function: ease-out;
     }
     100% {
       transform: translateY(0) scale(1, 1);
