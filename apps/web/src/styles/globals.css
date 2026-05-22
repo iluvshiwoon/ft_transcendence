@@ -107,33 +107,23 @@
 
   /* Signup progress tracker — Connect-4-themed token drop + step-4 win sequence.
 
-     Per-step: the token at the current step plays signup-token-drop on mount
-     (350ms — falls in from above with a tiny squish for "weight").
+     Per-step: the token at the current step plays signup-token-drop on mount.
+     Single translate + opacity, smooth ease-out — feels like a token settling
+     into its slot with air resistance, no cartoon squish or bounce.
 
      Step 4 only: after the final token drops, a connecting line draws across
      all four tokens (left → right), then all four tokens emit a glow flash —
      the connect-4 payoff moment. CSS sequences this purely via
      animation-delay on elements within [data-current="4"]. */
-  --animate-signup-token-drop: signup-token-drop 380ms cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
+  --animate-signup-token-drop: signup-token-drop 360ms cubic-bezier(0.22, 1, 0.36, 1) forwards;
 
   @keyframes signup-token-drop {
     0% {
-      transform: translateY(-20px) scale(0.7);
+      transform: translateY(-22px);
       opacity: 0;
     }
-    70% {
-      /* Land with a squish — wider + shorter, like a Connect-4 token hitting
-         the bottom of the slot. */
-      transform: translateY(0) scale(1.06, 0.88);
-      opacity: 1;
-      /* Override the bouncy global easing for the squish→idle segment.
-         Without this override, the bezier overshoots past (1, 1) and the
-         token visibly wobbles before settling. ease-out decelerates into
-         the final state without overshoot. */
-      animation-timing-function: ease-out;
-    }
     100% {
-      transform: translateY(0) scale(1, 1);
+      transform: translateY(0);
       opacity: 1;
     }
   }
