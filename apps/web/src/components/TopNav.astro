@@ -57,7 +57,12 @@ import { cn } from "~/lib/utils";
 
   {/* Right group: theme toggle + auth CTAs */}
   <div class="flex items-center gap-2.5 md:gap-3">
-    <ThemeToggle client:only="react" />
+    {/* Reserve a 36×36 slot at SSR so the pill doesn't shift width when the
+        ThemeToggle island hydrates client-side. The React component renders
+        a `size-9` button into this slot. */}
+    <div class="size-9 shrink-0">
+      <ThemeToggle client:only="react" />
+    </div>
 
     <a
       href="/login"
