@@ -16,7 +16,6 @@
  * a future task once we have the menu items defined.
  */
 import { Button, buttonVariants } from "~/components/ui/button";
-import { ThemeToggle } from "~/components/ThemeToggle";
 import { cn } from "~/lib/utils";
 ---
 
@@ -57,12 +56,34 @@ import { cn } from "~/lib/utils";
 
   {/* Right group: theme toggle + auth CTAs */}
   <div class="flex items-center gap-2.5 md:gap-3">
-    {/* Reserve a 36×36 slot at SSR so the pill doesn't shift width when the
-        ThemeToggle island hydrates client-side. The React component renders
-        a `size-9` button into this slot. */}
-    <div class="size-9 shrink-0">
-      <ThemeToggle client:only="react" />
-    </div>
+    {/* Theme toggle — pure SSR. Both icons are in the DOM; CSS picks which
+        one shows based on `<html class="dark">`. The bootstrap script in
+        RootLayout sets that class synchronously before paint AND wires the
+        click handler. No React island, no hydration flicker. */}
+    <button
+      type="button"
+      data-theme-toggle
+      aria-label="Toggle theme"
+      title="Toggle theme"
+      class="grid size-9 shrink-0 place-items-center rounded-full text-foreground transition-all duration-75 ease-linear hover:bg-muted active:scale-[0.96]"
+    >
+      {/* Moon: visible in light mode (hidden in dark) */}
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="size-4 dark:hidden" aria-hidden="true">
+        <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path>
+      </svg>
+      {/* Sun: visible in dark mode (hidden in light) */}
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="hidden size-4 dark:block" aria-hidden="true">
+        <circle cx="12" cy="12" r="4"></circle>
+        <path d="M12 2v2"></path>
+        <path d="M12 20v2"></path>
+        <path d="m4.93 4.93 1.41 1.41"></path>
+        <path d="m17.66 17.66 1.41 1.41"></path>
+        <path d="M2 12h2"></path>
+        <path d="M20 12h2"></path>
+        <path d="m6.34 17.66-1.41 1.41"></path>
+        <path d="m19.07 4.93-1.41 1.41"></path>
+      </svg>
+    </button>
 
     <a
       href="/login"

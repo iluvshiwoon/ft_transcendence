@@ -58,20 +58,50 @@ const canonicalUrl = new URL(Astro.url.pathname, Astro.site ?? "http://localhost
       Theme bootstrap — must run BEFORE paint to avoid FOUC.
       Reads localStorage first, falls back to prefers-color-scheme.
       Adds either `light` or `dark` class to <html>; never both.
+
+      Also wires the click handler for any [data-theme-toggle] button (used by
+      TopNav). Pure inline JS — no React island — so the icon is rendered by
+      Astro at SSR (with dark:hidden / dark:block CSS rules picking which one
+      shows) and there's no hydration flicker.
     */}
     <script is:inline>
       (function () {
-        try {
-          var stored = localStorage.getItem("theme");
-          var prefersDark = window.matchMedia("(prefers-color-scheme: dark)").matches;
-          var theme = stored === "dark" || stored === "light" ? stored : prefersDark ? "dark" : "light";
+        function setTheme(theme) {
           var root = document.documentElement;
           root.classList.remove("light", "dark");
           root.classList.add(theme);
           root.style.colorScheme = theme;
-        } catch (e) {
-          /* localStorage may be unavailable (private mode / file://) — fall through to default light */
         }
+
+        // Initial theme: localStorage → prefers-color-scheme → "light".
+        try {
+          var stored = localStorage.getItem("theme");
+          var prefersDark = window.matchMedia("(prefers-color-scheme: dark)").matches;
+          var theme = stored === "dark" || stored === "light" ? stored : prefersDark ? "dark" : "light";
+          setTheme(theme);
+        } catch (e) {
+          /* localStorage unavailable (private mode / file://) — fall through */
+        }
+
+        // Click handler — delegated on document so it works for any
+        // [data-theme-toggle] button across the app.
+        document.addEventListener("click", function (e) {
+          var btn = e.target && e.target.closest && e.target.closest("[data-theme-toggle]");
+          if (!btn) return;
+          var current = document.documentElement.classList.contains("dark") ? "dark" : "light";
+          var next = current === "dark" ? "light" : "dark";
+          setTheme(next);
+          try { localStorage.setItem("theme", next); } catch (e) {}
+        });
+
+        // Follow OS preference live when the user hasn't explicitly chosen.
+        try {
+          window.matchMedia("(prefers-color-scheme: dark)").addEventListener("change", function (e) {
+            if (localStorage.getItem("theme") === null) {
+              setTheme(e.matches ? "dark" : "light");
+            }
+          });
+        } catch (e) {}
       })();
     </script>
   </head>
