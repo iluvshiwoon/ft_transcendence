@@ -2,40 +2,50 @@
 /**
  * Step1Save — "Save your spot": carry-over story + auth method picker.
  *
- * The displayed rank/score is a placeholder for now. Real values bind to the
- * anonymous demo session once the game module emits one (TODO).
+ * Two display modes:
+ *   - With carry-over data (anon session has finished games): show the user's
+ *     rank + rating from their demo session.
+ *   - Without (no demo played yet, or anon-session backend not yet wired):
+ *     fall back to a generic "save your progress" pitch.
  *
- * - Continue with email → /signup?step=2
- * - Continue with 42    → /api/auth/42 (existing backend OAuth start)
- *   On callback, the user lands at / today; once the backend is wired to
- *   redirect signup-flow callbacks to /signup?step=3, OAuth users skip step 2.
+ * Until CHUNK B lands (anon-session model + GET /api/anon/session/me), the
+ * backend doesn't expose a way to fetch the demo result. We render the generic
+ * variant unconditionally for now and switch when the endpoint exists.
+ *
+ * The 42 OAuth button passes ?intent=signup so the callback knows to redirect
+ * new accounts to /signup?step=3 (skipping the credentials step) instead of /.
  */
 import { buttonVariants } from "~/components/ui/button";
 import { cn } from "~/lib/utils";
 
-// TODO(integration): replace with real anonymous-session score + computed rank.
-//   Hook point: read from localStorage.4thewin_session_score (set by GameDemo
-//   on game-finished). Falls back to placeholder copy if absent.
-const placeholderRank = 4;
-const placeholderRating = 2569;
+// CHUNK B: replace this with a server-side fetch to GET /api/anon/session/me.
+// When that endpoint returns aggregated stats for the anonymous cookie, set
+// `carryOver` to those values. Until then, we always render the generic copy.
+const carryOver: { rank: number; rating: number } | null = null;
 ---
 
 <header class="flex flex-col gap-3">
   <h1 class="font-display italic font-light tracking-wide text-3xl text-foreground leading-none">
     Save your spot
   </h1>
-  <p class="text-base text-muted-foreground">
-    You finished your demo at <span class="font-bold text-foreground">#{placeholderRank}</span>
-    on the leaderboard with a rating of <span class="font-mono font-bold text-foreground tabular-nums">{placeholderRating}</span>.
-    Sign up to lock that in and start climbing.
-  </p>
+  {carryOver ? (
+    <p class="text-base text-muted-foreground">
+      You finished your demo at <span class="font-bold text-foreground">#{carryOver.rank}</span>
+      on the leaderboard with a rating of <span class="font-mono font-bold text-foreground tabular-nums">{carryOver.rating}</span>.
+      Sign up to lock that in and start climbing.
+    </p>
+  ) : (
+    <p class="text-base text-muted-foreground">
+      Save your progress, climb the leaderboard, and unlock multiplayer + chat.
+      Takes about a minute.
+    </p>
+  )}
 </header>
 
 <div class="flex flex-col gap-3 pt-2">
   <a
     href="/signup?step=2"
     class={cn(buttonVariants({ variant: "brand-filled", size: "pill" }), "h-11 gap-2 px-6 text-mono-md")}
-    data-todo-integration="advance to credentials step"
   >
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="size-4" aria-hidden="true">
       <rect width="20" height="16" x="2" y="4" rx="2"></rect>
@@ -45,9 +55,8 @@ const placeholderRating = 2569;
   </a>
 
   <a
-    href="/api/auth/42"
+    href="/api/auth/42?intent=signup"
     class={cn(buttonVariants({ variant: "brand-outline", size: "pill" }), "h-11 gap-2 px-6 text-mono-md")}
-    data-todo-integration="OAuth callback should redirect to /signup?step=3 for new users"
   >
     Continue with 42
   </a>

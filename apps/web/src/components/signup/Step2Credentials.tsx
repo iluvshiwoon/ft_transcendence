@@ -105,17 +105,18 @@ export function Step2Credentials() {
       return;
     }
     try {
-      const res = await fetch(`/api/users/search?q=${encodeURIComponent(value)}`, {
+      // Public endpoint (no auth) — returns just { available: boolean }.
+      const res = await fetch(`/api/users/check-username?q=${encodeURIComponent(value)}`, {
         credentials: "include",
       });
       if (!res.ok) {
         setUsernameTaken(null);
         return;
       }
-      const matches = (await res.json()) as Array<{ username: string }>;
-      const taken = matches.some((m) => m.username.toLowerCase() === value.toLowerCase());
-      setUsernameTaken(taken);
+      const { available } = (await res.json()) as { available: boolean };
+      setUsernameTaken(!available);
     } catch {
+      // Endpoint unavailable — let the user proceed; signup will surface a 409 later.
       setUsernameTaken(null);
     }
   }

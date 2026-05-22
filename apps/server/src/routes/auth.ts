@@ -26,6 +26,7 @@
 
 import type { FastifyInstance, FastifyReply } from "fastify";
 import { eq } from "drizzle-orm";
+import { randomBytes } from "node:crypto";
 import { db } from "../db/client.js";
 import { users } from "../db/schema.js";
 import { hashPassword, verifyPassword } from "../auth/password.js";
@@ -47,6 +48,16 @@ interface LoginBody {
   email: string;
   password: string;
 }
+
+/** Cookie name for the OAuth state token + intent. Path-scoped to the OAuth callback only. */
+const OAUTH_STATE_COOKIE = "oauth42_state";
+const OAUTH_STATE_COOKIE_OPTS = {
+  httpOnly: true,
+  secure: process.env.NODE_ENV === "production",
+  sameSite: "lax" as const,
+  path: "/api/auth/42",
+  maxAge: 10 * 60, // 10 minutes — covers a slow OAuth round-trip with margin
+};
 
 export async function authRoutes(app: FastifyInstance) {
   app.post<{ Body: SignupBody }>("/signup", async (request, reply) => {
@@ -144,20 +155,51 @@ export async function authRoutes(app: FastifyInstance) {
     });
   });
 
-  app.get("/42", async (_request, reply) => {
-    // Redirige vers la page d'autorisation de l'intra 42.
-    return reply.redirect(getAuthorizationUrl());
+  app.get<{ Querystring: { intent?: string } }>("/42", async (request, reply) => {
+    // Determine intent: "signup" routes new accounts to /signup?step=3 after the
+    // callback; default ("login") routes to /. Frontend's signup page passes
+    // ?intent=signup; the regular Login link doesn't, so it defaults to login.
+    const intent = request.query.intent === "signup" ? "signup" : "login";
+
+    // CSRF protection: opaque state token included in the OAuth redirect URL.
+    // 42's callback echoes it back; we verify it matches what we stored.
+    const state = randomBytes(16).toString("hex");
+
+    reply.setCookie(
+      OAUTH_STATE_COOKIE,
+      JSON.stringify({ state, intent }),
+      OAUTH_STATE_COOKIE_OPTS,
+    );
+
+    return reply.redirect(getAuthorizationUrl(state));
   });
 
-  app.get<{ Querystring: { code?: string; error?: string } }>(
+  app.get<{ Querystring: { code?: string; state?: string; error?: string } }>(
     "/42/callback",
     async (request, reply) => {
-      const { code, error } = request.query;
+      const { code, state: returnedState, error } = request.query;
 
       // Si 42 nous renvoie une erreur ou pas de code, on stoppe.
       if (error || !code) {
         return reply.code(400).send({ error: error ?? "Missing code" });
       }
+
+      // CSRF: verify the state token matches what we stored, and read the intent.
+      const stateCookie = request.cookies?.[OAUTH_STATE_COOKIE];
+      let intent: "signup" | "login" = "login";
+      if (stateCookie) {
+        try {
+          const parsed = JSON.parse(stateCookie) as { state?: string; intent?: string };
+          if (!parsed.state || parsed.state !== returnedState) {
+            return reply.code(400).send({ error: "Invalid OAuth state" });
+          }
+          intent = parsed.intent === "signup" ? "signup" : "login";
+        } catch {
+          return reply.code(400).send({ error: "Malformed OAuth state cookie" });
+        }
+      }
+      // Always clear the state cookie — single-use.
+      reply.clearCookie(OAUTH_STATE_COOKIE, { path: OAUTH_STATE_COOKIE_OPTS.path });
 
       // Échange le code contre les infos du user 42.
       let oauth42User;
@@ -187,6 +229,9 @@ export async function authRoutes(app: FastifyInstance) {
           // Token invalide → on ignore et on enchaîne sur le login normal.
         }
       }
+
+      // Track whether we created a new user (relevant for the signup-mode redirect).
+      let wasNewAccount = false;
 
       // Cherche d'abord par oauth_42_id (user déjà passé par 42).
       let [user] = await db
@@ -231,11 +276,20 @@ export async function authRoutes(app: FastifyInstance) {
             password: null, // pas de password pour les comptes OAuth-only
           })
           .returning();
+        wasNewAccount = true;
       }
 
-      // Connecte le user : pose le cookie JWT et redirige vers le front.
+      // Connecte le user : pose le cookie JWT.
       setAuthCookie(reply, signToken({ userId: user.id }));
-      return reply.redirect(`${frontendUrl}/`);
+
+      // Redirect destination depends on intent + whether the user is new.
+      // signup intent + new account → onboarding step 3 (skip credentials, OAuth provided them).
+      // login intent OR existing account → home.
+      const target =
+        intent === "signup" && wasNewAccount
+          ? `${frontendUrl}/signup?step=3`
+          : `${frontendUrl}/`;
+      return reply.redirect(target);
     }
   );
 }

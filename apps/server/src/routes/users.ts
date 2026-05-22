@@ -1,13 +1,14 @@
 // Routes utilisateurs : profils publics, recherche, lecture/édition de son propre profil.
 //
-// GET  /api/users/:id           — profil public d'un user (n'importe qui peut le voir)
-// GET  /api/users/search        — recherche par username (auth requise)
-// GET  /api/profile             — son propre profil (avec email, infos privées)
-// PUT  /api/profile             — édite son propre profil (username, bio, skins)
-// PUT  /api/profile/email       — change l'email (re-auth : current password requis)
-// PUT  /api/profile/password    — change le password (re-auth : current password requis)
-// POST /api/profile/avatar      — upload un avatar (JPG/PNG/WebP, max 2 MB, resize 500x500)
-// DELETE /api/profile           — anonymise le compte (is_deleted = true, garde l'historique)
+// GET  /api/users/:id              — profil public d'un user (n'importe qui peut le voir)
+// GET  /api/users/check-username   — vérifie si un username est dispo (UNAUTH, pour le signup)
+// GET  /api/users/search           — recherche par username (auth requise)
+// GET  /api/profile                — son propre profil (avec email, infos privées)
+// PUT  /api/profile                — édite son propre profil (username, bio, skins)
+// PUT  /api/profile/email          — change l'email (re-auth : current password requis)
+// PUT  /api/profile/password       — change le password (re-auth : current password requis)
+// POST /api/profile/avatar         — upload un avatar (JPG/PNG/WebP, max 2 MB, resize 500x500)
+// DELETE /api/profile              — anonymise le compte (is_deleted = true, garde l'historique)
 
 import { join } from "node:path";
 import { writeFile } from "node:fs/promises";
@@ -67,6 +68,33 @@ export async function userRoutes(app: FastifyInstance) {
       gamesDrawn: user.gamesDrawn,
     });
   });
+
+  app.get<{ Querystring: { q?: string } }>(
+    "/users/check-username",
+    async (request, reply) => {
+      // Public endpoint used by the signup form to live-check username availability.
+      // Returns just { available: boolean } — no other user data leaked.
+      //
+      // TODO(rate-limit): once @fastify/rate-limit is wired into the server, gate this
+      // (and signup/login) at something like 10 req/min/IP to mitigate enumeration.
+      const q = request.query.q?.trim() ?? "";
+
+      // Same constraints as signup: 3-30 chars, [a-zA-Z0-9_].
+      // Invalid input → unavailable (don't tell the caller why; just block the form).
+      const USERNAME_RE = /^[a-zA-Z0-9_]{3,30}$/;
+      if (!USERNAME_RE.test(q)) {
+        return reply.send({ available: false });
+      }
+
+      const existing = await db
+        .select({ id: users.id })
+        .from(users)
+        .where(eq(users.username, q))
+        .limit(1);
+
+      return reply.send({ available: existing.length === 0 });
+    },
+  );
 
   app.get<{ Querystring: { q?: string } }>(
     "/users/search",

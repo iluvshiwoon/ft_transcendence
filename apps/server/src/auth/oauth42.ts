@@ -33,12 +33,14 @@ function requireEnv(name: string): string {
 }
 
 // Construit l'URL où on redirige le user pour qu'il se logue sur 42.
-export function getAuthorizationUrl(): string {
+// `state` est une string opaque (CSRF token) que 42 nous renverra dans le callback.
+export function getAuthorizationUrl(state: string): string {
   const params = new URLSearchParams({
     client_id: requireEnv("OAUTH42_CLIENT_ID"),
     redirect_uri: requireEnv("OAUTH42_REDIRECT_URI"),
     response_type: "code",
     scope: "public",
+    state,
   });
   return `${AUTHORIZE_URL}?${params.toString()}`;
 }
