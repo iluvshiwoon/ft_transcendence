@@ -348,6 +348,40 @@ Search `TODO(integration)` and `CHUNK B:` in `apps/web/src/`:
 | **`will-change: transform, opacity` on every dot** | 42 promoted compositor layers; browser auto-optimization is better |
 | **Client-side anonymous demo state (localStorage)** | Trivial cheat surface; **server-authoritative is the locked choice** |
 | **Stats-synced animation on landing right now** | Premature optimization; wait for AI module to land |
+| **`client:only` for purely visual UI elements** | Causes hydration flicker on every page refresh — the SSR slot is empty, the React island paints in late, the surrounding layout reflows. ThemeToggle was the canary (May 22). See §17 for the rule. |
+| **Continuous column-wave animation on the AI telemetry matrix** (`animate-matrix-pulse` on every dot with 200 ms column stagger) | On page refresh the cells started in their trough state and animated up with staggered delays, which read as a visible "wave" of dimmer→brighter columns. Removed (May 22). The sonar ping on the best-move cell stays — that's enough beat. |
+
+---
+
+## 17. Frontend lessons learned
+
+Patterns to follow + traps that have already cost us time.
+
+### 17.1 Don't use `client:only` for purely visual UI
+
+**Trap.** A React island declared with `client:only="react"` renders **nothing** at SSR. The first paint shows an empty slot; the React component appears only after hydration. For anything visual (icons, decorative elements, badges, indicators), this produces a visible flicker on every refresh — and if the surrounding layout is content-driven (`w-auto`, flex-content widths), the entire layout reflows when the island appears.
+
+**Examples that hit this in this project.**
+- `ThemeToggle` (May 22): Moon/Sun icons popped in on every refresh, AND the floating pill nav grew by ~36 px when the toggle hydrated.
+
+**The rule.** Anything that has a stable, deterministic visual representation should render at SSR. Reach for `client:only` only when the component **fundamentally cannot** SSR — e.g., when it must read live `document` state during its first render and no equivalent exists server-side.
+
+**The fix when you do need theme-dependent UI.** Render both states in the SSR HTML and let CSS pick which one shows:
+```astro
+<svg class="size-4 dark:hidden">…moon…</svg>
+<svg class="hidden size-4 dark:block">…sun…</svg>
+```
+Pair with the inline theme bootstrap in `RootLayout.astro` — that script runs synchronously before paint, sets `<html class="dark|light">`, so the right icon is visible from frame 0. For interactivity, use a delegated event listener on `document` inside the same inline script (see RootLayout for the pattern with `[data-theme-toggle]`). No React island, no hydration delay, no flicker.
+
+**When `client:load` is the right call instead.** When the component owns real interactive state (form fields with validation, a dropdown menu, a dialog) and you need React for the UX. Server renders a placeholder; the React island hydrates and takes over. Layout-wise, make sure the SSR placeholder occupies the same dimensions the hydrated component will (otherwise you still get a layout shift, just for a different reason).
+
+### 17.2 If you must use a `client:only` island, reserve its space at SSR
+
+If you've decided `client:only` is genuinely necessary, wrap the slot in a SSR-rendered container with explicit dimensions matching what the React component will produce. The pill nav had this band-aid for a moment (`<div class="size-9 shrink-0">`) before we moved to the proper SSR fix. Layout shifts are eliminated even if the visual is still empty for a frame.
+
+### 17.3 The cn() utility's tailwind-merge extension is load-bearing
+
+`apps/web/src/lib/utils.ts` extends `tailwind-merge` to know about our custom font-size tokens (`text-display`, `text-mono-sm`, etc.). Without that registration, `tailwind-merge` classifies them as text-color utilities and silently drops conflicting actual color classes. The Sign-up button rendered with invisible text for ~30 minutes before we found this. **If you add a new `--text-*` token, add it to the `cn()` extension list.**
 
 ---
 

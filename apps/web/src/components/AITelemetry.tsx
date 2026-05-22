@@ -107,17 +107,20 @@ export function AITelemetry({
 
               const waveDelay = `${c * COLUMN_STAGGER_MS}ms`;
 
-              // Best-move cell needs two animations stacked (wave + sonar). Use
-              // inline `animation` shorthand because Tailwind's animate-* utility
-              // only sets a single animation.
+              // Best-move cell still emits the sonar ping every 5s — that's
+              // the "AI is asserting its answer" beat. Other cells are static:
+              // the column-stagger wave was removed because the trough-to-peak
+              // start-up was visible on every page refresh.
               const inlineStyle: React.CSSProperties = {
                 ["--matrix-base-opacity" as never]: baseOpacity.toFixed(3),
               };
               if (isBestMove) {
-                inlineStyle.animation = `matrix-pulse 3s ease-in-out ${waveDelay} infinite, sonar-ping 5s ease-out 0ms infinite`;
-              } else {
-                inlineStyle.animationDelay = waveDelay;
+                inlineStyle.animation = `sonar-ping 5s ease-out 0ms infinite`;
               }
+              // The waveDelay is kept in scope above for when we restore a
+              // continuous wave (probably tied to AI THINKING state in the
+              // future). Marked as referenced to satisfy the linter.
+              void waveDelay;
 
               return (
                 <span
@@ -127,9 +130,6 @@ export function AITelemetry({
                     isLandingCell && score > 0
                       ? "bg-foreground"
                       : "bg-muted-foreground",
-                    // animation class — best-move cell sets animation inline,
-                    // every other cell uses the standard wave.
-                    !isBestMove && "animate-matrix-pulse",
                   )}
                   style={inlineStyle}
                 />
