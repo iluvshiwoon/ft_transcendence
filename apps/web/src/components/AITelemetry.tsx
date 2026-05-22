@@ -60,6 +60,9 @@ interface AITelemetryProps {
 const ROWS = 6;
 const COLS = 7;
 
+/** Stagger between adjacent columns. 7 × 200ms ≈ 1400ms over a 3000ms cycle = continuous wave. */
+const COLUMN_STAGGER_MS = 200;
+
 /** Base opacity for non-marker dots (uniform decorative grid). */
 const BASE_OPACITY = 0.35;
 
@@ -102,15 +105,22 @@ export function AITelemetry({
               const baseOpacity = isLandingCell ? scoreOpacity(score) : BASE_OPACITY;
               const isBestMove = isLandingCell && c === bestColumn && score > 0;
 
-              // Per-cell opacity drives the score gradient. The best-move cell
-              // additionally gets the sonar-ping ring every 5s — that's the only
-              // motion left in the panel. The wave animation was removed (see
-              // DESIGN.md §17.1).
+              const waveDelay = `${c * COLUMN_STAGGER_MS}ms`;
+
+              // Each cell carries its score-encoded opacity statically AND as a
+              // CSS variable. The matrix-pulse keyframe uses the variable to dip
+              // slightly at 50%, then returns to it at 100%. Because the static
+              // opacity matches the keyframe's 0% state, there's no visible
+              // "drop" on page load when the animation kicks in.
               const inlineStyle: React.CSSProperties = {
                 opacity: baseOpacity,
+                ["--matrix-base-opacity" as never]: baseOpacity.toFixed(3),
               };
               if (isBestMove) {
-                inlineStyle.animation = `sonar-ping 5s ease-out 0ms infinite`;
+                // Best-move stacks the wave + sonar ring.
+                inlineStyle.animation = `matrix-pulse 3s ease-in-out ${waveDelay} infinite, sonar-ping 5s ease-out 0ms infinite`;
+              } else {
+                inlineStyle.animationDelay = waveDelay;
               }
 
               return (
@@ -121,6 +131,7 @@ export function AITelemetry({
                     isLandingCell && score > 0
                       ? "bg-foreground"
                       : "bg-muted-foreground",
+                    !isBestMove && "animate-matrix-pulse",
                   )}
                   style={inlineStyle}
                 />

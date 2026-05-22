@@ -148,12 +148,28 @@
   --radius-xl: 0.75rem;
   --radius-full: 9999px;
 
-  /* AI telemetry matrix — sonar ping on the best-move cell only.
-     The continuous column-wave animation was removed because its
-     trough-to-peak start-up was visible on every page refresh
-     (DESIGN.md §17.1). The score gradient is now applied as a static
-     opacity per cell. */
+  /* AI telemetry matrix — two layered animations:
+     1. matrix-pulse: subtle column-staggered wave. Frame 0 is the cell's
+        FULL state (matching its static opacity), 50% is a slight dim. The
+        cell never drops below its baseline, so on reload there's no visible
+        "trough drop" startup — the cells live at peak and only dip slightly
+        mid-cycle (DESIGN.md §17.1 was about a different thing — the icon
+        flicker — but the same lesson applies: keyframes should match the
+        static state, not jump from it).
+     2. sonar-ping: best-move cell radiates a soft ring every 5s. */
+  --animate-matrix-pulse: matrix-pulse 3s ease-in-out infinite;
   --animate-sonar-ping: sonar-ping 5s ease-out infinite;
+
+  @keyframes matrix-pulse {
+    0%, 100% {
+      transform: scale(1);
+      opacity: var(--matrix-base-opacity, 0.35);
+    }
+    50% {
+      transform: scale(0.95);
+      opacity: calc(var(--matrix-base-opacity, 0.35) * 0.85);
+    }
+  }
 
   @keyframes sonar-ping {
     0% {
