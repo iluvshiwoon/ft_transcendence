@@ -107,17 +107,17 @@ export function AITelemetry({
 
               const waveDelay = `${c * COLUMN_STAGGER_MS}ms`;
 
-              // Each cell carries its score-encoded opacity statically AND as a
-              // CSS variable. The matrix-pulse keyframe uses the variable to dip
-              // slightly at 50%, then returns to it at 100%. Because the static
-              // opacity matches the keyframe's 0% state, there's no visible
-              // "drop" on page load when the animation kicks in.
+              // Static styles must MATCH keyframe 0% (the trough), so when the
+              // animation kicks in at the staggered delay there's no visible
+              // jump. The keyframe pulses UP from this trough to peak at 50%,
+              // then back — that's the visible growth + brighten the user
+              // noticed and wanted. (DESIGN.md §12)
               const inlineStyle: React.CSSProperties = {
-                opacity: baseOpacity,
+                opacity: baseOpacity * 0.8,
+                transform: "scale(0.92)",
                 ["--matrix-base-opacity" as never]: baseOpacity.toFixed(3),
               };
               if (isBestMove) {
-                // Best-move stacks the wave + sonar ring.
                 inlineStyle.animation = `matrix-pulse 3s ease-in-out ${waveDelay} infinite, sonar-ping 5s ease-out 0ms infinite`;
               } else {
                 inlineStyle.animationDelay = waveDelay;

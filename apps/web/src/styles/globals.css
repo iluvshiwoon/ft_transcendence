@@ -149,25 +149,22 @@
   --radius-full: 9999px;
 
   /* AI telemetry matrix — two layered animations:
-     1. matrix-pulse: subtle column-staggered wave. Frame 0 is the cell's
-        FULL state (matching its static opacity), 50% is a slight dim. The
-        cell never drops below its baseline, so on reload there's no visible
-        "trough drop" startup — the cells live at peak and only dip slightly
-        mid-cycle (DESIGN.md §17.1 was about a different thing — the icon
-        flicker — but the same lesson applies: keyframes should match the
-        static state, not jump from it).
+     1. matrix-pulse: column-staggered wave. Cells live at the trough state
+        (scale 0.92, 80% opacity) at rest AND at keyframe 0%, so when the
+        animation kicks in there's no visible jump on reload. They pulse UP
+        to peak at 50% (scale 1.04, full opacity) — visible growth + brighten.
      2. sonar-ping: best-move cell radiates a soft ring every 5s. */
   --animate-matrix-pulse: matrix-pulse 3s ease-in-out infinite;
   --animate-sonar-ping: sonar-ping 5s ease-out infinite;
 
   @keyframes matrix-pulse {
     0%, 100% {
-      transform: scale(1);
-      opacity: var(--matrix-base-opacity, 0.35);
+      transform: scale(0.92);
+      opacity: calc(var(--matrix-base-opacity, 0.35) * 0.8);
     }
     50% {
-      transform: scale(0.95);
-      opacity: calc(var(--matrix-base-opacity, 0.35) * 0.85);
+      transform: scale(1.04);
+      opacity: var(--matrix-base-opacity, 0.35);
     }
   }
 

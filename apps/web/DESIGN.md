@@ -349,7 +349,7 @@ Search `TODO(integration)` and `CHUNK B:` in `apps/web/src/`:
 | **Client-side anonymous demo state (localStorage)** | Trivial cheat surface; **server-authoritative is the locked choice** |
 | **Stats-synced animation on landing right now** | Premature optimization; wait for AI module to land |
 | **`client:only` for purely visual UI elements** | Causes hydration flicker on every page refresh — the SSR slot is empty, the React island paints in late, the surrounding layout reflows. ThemeToggle was the canary (May 22). See §17 for the rule. |
-| **Keyframe with trough at 0% on the matrix wave** (`scale(0.92)` + dim opacity at 0%) | Cells started at default static styles, then jumped to keyframe 0% (trough) when the animation kicked in — visible "drop" on reload that read as "darker columns". Fix: keyframe 0% must match the cell's static state. Idle wave is now a slight dip from peak (`scale(1) → scale(0.95)`), no visible startup drop (May 22). |
+| **Keyframe with trough at 0% but static styles at peak** (the cell rendered at default 1.0 opacity / scale at rest, then dropped to keyframe 0% trough when the animation kicked in) | Visible jump-down on reload that read as "darker columns" appearing. Fix: set the cell's STATIC inline styles to match keyframe 0% (`opacity: baseOpacity * 0.8`, `transform: scale(0.92)`). Then the animation has no entry-jump and the original "pulse UP from trough to peak" visual is preserved. (May 22) |
 
 ---
 
