@@ -32,7 +32,7 @@ const TITLES: Record<typeof step, string> = {
 };
 ---
 
-<SignupShell current={step} title={TITLES[step]}>
+<SignupShell current={step} title={TITLES[step]} wide={step === 3}>
   {step === 1 ? <Step1Save /> : null}
   {step === 2 ? <Step2Credentials client:load /> : null}
   {step === 3 ? <Step3Profile client:load /> : null}

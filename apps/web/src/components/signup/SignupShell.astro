@@ -2,9 +2,12 @@
 /**
  * SignupShell — focused card layout for the 4-step signup flow.
  *
- * The whole flow is contained in a max-w-md card; the floating pill nav
- * still works (theme toggle, "go home"), but the page reads as a focused
- * moment instead of stretching across the full width.
+ * Default width: max-w-md (~448px) — single-column, focused. Used by
+ * steps 1, 2, 4 which have minimal form content.
+ *
+ * Wide variant (`wide` prop): max-w-2xl (~672px) on md+. Step 3 uses it
+ * to lay out avatar/bio/pawn/grid in a 2-column grid on desktop without
+ * scrolling. Mobile stays single-column either way.
  *
  * Progress tracker sits above the card so the step-4 connect animation
  * has room to breathe outside the card padding.
@@ -15,15 +18,22 @@ import { SignupProgress } from "~/components/signup/SignupProgress";
 interface Props {
   current: 0 | 1 | 2 | 3 | 4;
   title?: string;
+  /** Wider card on desktop — used by Step 3 to fit a 2-column form. */
+  wide?: boolean;
 }
 
-const { current, title = "Sign up" } = Astro.props;
+const { current, title = "Sign up", wide = false } = Astro.props;
+
+const widthClass = wide ? "max-w-md md:max-w-2xl" : "max-w-md";
 ---
 
 <RootLayout title={`4thewin — ${title}`} description="Save your spot and unlock multiplayer.">
   <main
     id="main"
-    class="mx-auto flex w-full max-w-md flex-col gap-10 px-margin-mobile pt-24 pb-4 md:pt-32"
+    class:list={[
+      "mx-auto flex w-full flex-col gap-10 px-margin-mobile pt-24 pb-4 md:pt-32",
+      widthClass,
+    ]}
   >
     {/* Progress tracker — React island so the drop-in animation plays */}
     <SignupProgress current={current} client:load />

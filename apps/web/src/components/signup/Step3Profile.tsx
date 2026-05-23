@@ -132,137 +132,143 @@ export function Step3Profile() {
         </p>
       </header>
 
-      {/* Avatar */}
-      <div className="flex flex-col gap-2">
-        <Label htmlFor="signup-avatar">Avatar</Label>
-        <div
-          role="button"
-          tabIndex={0}
-          aria-label={avatarPreview ? "Replace avatar" : "Upload avatar"}
-          onClick={() => avatarInputRef.current?.click()}
-          onKeyDown={(e) => {
-            if (e.key === "Enter" || e.key === " ") {
+      {/* Mid-form fields — single-column on mobile, 2-column grid on md+.
+          Visual placement: Avatar | Pawn (top), Bio | Grid (bottom). Source
+          order stays logical (Avatar → Bio → Pawn → Grid) for readers and
+          form-fill UX; col-start/row-start utilities position them visually. */}
+      <div className="flex flex-col gap-6 md:grid md:grid-cols-2 md:gap-x-8 md:gap-y-6">
+        {/* Avatar — left column, top row */}
+        <div className="flex flex-col gap-2 md:col-start-1 md:row-start-1">
+          <Label htmlFor="signup-avatar">Avatar</Label>
+          <div
+            role="button"
+            tabIndex={0}
+            aria-label={avatarPreview ? "Replace avatar" : "Upload avatar"}
+            onClick={() => avatarInputRef.current?.click()}
+            onKeyDown={(e) => {
+              if (e.key === "Enter" || e.key === " ") {
+                e.preventDefault();
+                avatarInputRef.current?.click();
+              }
+            }}
+            onDragOver={(e) => e.preventDefault()}
+            onDrop={(e) => {
               e.preventDefault();
-              avatarInputRef.current?.click();
-            }
-          }}
-          onDragOver={(e) => e.preventDefault()}
-          onDrop={(e) => {
-            e.preventDefault();
-            const file = e.dataTransfer.files?.[0];
-            if (file) pickAvatar(file);
-          }}
-          className="flex cursor-pointer items-center gap-4 rounded-lg border border-dashed border-border p-3 transition-colors hover:border-foreground hover:bg-muted/40 focus-visible:outline-none focus-visible:border-foreground focus-visible:bg-muted/40"
-        >
-          {avatarPreview ? (
-            <div className="relative size-16 shrink-0">
-              <img
-                src={avatarPreview}
-                alt=""
-                className="size-16 rounded-full object-cover"
-              />
-              <button
-                type="button"
-                onClick={(e) => {
-                  // Prevent the outer click handler (which would re-open the
-                  // file picker) so removing the avatar just removes it.
-                  e.stopPropagation();
-                  clearAvatar();
-                }}
-                aria-label="Remove avatar"
-                className="absolute -right-1 -top-1 grid size-6 place-items-center rounded-full bg-foreground text-background shadow-sm"
-              >
-                <X className="size-3" />
-              </button>
-            </div>
-          ) : (
-            <div className="grid size-16 shrink-0 place-items-center rounded-full bg-muted text-muted-foreground">
-              <Upload className="size-5" />
-            </div>
-          )}
-          <div className="flex flex-1 flex-col gap-1">
-            <p className="text-sm font-medium text-foreground">
-              {avatarPreview ? "Replace image" : "Drop an image or click to upload"}
-            </p>
-            <p className="text-sm text-muted-foreground">JPG, PNG, WebP. Up to 2 MB.</p>
-          </div>
-          <input
-            ref={avatarInputRef}
-            id="signup-avatar"
-            type="file"
-            accept={AVATAR_TYPES.join(",")}
-            className="sr-only"
-            onChange={(e) => {
-              const file = e.target.files?.[0];
+              const file = e.dataTransfer.files?.[0];
               if (file) pickAvatar(file);
             }}
+            className="flex cursor-pointer items-center gap-4 rounded-lg border border-dashed border-border p-3 transition-colors hover:border-foreground hover:bg-muted/40 focus-visible:outline-none focus-visible:border-foreground focus-visible:bg-muted/40"
+          >
+            {avatarPreview ? (
+              <div className="relative size-16 shrink-0">
+                <img
+                  src={avatarPreview}
+                  alt=""
+                  className="size-16 rounded-full object-cover"
+                />
+                <button
+                  type="button"
+                  onClick={(e) => {
+                    // Prevent the outer click handler (which would re-open the
+                    // file picker) so removing the avatar just removes it.
+                    e.stopPropagation();
+                    clearAvatar();
+                  }}
+                  aria-label="Remove avatar"
+                  className="absolute -right-1 -top-1 grid size-6 place-items-center rounded-full bg-foreground text-background shadow-sm"
+                >
+                  <X className="size-3" />
+                </button>
+              </div>
+            ) : (
+              <div className="grid size-16 shrink-0 place-items-center rounded-full bg-muted text-muted-foreground">
+                <Upload className="size-5" />
+              </div>
+            )}
+            <div className="flex flex-1 flex-col gap-1">
+              <p className="text-sm font-medium text-foreground">
+                {avatarPreview ? "Replace image" : "Drop an image or click to upload"}
+              </p>
+              <p className="text-sm text-muted-foreground">JPG, PNG, WebP. Up to 2 MB.</p>
+            </div>
+            <input
+              ref={avatarInputRef}
+              id="signup-avatar"
+              type="file"
+              accept={AVATAR_TYPES.join(",")}
+              className="sr-only"
+              onChange={(e) => {
+                const file = e.target.files?.[0];
+                if (file) pickAvatar(file);
+              }}
+            />
+          </div>
+          {avatarError ? (
+            <p role="alert" className="text-sm text-destructive">{avatarError}</p>
+          ) : null}
+        </div>
+
+        {/* Bio — left column, bottom row */}
+        <div className="flex flex-col gap-2 md:col-start-1 md:row-start-2">
+          <Label htmlFor={bioId}>Bio</Label>
+          <textarea
+            id={bioId}
+            rows={3}
+            maxLength={BIO_MAX}
+            value={bio}
+            onChange={(e) => setBio(e.target.value)}
+            placeholder="Tell other players who you are."
+            className={cn(
+              "min-h-[80px] w-full resize-none rounded-md border border-border bg-input px-3 py-2",
+              "text-base text-foreground placeholder:text-muted-foreground",
+              "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-foreground focus-visible:ring-offset-2 focus-visible:ring-offset-background",
+            )}
           />
+          <p className="self-end font-mono text-mono-sm text-muted-foreground tabular-nums">
+            {bio.length}/{BIO_MAX}
+          </p>
         </div>
-        {avatarError ? (
-          <p role="alert" className="text-sm text-destructive">{avatarError}</p>
-        ) : null}
+
+        {/* Pawn skin — right column, top row */}
+        <fieldset className="flex flex-col gap-2 md:col-start-2 md:row-start-1">
+          <legend className="text-sm font-medium leading-none text-foreground">Your pawn</legend>
+          <div className="flex gap-3 pt-2">
+            {PAWN_SKINS.map((skin) => (
+              <SkinSwatch
+                key={skin.id}
+                skin={skin}
+                groupName="pawn-skin"
+                selected={pawnSkin === skin.id}
+                onSelect={() => setPawnSkin(skin.id)}
+                shape="circle"
+              />
+            ))}
+          </div>
+        </fieldset>
+
+        {/* Grid skin — right column, bottom row */}
+        <fieldset className="flex flex-col gap-2 md:col-start-2 md:row-start-2">
+          <legend className="text-sm font-medium leading-none text-foreground">Your grid</legend>
+          <div className="flex gap-3 pt-2">
+            {GRID_SKINS.map((skin) => (
+              <SkinSwatch
+                key={skin.id}
+                skin={skin}
+                groupName="grid-skin"
+                selected={gridSkin === skin.id}
+                onSelect={() => setGridSkin(skin.id)}
+                shape="rect"
+              />
+            ))}
+          </div>
+        </fieldset>
       </div>
-
-      {/* Bio */}
-      <div className="flex flex-col gap-2">
-        <Label htmlFor={bioId}>Bio</Label>
-        <textarea
-          id={bioId}
-          rows={3}
-          maxLength={BIO_MAX}
-          value={bio}
-          onChange={(e) => setBio(e.target.value)}
-          placeholder="Tell other players who you are."
-          className={cn(
-            "min-h-[80px] w-full resize-none rounded-md border border-border bg-input px-3 py-2",
-            "text-base text-foreground placeholder:text-muted-foreground",
-            "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background",
-          )}
-        />
-        <p className="self-end font-mono text-mono-sm text-muted-foreground tabular-nums">
-          {bio.length}/{BIO_MAX}
-        </p>
-      </div>
-
-      {/* Pawn skin */}
-      <fieldset className="flex flex-col gap-2">
-        <legend className="text-sm font-medium leading-none text-foreground">Your pawn</legend>
-        <div className="flex gap-3 pt-2">
-          {PAWN_SKINS.map((skin) => (
-            <SkinSwatch
-              key={skin.id}
-              skin={skin}
-              groupName="pawn-skin"
-              selected={pawnSkin === skin.id}
-              onSelect={() => setPawnSkin(skin.id)}
-              shape="circle"
-            />
-          ))}
-        </div>
-      </fieldset>
-
-      {/* Grid skin */}
-      <fieldset className="flex flex-col gap-2">
-        <legend className="text-sm font-medium leading-none text-foreground">Your grid</legend>
-        <div className="flex gap-3 pt-2">
-          {GRID_SKINS.map((skin) => (
-            <SkinSwatch
-              key={skin.id}
-              skin={skin}
-              groupName="grid-skin"
-              selected={gridSkin === skin.id}
-              onSelect={() => setGridSkin(skin.id)}
-              shape="rect"
-            />
-          ))}
-        </div>
-      </fieldset>
 
       {formError ? (
         <p role="alert" className="text-sm text-destructive">{formError}</p>
       ) : null}
 
-      {/* Actions */}
+      {/* Actions — full width below the grid */}
       <div className="flex items-center justify-between gap-4 pt-2">
         <a
           href="/signup?step=4"
