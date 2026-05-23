@@ -137,7 +137,13 @@ Auth requise. Body partiel :
 ```json
 { "username"?: "...", "bio"?: "...", "pawnSkin"?: "...", "gridSkin"?: "..." }
 ```
-Erreurs : `409` username déjà pris.
+Validations :
+- `username` : 3-30 caractères, `[a-zA-Z0-9_]` (mêmes contraintes que /signup).
+- `bio` : ≤ 160 caractères.
+- `pawnSkin` : `default` | `wine` | `coral` | `brick`.
+- `gridSkin` : `default` | `ink` | `slate`.
+
+Erreurs : `400` validation / `409` username déjà pris.
 
 ### `PUT /api/profile/email` — changer l'email
 

@@ -24,6 +24,13 @@ import { hashPassword, verifyPassword } from "../auth/password.js";
 const AVATARS_DIR = join(import.meta.dirname, "..", "..", "uploads", "avatars");
 const ALLOWED_MIMETYPES = ["image/jpeg", "image/png", "image/webp"];
 
+// Validation constants for PUT /api/profile. Kept in sync with the frontend
+// equivalents in apps/web/src/components/signup/Step3Profile.tsx — if you add
+// a new pawn or grid skin there, add it here too.
+const BIO_MAX_LEN = 160;
+const ALLOWED_PAWN_SKINS = ["default", "wine", "coral", "brick"] as const;
+const ALLOWED_GRID_SKINS = ["default", "ink", "slate"] as const;
+
 interface UpdateProfileBody {
   username?: string;
   bio?: string;
@@ -149,6 +156,12 @@ export async function userRoutes(app: FastifyInstance) {
       const updates: Partial<typeof users.$inferInsert> = { updatedAt: new Date() };
 
       if (username !== undefined) {
+        // Same regex as the signup endpoint to keep usernames consistent.
+        if (!/^[a-zA-Z0-9_]{3,30}$/.test(username)) {
+          return reply.code(400).send({
+            error: "Username must be 3-30 chars (letters, numbers, underscore)",
+          });
+        }
         // Vérifie l'unicité du nouveau username.
         const existing = await db.select().from(users).where(eq(users.username, username));
         if (existing.length > 0 && existing[0].id !== request.userId) {
@@ -156,9 +169,28 @@ export async function userRoutes(app: FastifyInstance) {
         }
         updates.username = username;
       }
-      if (bio !== undefined) updates.bio = bio;
-      if (pawnSkin !== undefined) updates.pawnSkin = pawnSkin;
-      if (gridSkin !== undefined) updates.gridSkin = gridSkin;
+      if (bio !== undefined) {
+        if (typeof bio !== "string" || bio.length > BIO_MAX_LEN) {
+          return reply.code(400).send({ error: `Bio must be ≤ ${BIO_MAX_LEN} chars` });
+        }
+        updates.bio = bio;
+      }
+      if (pawnSkin !== undefined) {
+        if (!ALLOWED_PAWN_SKINS.includes(pawnSkin as (typeof ALLOWED_PAWN_SKINS)[number])) {
+          return reply.code(400).send({
+            error: `Invalid pawnSkin. Allowed: ${ALLOWED_PAWN_SKINS.join(", ")}`,
+          });
+        }
+        updates.pawnSkin = pawnSkin;
+      }
+      if (gridSkin !== undefined) {
+        if (!ALLOWED_GRID_SKINS.includes(gridSkin as (typeof ALLOWED_GRID_SKINS)[number])) {
+          return reply.code(400).send({
+            error: `Invalid gridSkin. Allowed: ${ALLOWED_GRID_SKINS.join(", ")}`,
+          });
+        }
+        updates.gridSkin = gridSkin;
+      }
 
       const [updated] = await db
         .update(users)
