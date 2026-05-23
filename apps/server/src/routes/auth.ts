@@ -25,7 +25,7 @@
 //   on crée/retrouve l'user en DB, on pose le cookie JWT, on redirige vers le front.
 
 import type { FastifyInstance, FastifyReply } from "fastify";
-import { eq } from "drizzle-orm";
+import { and, eq, isNull } from "drizzle-orm";
 import { randomBytes } from "node:crypto";
 import { db } from "../db/client.js";
 import { users } from "../db/schema.js";
@@ -150,15 +150,38 @@ export async function authRoutes(app: FastifyInstance) {
       return reply.code(404).send({ error: "User not found" });
     }
 
-    // Renvoie les infos publiques (sans le password).
+    // Renvoie les infos publiques (sans le password). signupCompletedAt
+    // permet au frontend (apps/web/src/lib/auth.ts → getCurrentUser) de
+    // détecter qu'un user a déjà fini le flow /signup et de bloquer le
+    // re-entry (sinon la révisite de /signup?step=3 sans /settings écrase
+    // les valeurs du profil avec les défauts de la form — voir DESIGN.md
+    // §17 ou apps/web/docs/authed-nav-roadmap.md).
     return reply.send({
       id: user.id,
       email: user.email,
       username: user.username,
       avatarUrl: user.avatarUrl,
       bio: user.bio,
+      signupCompletedAt: user.signupCompletedAt,
     });
   });
+
+  app.post(
+    "/signup-complete",
+    { preHandler: requireAuth },
+    async (request, reply) => {
+      // Marque le flow /signup comme terminé pour ce user. Idempotent : si
+      // déjà mis, no-op. Appelé par le frontend quand /signup?step=4 monte
+      // (ApsignupCompleteTracker dans Step4Welcome). Une fois cette colonne
+      // posée, le gate dans apps/web/src/pages/signup.astro redirige
+      // /signup → / pour ce user.
+      await db
+        .update(users)
+        .set({ signupCompletedAt: new Date(), updatedAt: new Date() })
+        .where(and(eq(users.id, request.userId!), isNull(users.signupCompletedAt)));
+      return reply.send({ ok: true });
+    }
+  );
 
   app.get<{ Querystring: { intent?: string } }>("/42", async (request, reply) => {
     // Determine intent: "signup" routes new accounts to /signup?step=3 after the

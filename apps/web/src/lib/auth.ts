@@ -1,20 +1,29 @@
 /**
- * Server-side auth check for Astro SSR pages.
+ * Server-side auth helpers for Astro SSR pages.
  *
- * Reads the `auth_token` cookie from the incoming request and validates it
- * against the backend's /api/auth/me. Returns true if the cookie corresponds
- * to a real, current user; false otherwise (no cookie, expired token,
- * backend unreachable, etc).
+ * `getCurrentUser(astro)` validates the auth_token cookie against the
+ * backend's /api/auth/me and returns the full user object (or null if
+ * unauthenticated / unreachable). `isAuthenticated` is the boolean shorthand
+ * — most callers only need to know "yes/no", but the signup gate also reads
+ * `signupCompletedAt` to lock out users who already finished the flow.
  *
- * Used by page-level access gates — see apps/web/src/pages/signup.astro and
- * apps/web/src/pages/play.astro for usage. The actual API endpoints already
- * enforce auth via their own middleware; this helper is just so we can
- * redirect BEFORE rendering instead of letting the user fill in a form
- * that's going to 401 on submit.
+ * Both helpers fail closed (return null / false on network errors / timeouts)
+ * to avoid rendering a form that's going to 401 on submit. Worst case: a
+ * real authed user briefly redirects to /signup?step=1 and retries.
  */
 
 interface AstroLike {
   cookies: { get(name: string): { value?: string } | undefined };
+}
+
+export interface CurrentUser {
+  id: number;
+  email: string;
+  username: string;
+  avatarUrl: string | null;
+  bio: string | null;
+  /** ISO timestamp; non-null once the user reached /signup?step=4. */
+  signupCompletedAt: string | null;
 }
 
 /** Backend URL — `http://server:3000` inside compose, `localhost:3000` for `make dev`. */
@@ -22,20 +31,22 @@ function backendUrl(): string {
   return process.env.BACKEND_URL ?? "http://localhost:3000";
 }
 
-export async function isAuthenticated(astro: AstroLike): Promise<boolean> {
+export async function getCurrentUser(astro: AstroLike): Promise<CurrentUser | null> {
   const authToken = astro.cookies.get("auth_token")?.value;
-  if (!authToken) return false;
+  if (!authToken) return null;
 
   try {
     const res = await fetch(`${backendUrl()}/api/auth/me`, {
       headers: { Cookie: `auth_token=${authToken}` },
       signal: AbortSignal.timeout(2000),
     });
-    return res.ok;
+    if (!res.ok) return null;
+    return (await res.json()) as CurrentUser;
   } catch {
-    // Network error / timeout / backend down — treat as unauthenticated.
-    // Worst case: a real user gets briefly redirected to /signup; they can
-    // retry. Better than rendering a form that won't work.
-    return false;
+    return null;
   }
+}
+
+export async function isAuthenticated(astro: AstroLike): Promise<boolean> {
+  return (await getCurrentUser(astro)) !== null;
 }

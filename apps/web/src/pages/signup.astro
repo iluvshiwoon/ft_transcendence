@@ -13,13 +13,17 @@
  *     set by /api/auth/signup or /api/auth/42/callback). Without auth,
  *     redirect back to step 1 so the user can sign up first instead of
  *     filling in a profile form that's going to 401 on submit.
+ *   - Once the user reaches step 4 the backend marks `signupCompletedAt`
+ *     on their row. From that point on any /signup URL redirects them to
+ *     / — the form is one-shot and not a profile editor (future /settings
+ *     page handles ongoing edits).
  */
 import SignupShell from "~/components/signup/SignupShell.astro";
 import Step1Save from "~/components/signup/Step1Save.astro";
 import { Step2Credentials } from "~/components/signup/Step2Credentials";
 import { Step3Profile } from "~/components/signup/Step3Profile";
 import Step4Welcome from "~/components/signup/Step4Welcome.astro";
-import { isAuthenticated } from "~/lib/auth";
+import { getCurrentUser } from "~/lib/auth";
 
 const stepParam = Astro.url.searchParams.get("step");
 const parsed = Number(stepParam);
@@ -32,11 +36,15 @@ const TITLES: Record<typeof step, string> = {
   4: "Welcome",
 };
 
-// Server-side auth gate — redirect before rendering. The actual API endpoints
-// (POST /api/auth/signup, PUT /api/profile, etc) enforce auth on their own;
-// this is the UX layer that prevents users from staring at a form that will
-// fail on submit.
-const authed = await isAuthenticated(Astro);
+const user = await getCurrentUser(Astro);
+const authed = user !== null;
+const signupDone = user?.signupCompletedAt !== null && user?.signupCompletedAt !== undefined;
+
+// Once signup is fully done, /signup is read-only territory — bail out.
+if (signupDone) {
+  return Astro.redirect("/");
+}
+// Otherwise apply the per-step gate as before.
 if ((step === 1 || step === 2) && authed) {
   return Astro.redirect("/");
 }

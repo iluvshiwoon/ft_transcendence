@@ -5,12 +5,17 @@
  * [data-current="4"] CSS cascade in globals.css orchestrates token-flash
  * + line-draw).
  *
+ * Side effect: SignupCompleteTracker fires POST /api/auth/signup-complete
+ * client-side as soon as this page mounts. After that, /signup URLs
+ * redirect to / for this user (signup is one-shot).
+ *
  * Single CTA: Play. Lobbies, friends search, and rematch flows all live
  * inside /play once those modules ship — keeping a single button here
  * avoids prematurely committing to navigation that doesn't exist yet.
  */
 import { buttonVariants } from "~/components/ui/button";
 import { cn } from "~/lib/utils";
+import { SignupCompleteTracker } from "~/components/signup/SignupCompleteTracker";
 ---
 
 <header class="flex flex-col gap-4">
@@ -30,3 +35,5 @@ import { cn } from "~/lib/utils";
     Play →
   </a>
 </div>
+
+<SignupCompleteTracker client:load />
