@@ -117,7 +117,7 @@ const authed = await isAuthenticated(Astro);
     >
       Skip to content
     </a>
-    <TopNav />
+    <TopNav authed={authed} />
     <div class="flex-1">
       <slot />
     </div>
