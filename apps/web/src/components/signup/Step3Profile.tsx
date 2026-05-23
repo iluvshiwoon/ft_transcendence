@@ -135,8 +135,13 @@ export function Step3Profile() {
       {/* Mid-form fields — single-column on mobile, 2-column grid on md+.
           Visual placement: Avatar | Pawn (top), Bio | Grid (bottom). Source
           order stays logical (Avatar → Bio → Pawn → Grid) for readers and
-          form-fill UX; col-start/row-start utilities position them visually. */}
-      <div className="flex flex-col gap-6 md:grid md:grid-cols-2 md:gap-x-8 md:gap-y-6">
+          form-fill UX; col-start/row-start utilities position them visually.
+
+          md:items-center vertically centers right-column items (which are
+          shorter than the corresponding left-column fields) within their
+          grid cells, so pawn options align with the center of the avatar
+          box and grid options align with the center of the bio field. */}
+      <div className="flex flex-col gap-6 md:grid md:grid-cols-2 md:gap-x-8 md:gap-y-6 md:items-center">
         {/* Avatar — left column, top row */}
         <div className="flex flex-col gap-2 md:col-start-1 md:row-start-1">
           <Label htmlFor="signup-avatar">Avatar</Label>
@@ -301,7 +306,7 @@ function SkinSwatch({
   return (
     <label
       htmlFor={id}
-      className="group flex cursor-pointer flex-col items-center gap-1.5 rounded-md p-1 transition-colors"
+      className="group flex w-16 cursor-pointer flex-col items-center gap-1.5 rounded-md p-1 transition-colors"
     >
       <input
         id={id}
