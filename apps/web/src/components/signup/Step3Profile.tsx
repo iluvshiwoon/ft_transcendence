@@ -241,7 +241,7 @@ export function Step3Profile() {
         {/* Pawn skin — right column, top row */}
         <fieldset className="flex flex-col gap-2 md:col-start-2 md:row-start-1 md:h-full">
           <legend className="text-sm font-medium leading-none text-foreground">Your pawn</legend>
-          <div className="flex gap-3 pt-4 md:flex-1 md:items-center md:pt-2">
+          <div className="flex gap-3 pt-4 md:flex-1 md:items-center md:gap-2 md:pt-2">
             {PAWN_SKINS.map((skin) => (
               <SkinSwatch
                 key={skin.id}
@@ -258,7 +258,7 @@ export function Step3Profile() {
         {/* Grid skin — right column, bottom row */}
         <fieldset className="flex flex-col gap-2 md:col-start-2 md:row-start-2 md:h-full">
           <legend className="text-sm font-medium leading-none text-foreground">Your grid</legend>
-          <div className="flex gap-3 pt-4 md:flex-1 md:items-center md:pt-2">
+          <div className="flex gap-3 pt-4 md:flex-1 md:items-center md:gap-2 md:pt-2">
             {GRID_SKINS.map((skin) => (
               <SkinSwatch
                 key={skin.id}
