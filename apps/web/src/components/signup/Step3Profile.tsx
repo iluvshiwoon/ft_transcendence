@@ -29,7 +29,11 @@ interface SkinOption {
 }
 
 const PAWN_SKINS: SkinOption[] = [
-  { id: "default", label: "Classic", swatchClass: "pawn-red" },
+  // All swatches are flat color circles — the picker is a color preview, not
+  // a 3D rendering of the actual game piece. Using `bg-pawn-red` (auto-
+  // generated from the --color-pawn-red token) keeps the brand color but
+  // skips the dome+glow recipe that the `pawn-red` utility applies.
+  { id: "default", label: "Classic", swatchClass: "bg-pawn-red" },
   { id: "wine", label: "Wine", swatchClass: "bg-[oklch(35%_0.14_15)]" },
   { id: "coral", label: "Coral", swatchClass: "bg-[oklch(58%_0.18_30)]" },
   { id: "brick", label: "Brick", swatchClass: "bg-[oklch(45%_0.12_40)]" },
@@ -132,13 +136,23 @@ export function Step3Profile() {
       <div className="flex flex-col gap-2">
         <Label htmlFor="signup-avatar">Avatar</Label>
         <div
-          className="flex items-center gap-4 rounded-lg border border-dashed border-border p-3"
+          role="button"
+          tabIndex={0}
+          aria-label={avatarPreview ? "Replace avatar" : "Upload avatar"}
+          onClick={() => avatarInputRef.current?.click()}
+          onKeyDown={(e) => {
+            if (e.key === "Enter" || e.key === " ") {
+              e.preventDefault();
+              avatarInputRef.current?.click();
+            }
+          }}
           onDragOver={(e) => e.preventDefault()}
           onDrop={(e) => {
             e.preventDefault();
             const file = e.dataTransfer.files?.[0];
             if (file) pickAvatar(file);
           }}
+          className="flex cursor-pointer items-center gap-4 rounded-lg border border-dashed border-border p-3 transition-colors hover:border-foreground hover:bg-muted/40 focus-visible:outline-none focus-visible:border-foreground focus-visible:bg-muted/40"
         >
           {avatarPreview ? (
             <div className="relative size-16 shrink-0">
@@ -149,7 +163,12 @@ export function Step3Profile() {
               />
               <button
                 type="button"
-                onClick={clearAvatar}
+                onClick={(e) => {
+                  // Prevent the outer click handler (which would re-open the
+                  // file picker) so removing the avatar just removes it.
+                  e.stopPropagation();
+                  clearAvatar();
+                }}
                 aria-label="Remove avatar"
                 className="absolute -right-1 -top-1 grid size-6 place-items-center rounded-full bg-foreground text-background shadow-sm"
               >
@@ -162,13 +181,9 @@ export function Step3Profile() {
             </div>
           )}
           <div className="flex flex-1 flex-col gap-1">
-            <button
-              type="button"
-              onClick={() => avatarInputRef.current?.click()}
-              className="self-start text-sm font-medium text-foreground underline decoration-transparent underline-offset-4 transition-colors hover:decoration-accent hover:text-accent"
-            >
+            <p className="text-sm font-medium text-foreground">
               {avatarPreview ? "Replace image" : "Drop an image or click to upload"}
-            </button>
+            </p>
             <p className="text-sm text-muted-foreground">JPG, PNG, WebP. Up to 2 MB.</p>
           </div>
           <input
@@ -280,10 +295,7 @@ function SkinSwatch({
   return (
     <label
       htmlFor={id}
-      className={cn(
-        "group flex cursor-pointer flex-col items-center gap-1.5 rounded-md p-1 transition-colors",
-        "focus-within:ring-2 focus-within:ring-ring focus-within:ring-offset-2 focus-within:ring-offset-background",
-      )}
+      className="group flex cursor-pointer flex-col items-center gap-1.5 rounded-md p-1 transition-colors"
     >
       <input
         id={id}
