@@ -484,3 +484,42 @@ Deliberate omissions, with rationale, so they don't get re-litigated.
 | **CSS-in-JS** | Tailwind + `@utility` for the things Tailwind doesn't cover. No emotion / styled-components. |
 | **Component changelog** | Too much overhead. Git history is the changelog. |
 | **Per-component documentation files** | Code comments + `/styleguide` + this doc. |
+
+---
+
+## 13. Roadmap
+
+### 13.1 Design system maintenance — first-class concern
+
+When you ship a UI change, update DESIGN.md and `/styleguide` in the same PR. Treat the design system as part of the codebase's API:
+
+- **New token?** Add it to `globals.css`, document in §1, verify in `/styleguide`.
+- **New primitive?** Add to `components/ui/`, document API in §2, render in `/styleguide`.
+- **New pattern emerging from feature code?** Extract it once you've copied it three times. Add to §3.
+- **Inline `oklch(...)` / `bg-[…]` / `text-[#…]` in component code?** Stop — make it a token first.
+- **Anti-pattern discovered?** Add it to §9 with rationale.
+- **Lesson learned the hard way?** Add it to §10.
+
+Drift between this doc and the code is the failure mode. Re-rendering `/styleguide` after a token or primitive change is the smoke test.
+
+### 13.2 Pending primitives
+
+Components we'll need but haven't built:
+
+- `DropdownMenu` — for the authed-nav user-identity dropdown (Phase 2 of `apps/web/docs/authed-nav-roadmap.md`).
+- `Dialog` / `AlertDialog` — for destructive confirms (delete account, kick from lobby).
+- `Toast` — for transient feedback (saved, error, copied to clipboard).
+- `Tabs` — for `/settings` sections.
+- `Avatar` — composition of `<img>` + initial fallback + status indicator.
+
+When any of these land, update §2 and `/styleguide`.
+
+### 13.3 Pending pages
+
+- `/settings` — once it ships, the signup-flow lock (§8 `signup_completed_at`) makes more sense as the only on-ramp for ongoing profile edits.
+- `/u/<username>` — public profile page.
+- `/play` is currently a stub. Will become the lobby + game container.
+
+### 13.4 Animation roadmap
+
+See §6 — the AI-thinking telemetry intensification, real game-piece drop, and win-line trace are queued. Each new animation is a new entry in §1.5.
