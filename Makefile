@@ -35,14 +35,15 @@ else
   CONTAINER ?= docker
 endif
 
-# Couleurs
-RED		= \033[0;31m
-GREEN	= \033[0;32m
-YELLOW	= \033[1;33m
-CYAN	= \033[0;36m
-GRAY	= \033[0;37m
-BOLD	= \033[1m
-NC		= \033[0m
+# Couleurs — expanded at Make startup via printf so they contain real ESC
+# characters (otherwise BSD echo on macOS prints them literally).
+RED		= $(shell printf '\033[0;31m')
+GREEN	= $(shell printf '\033[0;32m')
+YELLOW	= $(shell printf '\033[1;33m')
+CYAN	= $(shell printf '\033[0;36m')
+GRAY	= $(shell printf '\033[0;37m')
+BOLD	= $(shell printf '\033[1m')
+NC		= $(shell printf '\033[0m')
 
 # ──────────────────────────────────────────
 # CONTAINERS — full stack (production-like, with WAF)
