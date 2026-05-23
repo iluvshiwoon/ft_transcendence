@@ -137,11 +137,15 @@ export function Step3Profile() {
           order stays logical (Avatar → Bio → Pawn → Grid) for readers and
           form-fill UX; col-start/row-start utilities position them visually.
 
-          md:items-center vertically centers right-column items (which are
-          shorter than the corresponding left-column fields) within their
-          grid cells, so pawn options align with the center of the avatar
-          box and grid options align with the center of the bio field. */}
-      <div className="flex flex-col gap-6 md:grid md:grid-cols-2 md:gap-x-8 md:gap-y-6 md:items-center">
+          Each right-column fieldset stretches to fill its grid row (default
+          align-items: stretch). Inside, the swatch row is `md:flex-1
+          md:items-center` so it occupies the space below the legend and
+          centers the swatches vertically within that space. Result:
+            - Legend "Your pawn" sits at the top of its cell, aligned with
+              "Avatar" label across the row.
+            - Swatch circles end up visually centered around the avatar
+              box's vertical midpoint. */}
+      <div className="flex flex-col gap-6 md:grid md:grid-cols-2 md:gap-x-8 md:gap-y-6">
         {/* Avatar — left column, top row */}
         <div className="flex flex-col gap-2 md:col-start-1 md:row-start-1">
           <Label htmlFor="signup-avatar">Avatar</Label>
@@ -235,9 +239,9 @@ export function Step3Profile() {
         </div>
 
         {/* Pawn skin — right column, top row */}
-        <fieldset className="flex flex-col gap-2 md:col-start-2 md:row-start-1">
+        <fieldset className="flex flex-col gap-2 md:col-start-2 md:row-start-1 md:h-full">
           <legend className="text-sm font-medium leading-none text-foreground">Your pawn</legend>
-          <div className="flex gap-3 pt-2">
+          <div className="flex gap-3 pt-4 md:flex-1 md:items-center md:pt-2">
             {PAWN_SKINS.map((skin) => (
               <SkinSwatch
                 key={skin.id}
@@ -252,9 +256,9 @@ export function Step3Profile() {
         </fieldset>
 
         {/* Grid skin — right column, bottom row */}
-        <fieldset className="flex flex-col gap-2 md:col-start-2 md:row-start-2">
+        <fieldset className="flex flex-col gap-2 md:col-start-2 md:row-start-2 md:h-full">
           <legend className="text-sm font-medium leading-none text-foreground">Your grid</legend>
-          <div className="flex gap-3 pt-2">
+          <div className="flex gap-3 pt-4 md:flex-1 md:items-center md:pt-2">
             {GRID_SKINS.map((skin) => (
               <SkinSwatch
                 key={skin.id}
