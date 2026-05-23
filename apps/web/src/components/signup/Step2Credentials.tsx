@@ -267,7 +267,7 @@ export function Step2Credentials() {
 
         {/* Strength indicator — 4 segments. Only renders once user starts typing. */}
         {password.length > 0 ? (
-          <div className="flex flex-col gap-1.5">
+          <div className="flex flex-col gap-1.5 pt-1">
             <div className="flex gap-1.5" aria-hidden="true">
               {[1, 2, 3, 4].map((seg) => (
                 <div

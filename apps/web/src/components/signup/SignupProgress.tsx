@@ -46,16 +46,19 @@ export function SignupProgress({ current }: SignupProgressProps) {
       {/* Tokens + connecting beam (beam only animates at step 4).
           Layout: justify-center + gap-3 keeps the four tokens tight in the
           middle of the card — proportions echo adjacent slots in a real
-          Connect-4 board (~28px token + 12px gap = 2.3:1 ratio). */}
-      <div className="relative flex items-center justify-center gap-3">
-        {/* The beam is absolute behind the tokens; tokens have z-10 and full
-            backgrounds so they hide the beam on top of themselves — visible
-            only in the gaps. inset-x-3.5 = 14px from each end of the row,
-            which lands on the center of the first/last tokens. */}
+          Connect-4 board (~28px token + 12px gap = 2.3:1 ratio). The row
+          itself uses `w-fit mx-auto` so its width matches the dot strip
+          exactly; the connecting beam can then position relative to that
+          tight box rather than the full card width. */}
+      <div className="relative mx-auto flex w-fit items-center gap-3">
+        {/* Beam: 4px past each end of the dot strip (-inset-x-1) so the
+            'connect 4' line at step 4 reads as 'a bit wider than the pawns'.
+            Tokens have z-10 + full backgrounds so the beam is hidden on top
+            of them and only visible in the gaps between adjacent tokens. */}
         <span
           aria-hidden="true"
           data-signup-line
-          className="absolute inset-x-3.5 top-1/2 h-1 -translate-y-1/2 rounded-full bg-foreground"
+          className="absolute -inset-x-1 top-1/2 h-1 -translate-y-1/2 rounded-full bg-foreground"
         />
 
         {[1, 2, 3, 4].map((step) => {
