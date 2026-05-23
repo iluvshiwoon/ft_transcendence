@@ -13,10 +13,24 @@
  * visual contract, no Slot.
  *
  * Hamburger button is currently inert. It'll become a shadcn DropdownMenu in
- * a future task once we have the menu items defined.
+ * a future task once we have the menu items defined. See
+ * `apps/web/docs/authed-nav-roadmap.md` for the planned upgrade path.
+ *
+ * Authed vs anonymous: the right group changes based on the `authed` prop
+ * (driven by RootLayout's server-side isAuthenticated check):
+ *   - anon:   theme toggle + Login + Sign up
+ *   - authed: theme toggle + Play → (Login/Sign up hidden — they'd
+ *             redirect right back to / and feel broken)
  */
 import { Button, buttonVariants } from "~/components/ui/button";
 import { cn } from "~/lib/utils";
+
+interface Props {
+  /** Whether the request is authenticated (set by RootLayout). */
+  authed?: boolean;
+}
+
+const { authed = false } = Astro.props;
 ---
 
 <header
@@ -87,22 +101,38 @@ import { cn } from "~/lib/utils";
 
     <a
       href="/login"
-      class={cn(buttonVariants({ variant: "brand-outline", size: "pill" }), "hidden sm:inline-flex")}
+      class:list={[
+        cn(buttonVariants({ variant: "brand-outline", size: "pill" }), "hidden sm:inline-flex"),
+        authed && "hidden sm:hidden",
+      ]}
       data-todo-integration="POST /api/auth/login — wire to apps/server"
     >
       Login
     </a>
 
-    <a
-      href="/signup"
-      class={cn(buttonVariants({ variant: "brand-filled", size: "pill" }), "gap-1.5")}
-      data-todo-integration="POST /api/auth/signup — wire to apps/server"
-    >
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="size-3.5" aria-hidden="true">
-        <path d="M5 12h14"></path>
-        <path d="m12 5 7 7-7 7"></path>
-      </svg>
-      Sign up
-    </a>
+    {authed ? (
+      <a
+        href="/play"
+        class={cn(buttonVariants({ variant: "brand-filled", size: "pill" }), "gap-1.5")}
+      >
+        Play
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="size-3.5" aria-hidden="true">
+          <path d="M5 12h14"></path>
+          <path d="m12 5 7 7-7 7"></path>
+        </svg>
+      </a>
+    ) : (
+      <a
+        href="/signup"
+        class={cn(buttonVariants({ variant: "brand-filled", size: "pill" }), "gap-1.5")}
+        data-todo-integration="POST /api/auth/signup — wire to apps/server"
+      >
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="size-3.5" aria-hidden="true">
+          <path d="M5 12h14"></path>
+          <path d="m12 5 7 7-7 7"></path>
+        </svg>
+        Sign up
+      </a>
+    )}
   </div>
 </header>
