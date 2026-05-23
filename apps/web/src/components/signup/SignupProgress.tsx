@@ -51,14 +51,14 @@ export function SignupProgress({ current }: SignupProgressProps) {
           exactly; the connecting beam can then position relative to that
           tight box rather than the full card width. */}
       <div className="relative mx-auto flex w-fit items-center gap-3">
-        {/* Beam: 4px past each end of the dot strip (-inset-x-1) so the
+        {/* Beam: 8px past each end of the dot strip (-inset-x-2) so the
             'connect 4' line at step 4 reads as 'a bit wider than the pawns'.
             Tokens have z-10 + full backgrounds so the beam is hidden on top
             of them and only visible in the gaps between adjacent tokens. */}
         <span
           aria-hidden="true"
           data-signup-line
-          className="absolute -inset-x-1 top-1/2 h-1 -translate-y-1/2 rounded-full bg-foreground"
+          className="absolute -inset-x-2 top-1/2 h-1 -translate-y-1/2 rounded-full bg-foreground"
         />
 
         {[1, 2, 3, 4].map((step) => {
