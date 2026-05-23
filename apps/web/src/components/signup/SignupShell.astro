@@ -23,7 +23,7 @@ const { current, title = "Sign up" } = Astro.props;
 <RootLayout title={`4thewin — ${title}`} description="Save your spot and unlock multiplayer.">
   <main
     id="main"
-    class="mx-auto flex w-full max-w-md flex-col gap-10 px-margin-mobile pt-24 pb-12 md:pt-32"
+    class="mx-auto flex w-full max-w-md flex-col gap-10 px-margin-mobile pt-24 pb-4 md:pt-32"
   >
     {/* Progress tracker — React island so the drop-in animation plays */}
     <SignupProgress current={current} client:load />
