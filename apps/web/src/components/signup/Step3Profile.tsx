@@ -285,8 +285,14 @@ export function Step3Profile() {
         >
           Skip for now
         </a>
-        <Button type="submit" variant="brand-filled" size="pill" disabled={isPending}>
-          {isPending ? "Saving…" : "Continue →"}
+        <Button
+          type="submit"
+          variant="brand-filled"
+          size="pill"
+          disabled={isPending}
+          className="hover:bg-foreground/90 hover:text-background"
+        >
+          Continue →
         </Button>
       </div>
     </form>

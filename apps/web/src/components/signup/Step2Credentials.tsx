@@ -335,8 +335,14 @@ export function Step2Credentials() {
         >
           ← Back
         </a>
-        <Button type="submit" variant="brand-filled" size="pill" disabled={!canSubmit}>
-          {isPending ? "Creating…" : "Continue →"}
+        <Button
+          type="submit"
+          variant="brand-filled"
+          size="pill"
+          disabled={!canSubmit}
+          className="hover:bg-foreground/90 hover:text-background"
+        >
+          Continue →
         </Button>
       </div>
     </form>
