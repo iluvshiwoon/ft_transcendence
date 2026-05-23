@@ -33,6 +33,14 @@ const canonicalUrl = new URL(Astro.url.pathname, Astro.site ?? "http://localhost
 // One backend call per request to drive the TopNav's authed/anon variant.
 // Adds ~5ms compose-internal. See apps/web/docs/authed-nav-roadmap.md.
 const authed = await isAuthenticated(Astro);
+
+// Opt out of the back-forward cache (bfcache). Without this, browser back/
+// forward navigation can restore a previously-rendered page from memory
+// without re-running the SSR — and our auth gate doesn't fire. Refresh works
+// because it forces a fresh request, but bfcache restores skip the server
+// entirely. Setting Cache-Control: no-store disables bfcache (and any other
+// caching) so every navigation hits the server and re-runs the gate.
+Astro.response.headers.set("Cache-Control", "no-store");
 ---
 
 <!doctype html>
