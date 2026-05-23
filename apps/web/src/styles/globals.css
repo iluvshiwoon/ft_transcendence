@@ -60,6 +60,21 @@
   --color-pawn-red: oklch(42% 0.19 25);        /* warm crimson — sister to brand accent (same hue 25), slightly darker so it doesn't compete with buttons */
   --color-pawn-yellow: oklch(73% 0.16 72);     /* editorial amber gold — distinct hue from the linen bg (85) so it pops */
 
+  /* Optional pawn skin colors offered in /signup?step=3. Same warm hue family
+     as the brand so the chosen pawn always looks like it belongs to the system. */
+  --color-pawn-wine: oklch(35% 0.14 15);       /* deep wine — sits below pawn-red on the warm axis */
+  --color-pawn-coral: oklch(58% 0.18 30);      /* lighter, more orange-leaning */
+  --color-pawn-brick: oklch(45% 0.12 40);      /* desaturated terracotta */
+
+  /* Optional grid skin colors (background of the playing surface). */
+  --color-grid-linen: var(--color-background);  /* default — matches the page bg */
+  --color-grid-ink: oklch(28% 0.03 250);        /* same as light-mode foreground; gives a dark surface */
+  --color-grid-slate: oklch(48% 0.04 240);      /* mid-tone slate, neutral cool */
+
+  /* Stronger-than-foreground ink for "look at me" inline links and emphasis.
+     Used by the Sign-in / Sign-up cross-links between /login and /signup. */
+  --color-emphasis: oklch(15% 0.04 250);
+
   /* --- shadcn aliases (so Dialog/Popover/Card primitives work without renaming) --- */
   --color-card: var(--color-surface);
   --color-card-foreground: var(--color-surface-foreground);
@@ -208,6 +223,21 @@
   --color-board-cell: oklch(18% 0 0);          /* very dark slot #1a1a1a */
   --color-pawn-red: oklch(63% 0.21 25);        /* glowing — collapses with accent in dark */
   --color-pawn-yellow: oklch(76% 0.16 85);     /* honey #eab308 */
+
+  /* Pawn skin colors — slightly lifted so they don't disappear on the dark bg. */
+  --color-pawn-wine: oklch(50% 0.15 15);
+  --color-pawn-coral: oklch(68% 0.18 30);
+  --color-pawn-brick: oklch(55% 0.13 40);
+
+  /* Grid skin colors. Linen tracks the surface, ink goes deeper, slate stays
+     a cool mid-tone. */
+  --color-grid-linen: var(--color-surface);
+  --color-grid-ink: oklch(12% 0 0);
+  --color-grid-slate: oklch(40% 0.04 240);
+
+  /* In dark mode the foreground is already near-white — emphasis collapses
+     to the same value (you can't go "darker than white" without color shift). */
+  --color-emphasis: var(--color-foreground);
 }
 
 /* =============================================================================

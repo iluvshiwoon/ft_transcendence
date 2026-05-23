@@ -29,20 +29,20 @@ interface SkinOption {
 }
 
 const PAWN_SKINS: SkinOption[] = [
-  // All swatches are flat color circles — the picker is a color preview, not
-  // a 3D rendering of the actual game piece. Using `bg-pawn-red` (auto-
-  // generated from the --color-pawn-red token) keeps the brand color but
-  // skips the dome+glow recipe that the `pawn-red` utility applies.
+  // Each swatch is a flat color preview (not a 3D rendering of the piece —
+  // the dome/drop shading lives in the `pawn-*` utility, used in the actual
+  // game pieces). Token-driven: a single change in globals.css updates every
+  // reference and supports both light and dark modes.
   { id: "default", label: "Classic", swatchClass: "bg-pawn-red" },
-  { id: "wine", label: "Wine", swatchClass: "bg-[oklch(35%_0.14_15)]" },
-  { id: "coral", label: "Coral", swatchClass: "bg-[oklch(58%_0.18_30)]" },
-  { id: "brick", label: "Brick", swatchClass: "bg-[oklch(45%_0.12_40)]" },
+  { id: "wine", label: "Wine", swatchClass: "bg-pawn-wine" },
+  { id: "coral", label: "Coral", swatchClass: "bg-pawn-coral" },
+  { id: "brick", label: "Brick", swatchClass: "bg-pawn-brick" },
 ];
 
 const GRID_SKINS: SkinOption[] = [
-  { id: "default", label: "Linen", swatchClass: "bg-board" },
-  { id: "ink", label: "Ink", swatchClass: "bg-[oklch(28%_0.03_250)]" },
-  { id: "slate", label: "Slate", swatchClass: "bg-[oklch(48%_0.04_240)]" },
+  { id: "default", label: "Linen", swatchClass: "bg-grid-linen" },
+  { id: "ink", label: "Ink", swatchClass: "bg-grid-ink" },
+  { id: "slate", label: "Slate", swatchClass: "bg-grid-slate" },
 ];
 
 export function Step3Profile() {

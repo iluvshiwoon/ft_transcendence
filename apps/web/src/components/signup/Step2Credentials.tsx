@@ -22,6 +22,7 @@
 
 import { Eye, EyeOff } from "lucide-react";
 import { useId, useState, useTransition } from "react";
+import { AlertBox } from "~/components/ui/alert-box";
 import { Button } from "~/components/ui/button";
 import { Input } from "~/components/ui/input";
 import { Label } from "~/components/ui/label";
@@ -311,20 +312,11 @@ export function Step2Credentials() {
       </div>
 
       {serverErrors.form ? (
-        <p role="alert" className="text-sm text-destructive">
+        <AlertBox
+          action={showSignInPrompt ? { label: "Sign in instead?", href: "/login" } : undefined}
+        >
           {serverErrors.form}
-          {showSignInPrompt ? (
-            <>
-              {" "}
-              <a
-                href="/login"
-                className="font-bold text-destructive underline underline-offset-4 transition-opacity hover:opacity-70 focus-visible:opacity-70"
-              >
-                Sign in instead?
-              </a>
-            </>
-          ) : null}
-        </p>
+        </AlertBox>
       ) : null}
 
       {/* Actions */}

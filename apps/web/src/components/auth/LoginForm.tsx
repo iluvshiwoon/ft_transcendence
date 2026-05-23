@@ -14,6 +14,7 @@
 
 import { Eye, EyeOff } from "lucide-react";
 import { useId, useState, useTransition } from "react";
+import { AlertBox } from "~/components/ui/alert-box";
 import { Button } from "~/components/ui/button";
 import { Input } from "~/components/ui/input";
 import { Label } from "~/components/ui/label";
@@ -151,11 +152,7 @@ export function LoginForm() {
       </div>
 
       {/* Server-side error */}
-      {error ? (
-        <p role="alert" className="text-sm text-destructive">
-          {error}
-        </p>
-      ) : null}
+      {error ? <AlertBox>{error}</AlertBox> : null}
 
       {/* Submit. Overrides the brand-filled variant's hover inversion
           (dark→outlined dance) — that flicker was visible on retries
