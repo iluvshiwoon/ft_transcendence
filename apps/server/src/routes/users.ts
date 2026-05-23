@@ -299,10 +299,18 @@ export async function userRoutes(app: FastifyInstance) {
       }
 
       // Redimensionne en 500x500 max (sans agrandir si plus petit) et convertit en webp.
-      const processed = await sharp(buffer)
-        .resize(500, 500, { fit: "cover", withoutEnlargement: true })
-        .webp({ quality: 80 })
-        .toBuffer();
+      // Si l'image est corrompue / pas réellement un format supporté (extension
+      // mensongère), sharp throw — on intercepte pour renvoyer 400 plutôt que 500.
+      let processed: Buffer;
+      try {
+        processed = await sharp(buffer)
+          .resize(500, 500, { fit: "cover", withoutEnlargement: true })
+          .webp({ quality: 80 })
+          .toBuffer();
+      } catch (err) {
+        request.log.warn({ err }, "avatar: sharp processing failed");
+        return reply.code(400).send({ error: "Invalid or corrupt image data" });
+      }
 
       // Sauvegarde sur disque. Nom de fichier = userId pour éviter les collisions.
       const filename = `${request.userId}.webp`;
