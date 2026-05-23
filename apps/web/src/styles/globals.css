@@ -297,12 +297,10 @@
     0 1px 2px oklch(0% 0 0 / 0.18);
 }
 .dark .pawn-neutral {
-  /* Foreground in dark mode is near-white — drop the inset highlight (would
-     wash out on a light surface) and add a soft glow so the token reads on
-     the dark bg. Bottom inset stays for the dome bottom. */
-  box-shadow:
-    0 0 10px oklch(100% 0 0 / 0.18),
-    inset 0 -2px 3px oklch(0% 0 0 / 0.30);
+  /* Flat in dark mode — light foreground on dark background reads clearly
+     without glow or inset. Matches the visual stillness the user expects
+     from the light-mode rendering. */
+  box-shadow: none;
 }
 
 @utility pawn-slot {
