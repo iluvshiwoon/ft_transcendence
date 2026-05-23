@@ -42,9 +42,14 @@ export function LoginForm() {
 
   function handleSubmit(event: React.FormEvent) {
     event.preventDefault();
-    setError(null);
     setTouched({ email: true, password: true });
     if (!canSubmit) return;
+
+    // Note: we deliberately don't `setError(null)` here. If a previous
+    // attempt failed, the error stays visible during the in-flight fetch
+    // (avoids a brief flicker as the alert disappears and reappears when
+    // the new response arrives ~50-200ms later). The error is cleared on
+    // input changes via the onChange handlers below.
 
     startTransition(async () => {
       try {
