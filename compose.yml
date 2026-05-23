@@ -101,8 +101,12 @@
         # Frontend URL — used for CORS and post-OAuth redirects back to the
         # SPA. Same host/port via ModSec.
         FRONTEND_URL: http://localhost:8080
-      # ports:
-      #   - "3000:3000"
+      # Expose 3000 on the host so the local Astro dev server (`make dev`)
+      # can reach the API. In production-like full-compose mode (`make build`),
+      # nothing external talks to :3000 — everything routes through ModSec
+      # at :8080.
+      ports:
+        - "3000:3000"
       volumes:
         - vdata:/vault/file
       networks:
