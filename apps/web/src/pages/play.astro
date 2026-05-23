@@ -1,9 +1,24 @@
 ---
 /**
- * /play — stub. Intentionally empty per design decision; will be filled in
- * once multiplayer / lobbies / friends features ship.
+ * /play — main lobby / dashboard for authenticated users.
+ *
+ * Anonymous (signed-out) users play on the landing page, where the demo
+ * loop runs against the AI with a server-authoritative anonymous session.
+ * /play is the post-signup destination — multiplayer, friends, lobbies,
+ * stats — and requires an account.
+ *
+ * Access control: unauthenticated requests redirect to /signup?step=1.
+ * Returning users can navigate from there to the (future) /login page.
+ *
+ * Currently a stub. Will be filled in once Tim's lobby module + friends
+ * features ship.
  */
 import RootLayout from "~/layouts/RootLayout.astro";
+import { isAuthenticated } from "~/lib/auth";
+
+if (!(await isAuthenticated(Astro))) {
+  return Astro.redirect("/signup?step=1");
+}
 ---
 
 <RootLayout title="4thewin — Play" description="Play page (under construction).">

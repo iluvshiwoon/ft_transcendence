@@ -6,19 +6,20 @@
  * Each step renders inside SignupShell which carries the SignupProgress
  * tracker. URL-driven state means back/forward buttons just work.
  *
- * TODO(integration):
- *   - 42 OAuth callback should redirect new-account flows to ?step=3.
- *     Currently /api/auth/42/callback redirects to / unconditionally;
- *     Rayane's backend needs a way to differentiate signup-mode (e.g., a
- *     short-lived signup_intent cookie set on /signup, read by the callback).
- *   - Step 1 needs the carry-over score from the anonymous demo session
- *     (TODO marker in Step1Save.astro).
+ * Access control:
+ *   - Steps 1 and 2 are for users without an account. If the request is
+ *     already authenticated, redirect to / (they're done with signup).
+ *   - Steps 3 and 4 assume an account was just created (auth_token cookie
+ *     set by /api/auth/signup or /api/auth/42/callback). Without auth,
+ *     redirect back to step 1 so the user can sign up first instead of
+ *     filling in a profile form that's going to 401 on submit.
  */
 import SignupShell from "~/components/signup/SignupShell.astro";
 import Step1Save from "~/components/signup/Step1Save.astro";
 import { Step2Credentials } from "~/components/signup/Step2Credentials";
 import { Step3Profile } from "~/components/signup/Step3Profile";
 import Step4Welcome from "~/components/signup/Step4Welcome.astro";
+import { isAuthenticated } from "~/lib/auth";
 
 const stepParam = Astro.url.searchParams.get("step");
 const parsed = Number(stepParam);
@@ -30,6 +31,18 @@ const TITLES: Record<typeof step, string> = {
   3: "Make it yours",
   4: "Welcome",
 };
+
+// Server-side auth gate — redirect before rendering. The actual API endpoints
+// (POST /api/auth/signup, PUT /api/profile, etc) enforce auth on their own;
+// this is the UX layer that prevents users from staring at a form that will
+// fail on submit.
+const authed = await isAuthenticated(Astro);
+if ((step === 1 || step === 2) && authed) {
+  return Astro.redirect("/");
+}
+if ((step === 3 || step === 4) && !authed) {
+  return Astro.redirect("/signup?step=1");
+}
 ---
 
 <SignupShell current={step} title={TITLES[step]} wide={step === 3}>
