@@ -52,7 +52,14 @@ Body :
 { "email": "x@42.fr", "username": "x", "password": "min8chars" }
 ```
 Réponse `201` : `{ id, email, username }` + cookie `auth_token` posé.
-Erreurs : `400` champs manquants ou password < 8 / `409` email ou username déjà pris.
+
+Erreurs :
+- `400` champs manquants ou password < 8.
+- `409` `Username already taken` : username déjà pris (info publique, OK d'être explicite).
+- `409` `Account creation failed` : message volontairement vague — typiquement email déjà
+  enregistré, mais on évite l'énumération de comptes en ne le confirmant pas. Le frontend
+  affiche un message générique + propose `Sign in instead?` pour pousser l'utilisateur
+  légitime vers `/login`.
 
 ### `POST /api/auth/login` — se connecter
 

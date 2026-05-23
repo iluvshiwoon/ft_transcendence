@@ -61,6 +61,7 @@ export function Step2Credentials() {
 
   const [touched, setTouched] = useState<Touched>({});
   const [serverErrors, setServerErrors] = useState<ServerErrors>({});
+  const [showSignInPrompt, setShowSignInPrompt] = useState(false);
   const [usernameTaken, setUsernameTaken] = useState<boolean | null>(null);
   const [isPending, startTransition] = useTransition();
 
@@ -140,18 +141,27 @@ export function Step2Credentials() {
           return;
         }
         const data = (await res.json().catch(() => ({}))) as { error?: string };
-        if (res.status === 409 && data.error?.toLowerCase().includes("email")) {
-          setServerErrors({ email: "This email is already in use." });
-        } else if (res.status === 409 && data.error?.toLowerCase().includes("username")) {
+        if (res.status === 409 && data.error?.toLowerCase().includes("username")) {
+          // Username conflicts are explicit — usernames are public anyway.
           setServerErrors({ username: "Username already taken." });
           setUsernameTaken(true);
+          setShowSignInPrompt(false);
+        } else if (res.status === 409) {
+          // Any other 409 (typically email already registered, but we don't
+          // confirm which) — generic form-level error + sign-in suggestion.
+          // Avoids enumerating registered emails.
+          setServerErrors({ form: "Couldn't create your account." });
+          setShowSignInPrompt(true);
         } else if (res.status === 400) {
           setServerErrors({ form: data.error ?? "Check your inputs and try again." });
+          setShowSignInPrompt(false);
         } else {
           setServerErrors({ form: "Something went wrong. Try again." });
+          setShowSignInPrompt(false);
         }
       } catch {
         setServerErrors({ form: "Network error. Check your connection." });
+        setShowSignInPrompt(false);
       }
     });
   }
@@ -303,6 +313,17 @@ export function Step2Credentials() {
       {serverErrors.form ? (
         <p role="alert" className="text-sm text-destructive">
           {serverErrors.form}
+          {showSignInPrompt ? (
+            <>
+              {" "}
+              <a
+                href="/login"
+                className="font-bold text-destructive underline underline-offset-4 transition-opacity hover:opacity-70 focus-visible:opacity-70"
+              >
+                Sign in instead?
+              </a>
+            </>
+          ) : null}
         </p>
       ) : null}
 

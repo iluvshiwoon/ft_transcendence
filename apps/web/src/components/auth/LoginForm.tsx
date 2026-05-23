@@ -161,7 +161,10 @@ export function LoginForm() {
           (dark→outlined dance) — that flicker was visible on retries
           when the cursor stayed over the button as it transitioned
           from disabled back to enabled. Keeps a subtle hover darken
-          for the affordance. */}
+          for the affordance. Text is intentionally constant ("Sign in →"
+          not "Signing in…"); the disabled-state fade is the only
+          pending indicator, since text-content swaps caused a second
+          visible flicker. */}
       <Button
         type="submit"
         variant="brand-filled"
@@ -169,7 +172,7 @@ export function LoginForm() {
         disabled={!canSubmit}
         className="hover:bg-foreground/90 hover:text-background"
       >
-        {isPending ? "Signing in…" : "Sign in →"}
+        Sign in →
       </Button>
     </form>
   );

@@ -72,9 +72,14 @@ export async function authRoutes(app: FastifyInstance) {
     }
 
     // Email et username doivent être uniques en base.
+    // Pour l'email : on renvoie un message volontairement vague ("Account
+    // creation failed") plutôt que "Email already in use" — éviter la
+    // énumération de comptes (un attaquant qui essaie 1000 emails ne doit pas
+    // apprendre lesquels sont enregistrés). Le username, lui, reste explicite
+    // car les usernames sont publics de toute façon (visibles sur les profils).
     const existingEmail = await db.select().from(users).where(eq(users.email, email));
     if (existingEmail.length > 0) {
-      return reply.code(409).send({ error: "Email already in use" });
+      return reply.code(409).send({ error: "Account creation failed" });
     }
     const existingUsername = await db.select().from(users).where(eq(users.username, username));
     if (existingUsername.length > 0) {
