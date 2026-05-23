@@ -76,7 +76,11 @@
         - vdata:/vault/file 
       networks:
         - backend
-      restart: on-failure
+      # Long-running watchdog (see vault/scripts/unseal.sh). Keeps Vault
+      # unsealed across vault_server restarts and rewrites /vault/file/.db_pass
+      # whenever postgres consumes it. unless-stopped so it auto-restarts on
+      # crash but stays down on `make down`.
+      restart: unless-stopped
 
     server:
       container_name: server
