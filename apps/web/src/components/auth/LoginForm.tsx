@@ -157,8 +157,18 @@ export function LoginForm() {
         </p>
       ) : null}
 
-      {/* Submit */}
-      <Button type="submit" variant="brand-filled" size="pill" disabled={!canSubmit}>
+      {/* Submit. Overrides the brand-filled variant's hover inversion
+          (dark→outlined dance) — that flicker was visible on retries
+          when the cursor stayed over the button as it transitioned
+          from disabled back to enabled. Keeps a subtle hover darken
+          for the affordance. */}
+      <Button
+        type="submit"
+        variant="brand-filled"
+        size="pill"
+        disabled={!canSubmit}
+        className="hover:bg-foreground/90 hover:text-background"
+      >
         {isPending ? "Signing in…" : "Sign in →"}
       </Button>
     </form>
