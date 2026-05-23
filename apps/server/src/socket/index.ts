@@ -21,7 +21,7 @@ import { setNotificationIO } from "../services/notification.js";
 declare module "fastify" {
   interface FastifyInstance {
     io: Server;
-  }
+  } 
 }
 
 export async function setupSocket(app: FastifyInstance) {
