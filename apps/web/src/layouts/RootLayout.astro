@@ -118,7 +118,7 @@ const authed = await isAuthenticated(Astro);
       Skip to content
     </a>
     <TopNav authed={authed} />
-    <div class="flex-1">
+    <div class="flex flex-1 flex-col">
       <slot />
     </div>
     <SiteFooter />
