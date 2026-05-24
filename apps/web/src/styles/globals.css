@@ -518,44 +518,50 @@
 }
 
 /* --- raised: board pops out of the page with no hard edge --------------- *
- * The board IS the page surface, swelled upward. There's no plate / no
- * separating border — the bg gradient fades from "lit at the top of the
- * rise" in the center to the page bg color at the edges, so the visible
- * boundary disappears. The drop shadow is wide + soft (big blur, very
- * negative spread) so the slope reads as a smooth atmospheric falloff
- * rather than a hard cast shadow. Top inset highlight catches light
- * grazing the very crest of the rise. Cells are reused from board-none-cell
- * (carved wells) so they punch into the raised surface. */
+ * The board IS the page surface, swelled upward. There's no plate, no
+ * separating border, AND no outer drop shadow — a drop shadow makes the
+ * board read as a floating card with a halo, not as a part of the page
+ * that's been pulled up. The slope's visible 3D shape comes from layered
+ * gradients:
+ *   1. Linear gradient (135deg) — directional shading. Bright at upper-
+ *      left (light source), shadow at lower-right (slope away from light).
+ *      The middle is transparent so it doesn't tint the crest. This is
+ *      what makes the eye read "curved rise."
+ *   2. Radial gradient — base bg color, lighter in the center, fading to
+ *      the page bg at the edges so the boundary disappears.
+ * Crest inset highlight catches the bright line where light hits the very
+ * top of the rise. */
 @utility board-raised {
-  /* Off-center radial gradient: light source upper-left.
-     Stops at the page bg color before the element's edge so there is no
-     visible rectangle boundary against the page. */
-  background: radial-gradient(
-    ellipse 85% 80% at 38% 32%,
-    oklch(98% 0.008 80) 0%,
-    oklch(96.5% 0.014 85) 45%,
-    var(--color-background) 88%
-  );
-  box-shadow:
-    /* Soft slope shadow — wide blur, big negative spread, drops down-right
-       to suggest light from upper-left. The negative spread shrinks the
-       shadow's box back so only the soft edges show, no hard outline. */
-    0 24px 60px -18px oklch(0% 0 0 / 0.14),
-    0 36px 90px -36px oklch(0% 0 0 / 0.07),
-    /* Crest highlight — thin bright line at the very top of the rise */
-    inset 0 1.5px 0 oklch(100% 0 0 / 0.55);
+  background:
+    linear-gradient(135deg,
+      oklch(100% 0 0 / 0.25) 0%,
+      transparent 35%,
+      transparent 65%,
+      oklch(0% 0 0 / 0.10) 100%
+    ),
+    radial-gradient(
+      ellipse 100% 90% at 50% 45%,
+      oklch(98% 0.010 80) 0%,
+      oklch(96% 0.014 85) 40%,
+      var(--color-background) 90%
+    );
+  box-shadow: inset 0 1.5px 0 oklch(100% 0 0 / 0.55);
 }
 .dark .board-raised {
-  background: radial-gradient(
-    ellipse 85% 80% at 38% 32%,
-    oklch(22% 0 0) 0%,
-    oklch(18% 0 0) 45%,
-    var(--color-background) 88%
-  );
-  box-shadow:
-    0 24px 60px -18px oklch(0% 0 0 / 0.7),
-    0 36px 90px -36px oklch(0% 0 0 / 0.35),
-    inset 0 1.5px 0 oklch(100% 0 0 / 0.10);
+  background:
+    linear-gradient(135deg,
+      oklch(100% 0 0 / 0.08) 0%,
+      transparent 35%,
+      transparent 65%,
+      oklch(0% 0 0 / 0.35) 100%
+    ),
+    radial-gradient(
+      ellipse 100% 90% at 50% 45%,
+      oklch(24% 0 0) 0%,
+      oklch(19% 0 0) 40%,
+      var(--color-background) 90%
+    );
+  box-shadow: inset 0 1.5px 0 oklch(100% 0 0 / 0.10);
 }
 
 /* --- liquid-glass: Apple-style 4-layer structure ------------------------- *
