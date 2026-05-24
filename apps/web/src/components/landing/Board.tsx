@@ -189,7 +189,7 @@ export function Board({ pieces = WIREFRAME_BOARD, className, variant = "default"
                       aria-label={cellLabel(cell, rowIdx, colIdx)}
                       data-cell={cell}
                       className={cn(
-                        "size-9 sm:size-10 md:size-12 rounded-full transition-shadow duration-150",
+                        "size-9 sm:size-10 md:size-12 rounded-full transition-[background-color,box-shadow] duration-200 ease-out",
                         cell === "empty" &&
                           (isHoveredCol
                             ? "board-liquid-glass-cell-hover"
