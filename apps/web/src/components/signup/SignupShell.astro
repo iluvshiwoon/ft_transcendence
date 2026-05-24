@@ -31,22 +31,27 @@ const widthClass = wide ? "max-w-md md:max-w-3xl" : "max-w-md";
   <main
     id="main"
     class:list={[
-      "mx-auto flex w-full flex-1 flex-col justify-center px-margin-mobile pt-[126px] pb-4 md:pt-[113px] md:pb-0",
+      "mx-auto grid w-full flex-1 grid-rows-[minmax(70px,1fr)_auto_minmax(0,1fr)] px-margin-mobile pt-[126px] pb-4 md:pt-[113px] md:pb-0",
       widthClass,
     ]}
   >
-    {/* Card is the centered layout element. Progress tracker sits
-        above it via absolute positioning so it doesn't affect the
-        centering calculation. */}
+    {/* Top spacer — minmax(70px, 1fr) guarantees the progress tracker
+        always has breathing room above the card. Grows to center the
+        card vertically when the card is short enough to allow it. */}
+    <div aria-hidden="true"></div>
+
+    {/* Card with the steps tracker positioned just above it */}
     <div class="relative">
       <div class="absolute right-0 bottom-[calc(100%+1.5rem)] left-0">
         <SignupProgress current={current} client:load />
       </div>
 
-      {/* Focused signup card */}
       <div class="rounded-xl border border-border bg-surface p-6 shadow-sm md:p-8">
         <slot />
       </div>
     </div>
+
+    {/* Bottom spacer — minmax(0, 1fr) so it can collapse for tall cards. */}
+    <div aria-hidden="true"></div>
   </main>
 </RootLayout>
