@@ -545,7 +545,13 @@
   pointer-events: none;
 }
 .dark .lg-overlay {
-  background: oklch(100% 0 0 / 0.06);
+  /* Reduced from 0.06 → 0.03. The pawn-red/yellow utilities have outer
+     box-shadow glows in dark mode (the dome+glow recipe). With less
+     white tint over them, more of that warm glow color bleeds through
+     the glass surface — closer to the "glass diffuses piece colors"
+     feel real liquid glass would have, even though our architecture
+     has pieces on TOP of the glass rather than refracted through it. */
+  background: oklch(100% 0 0 / 0.03);
 }
 @utility lg-specular {
   position: absolute;
@@ -562,10 +568,14 @@
     inset 0 0 12px oklch(100% 0 0 / 0.25);
 }
 .dark .lg-specular {
+  /* Dark mode: only the upper-left rim highlight (subtle) + a much-
+     reduced inner glow. The previous version stacked an upper-left
+     rim AND a bottom-right rim AND a strong inner glow, all white;
+     against the dark page that combo read as a uniform bright "border"
+     around the entire plate rather than as glass surface sheen. */
   box-shadow:
-    inset 1px 1px 0 oklch(100% 0 0 / 0.25),
-    inset -1px -1px 0 oklch(100% 0 0 / 0.08),
-    inset 0 0 14px oklch(100% 0 0 / 0.10);
+    inset 1px 1px 0 oklch(100% 0 0 / 0.18),
+    inset 0 0 6px oklch(100% 0 0 / 0.04);
 }
 @utility lg-content {
   position: relative;
