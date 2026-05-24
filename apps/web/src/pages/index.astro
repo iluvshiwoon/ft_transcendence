@@ -58,38 +58,27 @@ const boardVariant: BoardVariant = VALID_VARIANTS.includes(requested as BoardVar
 >
   <main
     id="main"
-    class="mx-auto flex w-full max-w-7xl flex-col px-margin-mobile pt-28 pb-8 md:h-svh md:overflow-hidden md:px-margin-desktop md:pt-28 md:pb-6"
+    class="mx-auto flex w-full max-w-7xl flex-col px-margin-mobile pt-28 pb-8 md:h-full md:overflow-hidden md:px-margin-desktop md:pt-28 md:pb-4"
   >
-    {/* Hero — page pitch only, no CTA. The user plays the game directly
-        on the page (the board is right below); the conversion moment
-        comes after the game ends, not at the top. The h1 is the page's
-        main title (was sr-only); SEO + screen readers see the same
-        string as before, but it's now also the visual hero. */}
-    <section
-      class="mx-auto flex max-w-3xl flex-col items-center gap-3 text-center md:gap-4"
-      aria-labelledby="hero-pitch"
-    >
+    {/* Hero slot — h1 and game-state label share the same grid cell.
+        On page load the h1 is visible; after ~3s it fades out while the
+        game-state Headline fades in. The grid cell is sized by the larger
+        element so there's no layout shift during the cross-fade. */}
+    <div class="mb-6 grid place-items-center md:mb-8">
       <h1
         id="hero-pitch"
-        class="font-display text-3xl font-light italic leading-[1.05] tracking-tight text-foreground md:text-4xl lg:text-5xl"
+        class="hero-fadeout col-start-1 row-start-1 font-display text-3xl font-light italic leading-none tracking-wide text-foreground md:text-4xl"
       >
         Connect 4, but smarter.
       </h1>
-      <p class="max-w-prose text-sm leading-relaxed text-muted-foreground md:text-base">
-        Play in your browser against an AI that actually thinks. No signup needed.
-      </p>
-    </section>
-
-    {/* Game-state kicker — sits just above the grid, announces game state
-        for screen readers via Headline's role=status / aria-live. Will
-        become live state when the AI module is wired (step 6). */}
-    <div class="mt-6 mb-6 flex justify-center md:mt-8 md:mb-4">
-      <Headline state="your-turn" />
+      <div class="hero-fadein col-start-1 row-start-1">
+        <Headline state="your-turn" />
+      </div>
     </div>
 
     {/* Game grid — flex-1 on desktop so it fills the remaining vertical
-        space below the hero, with the board vertically centered in that
-        space. Mobile stays natural flow (single column, ordered). */}
+        space below the hero slot, with the board vertically centered in
+        that space. Mobile stays natural flow (single column, ordered). */}
     <div class="grid grid-cols-1 gap-10 md:flex-1 md:grid-cols-12 md:items-center md:gap-gutter">
 
       {/* AITelemetry — desktop left, mobile after the board.

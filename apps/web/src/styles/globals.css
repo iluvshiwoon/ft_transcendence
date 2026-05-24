@@ -676,3 +676,39 @@
 [data-current="4"] [data-signup-token][data-filled="true"] {
   animation: signup-token-flash 700ms ease-in-out 980ms;
 }
+
+/* =============================================================================
+ * Landing page hero → game-state cross-fade
+ *
+ * On first paint, the hero pitch ("Connect 4, but smarter.") is visible in
+ * the hero slot. After ~3s it fades out while the game-state label ("YOUR
+ * TURN") fades in to take its place. Both elements share the same grid
+ * cell via col-start-1 row-start-1 + place-items-center, so layout doesn't
+ * shift — only opacity animates.
+ *
+ * Reduced-motion users skip the animation entirely: hero starts hidden,
+ * state label starts visible. Same final state, no transition.
+ * ============================================================================= */
+@keyframes hero-fadeout {
+  0%, 70% { opacity: 1; }
+  100% { opacity: 0; }
+}
+@keyframes hero-fadein {
+  0%, 65% { opacity: 0; }
+  100% { opacity: 1; }
+}
+.hero-fadeout {
+  opacity: 1;
+  animation: hero-fadeout 4s ease-out forwards;
+}
+.hero-fadein {
+  opacity: 0;
+  animation: hero-fadein 4s ease-out forwards;
+}
+@media (prefers-reduced-motion: reduce) {
+  .hero-fadeout, .hero-fadein {
+    animation: none;
+  }
+  .hero-fadeout { opacity: 0; }
+  .hero-fadein { opacity: 1; }
+}
