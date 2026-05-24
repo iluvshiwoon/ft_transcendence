@@ -164,16 +164,17 @@ export function AITelemetry({
         <li>Eval Time: {stats.evalTimeMs}ms</li>
       </ul>
 
-      {/* Value slider — fills the section width. Layout: w-8 label +
-          gap-3 + flex-1 bar + ml-1 + w-2 dashed continuation. pr-3 on
-          the container reserves 12px on the right for the dashed mark
-          (which is absolute-positioned past the bar's right) so the
-          slider's full extent lands at the section's right edge. */}
-      <div className="flex w-full items-center gap-3 pt-2 pr-3 opacity-70" aria-hidden="true">
-        <span className="w-8 shrink-0 text-right">{evalScore}</span>
-        <div className="relative flex h-2 flex-1 items-center bg-muted-foreground">
-          <div className="absolute right-0 h-5 w-0.5 translate-x-1/2 bg-foreground" />
-          <div className="absolute left-full ml-1 h-px w-2 border-t border-dashed border-muted-foreground" />
+      {/* Value slider — label stacked above the bar so the bar can fill
+          the full section width, matching the eval bar above visually.
+          Below the label: bar (flex-1) + 4px gap + 8px dashed continuation
+          = full section width. */}
+      <div className="flex w-full flex-col gap-1 pt-2 opacity-70" aria-hidden="true">
+        <span className="text-right font-mono text-mono-sm uppercase">{evalScore}</span>
+        <div className="flex items-center gap-1">
+          <div className="relative flex h-2 flex-1 items-center bg-muted-foreground">
+            <div className="absolute right-0 h-5 w-0.5 translate-x-1/2 bg-foreground" />
+          </div>
+          <div className="h-px w-2 border-t border-dashed border-muted-foreground" />
         </div>
       </div>
     </section>
