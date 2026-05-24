@@ -795,26 +795,27 @@ html.grid-on .grid-overlay {
 /* Page-reveal: fade-up for state label, board, side panels.
    Each element gets its own delay via inline style --reveal-delay.
 
-   Two anti-flicker tricks (the board's backdrop-filter + SVG filter +
-   multiple composited layers were causing a color flicker at the
-   moment opacity reached exactly 1.0, when the browser collapsed the
-   opacity-stacking-context):
-
-     1. End opacity at 0.999 instead of 1. Visually identical, but the
-        stacking context (created by any opacity < 1) stays in place
-        permanently. backdrop-filter inside renders against a stable
-        backdrop, no re-evaluation snap.
-     2. isolation: isolate explicitly forces a stacking context too,
-        belt-and-suspenders for browsers that handle opacity stacking
-        contexts differently (Safari/Firefox edge cases). */
+   Anti-flicker for dark mode (where the board's pawn pieces have outer
+   glow box-shadows and the backdrop-filter is more prominent):
+     - opacity range is 0.001 → 0.999, NEVER hits exactly 0 or 1.
+       Any opacity strictly between 0 and 1 keeps the element in its
+       own stacking context. If opacity touches 0 or 1, the browser
+       collapses the context, re-evaluating backdrop-filter against a
+       different backdrop → visible color flicker on the board.
+     - animation-fill-mode: both applies the 0% keyframe BEFORE the
+       animation starts (during the delay window), so the element is
+       already at opacity 0.001 + translateY(20px) waiting in its
+       stacking context.
+     - isolation: isolate explicitly forces the stacking context too,
+       belt-and-suspenders for browser differences. */
 @keyframes page-reveal {
-  0%   { opacity: 0;     transform: translateY(20px); }
+  0%   { opacity: 0.001; transform: translateY(20px); }
   100% { opacity: 0.999; transform: translateY(0);    }
 }
 .page-reveal {
-  opacity: 0;
+  opacity: 0.001;
   isolation: isolate;
-  animation: page-reveal 1s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+  animation: page-reveal 1s cubic-bezier(0.4, 0, 0.2, 1) both;
   animation-delay: var(--reveal-delay, 0s);
 }
 
