@@ -61,15 +61,16 @@ const boardVariant: BoardVariant = VALID_VARIANTS.includes(requested as BoardVar
     class="relative mx-auto flex w-full max-w-7xl flex-col px-margin-mobile pt-28 pb-8 md:h-full md:overflow-hidden md:px-margin-desktop md:pt-28 md:pb-4"
   >
     {/* Hero — absolutely positioned over the entire main content area.
-        Big italic Fraunces text, centered horizontally + vertically in
-        the visible page area (top-28 clears the floating TopNav pill).
-        Animates: draws in left-to-right, holds, then exits up + blur.
-        After exit, the layout below (kicker + grid) is fully revealed. */}
+        Big italic Fraunces text on TWO LINES, centered horizontally and
+        positioned above the vertical midpoint via pb-* on the absolute
+        container (which shrinks the centering area from the bottom, so
+        the centered text sits higher than 50%).
+        Animates: draws in left-to-right, holds, then exits up + blur. */}
     <h1
       id="hero-pitch"
-      class="hero-draw absolute top-28 right-0 bottom-0 left-0 z-10 flex items-center justify-center px-margin-mobile font-display text-5xl font-light italic leading-none tracking-tight text-foreground md:px-margin-desktop md:text-7xl lg:text-display"
+      class="hero-draw absolute top-28 right-0 bottom-0 left-0 z-10 grid place-items-center px-margin-mobile pb-32 text-center font-display text-5xl font-light italic leading-none tracking-tight text-foreground md:px-margin-desktop md:pb-40 md:text-7xl lg:text-display"
     >
-      Connect 4, but smarter.
+      Connect 4,<br />but smarter.
     </h1>
 
     {/* Kicker — small game-state label above the grid. Reveals after the
