@@ -770,9 +770,16 @@ html.grid-on .grid-overlay {
      mask — no gradient on the settled word. During the reveal, as the
      inner translates up from below, its leading bottom edge passes
      through the gradient zone and fades in softly (no hard cut line).
-     Negative margin-bottom keeps external layout flush. */
+     Negative margin-bottom keeps external layout flush.
+
+     padding-right + negative margin-right: italic glyphs (especially
+     'r' with its rightward stroke) can extend past the measured text
+     width. Without this bleed room they'd be clipped by overflow:hidden.
+     Layout is unaffected (margin compensates). */
   padding-bottom: 0.3em;
   margin-bottom: -0.3em;
+  padding-right: 0.08em;
+  margin-right: -0.08em;
   line-height: 1;
   -webkit-mask-image: linear-gradient(to top, transparent 0%, black 0.3em, black 100%);
           mask-image: linear-gradient(to top, transparent 0%, black 0.3em, black 100%);
@@ -788,7 +795,10 @@ html.grid-on .grid-overlay {
 .hero-letters {
   pointer-events: none;
   animation: hero-exit 0.8s cubic-bezier(0.4, 0, 0.2, 1) 2.3s forwards;
-  will-change: opacity, filter, transform;
+  /* will-change OMITTED — same reasoning as page-reveal. The hero
+     element is at z-10 over the board area; layer demotion when the
+     hero-exit animation completes was a candidate for the dark-mode
+     board flicker. */
 }
 
 /* Page-reveal: subtle fade-up for state label, board, side panels.
