@@ -56,6 +56,21 @@ const boardVariant: BoardVariant = VALID_VARIANTS.includes(requested as BoardVar
   title="4thewin — Connect 4, but smarter"
   description="Play Connect 4 against an AI in your browser. No signup needed to start."
 >
+  {/* Lock scroll on <html> during the hero intro animation so the user
+      can't scroll past the hero on mobile while the words are still
+      revealing. Released after ~4s when the intro completes. Reduced-
+      motion users skip the lock — they don't see the animation either. */}
+  <script is:inline>
+    (function () {
+      if (window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+      var html = document.documentElement;
+      html.style.overflow = "hidden";
+      setTimeout(function () {
+        html.style.overflow = "";
+      }, 4000);
+    })();
+  </script>
+
   <main
     id="main"
     class="relative mx-auto flex w-full max-w-7xl flex-col px-margin-mobile pt-28 pb-8 md:h-full md:overflow-hidden md:px-margin-desktop md:pt-28 md:pb-4"
