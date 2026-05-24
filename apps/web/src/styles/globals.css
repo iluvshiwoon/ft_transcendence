@@ -794,19 +794,22 @@ html.grid-on .grid-overlay {
 /* Page-reveal: subtle fade-up for state label, board, side panels.
 /* Page-reveal: fade-up for state label, board, side panels.
    Each element gets its own delay via inline style --reveal-delay.
-   Translates up 20px and clears a 6px blur — mirrors the hero exit's
-   blur+translate so the transition feels like one continuous motion
-   (hero blurs and translates UP out, components clear blur and
-   translate UP into place). */
+   Translates up 20px + fades in. Blur was REMOVED from the keyframe
+   because it caused flicker on the board: the board has its own
+   backdrop-filter + multiple composited layers (under-glass color
+   layer, lg-filter, lg-overlay, lg-specular, cells), and animating
+   filter:blur on the wrapping element forced the browser to
+   re-composite the whole stack each frame. When the animation's
+   blur hit 0, the layer was demoted causing a visible snap. */
 @keyframes page-reveal {
-  0%   { opacity: 0; transform: translateY(20px); filter: blur(6px); }
-  100% { opacity: 1; transform: translateY(0);    filter: blur(0);   }
+  0%   { opacity: 0; transform: translateY(20px); }
+  100% { opacity: 1; transform: translateY(0);    }
 }
 .page-reveal {
   opacity: 0;
   animation: page-reveal 1s cubic-bezier(0.4, 0, 0.2, 1) forwards;
   animation-delay: var(--reveal-delay, 0s);
-  will-change: opacity, transform, filter;
+  will-change: opacity, transform;
 }
 
 @media (prefers-reduced-motion: reduce) {
