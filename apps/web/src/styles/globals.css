@@ -475,14 +475,22 @@
     inset 0 -1px 1px oklch(100% 0 0 / 0.25);
 }
 .dark .board-none-cell {
-  /* Dark mode: lightened from 0.18 → 0.10. The wells should read as
-     depressions in the dark surface, not as voids. Shadow alphas
-     also pulled back proportionally so the recess feels carved into
-     the dark page rather than gouged out of it. */
-  background-color: oklch(0% 0 0 / 0.10);
+  /* Tuning history:
+       v1: bg 0.45 → too dark, wells looked like voids
+       v2: bg 0.18 → still too dark
+       v3: bg 0.10 → cells lost visibility against dark page bg
+       v4: bg 0.14 + tiny outer highlight rim → wells visible AND
+           still feel carved, not void-like
+     The 0.5px outer highlight ring at very low alpha defines each
+     well's edge against the dark page without making the cell
+     interior any darker than it needs to be. */
+  background-color: oklch(0% 0 0 / 0.14);
   box-shadow:
-    inset 0 2px 2px oklch(0% 0 0 / 0.45),
-    inset 0 6px 12px -1px oklch(0% 0 0 / 0.30),
+    /* Outer rim highlight — page surface around the well catches
+       a bit of light, defining the cell boundary against the page bg */
+    0 0 0 0.5px oklch(100% 0 0 / 0.05),
+    inset 0 2px 2px oklch(0% 0 0 / 0.50),
+    inset 0 6px 12px -1px oklch(0% 0 0 / 0.32),
     inset 0 -1px 1px oklch(100% 0 0 / 0.05);
 }
 
