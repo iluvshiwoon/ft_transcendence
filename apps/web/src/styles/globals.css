@@ -809,7 +809,13 @@ html.grid-on .grid-overlay {
   opacity: 0;
   animation: page-reveal 1s cubic-bezier(0.4, 0, 0.2, 1) forwards;
   animation-delay: var(--reveal-delay, 0s);
-  will-change: opacity, transform;
+  /* will-change intentionally OMITTED — when present, the browser
+     promotes the element to a GPU compositor layer for the animation,
+     then demotes it at the end. The demote re-rasterizes the element,
+     which causes a visible color flicker on the board (because of its
+     multiple composited layers: under-glass colors, backdrop-filter,
+     overlay, specular, cells). Modern browsers auto-optimize plain
+     opacity+transform animations without the will-change hint. */
 }
 
 @media (prefers-reduced-motion: reduce) {
