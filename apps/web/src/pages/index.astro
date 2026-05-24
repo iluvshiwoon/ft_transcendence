@@ -39,13 +39,8 @@ import { Leaderboard } from "~/components/landing/Leaderboard";
 >
   <main
     id="main"
-    class="relative mx-auto w-full max-w-7xl px-margin-mobile pt-28 pb-12 md:px-margin-desktop md:pt-32"
+    class="mx-auto w-full max-w-7xl px-margin-mobile pt-28 pb-12 md:px-margin-desktop md:pt-32"
   >
-    {/* Stage backdrop — warm radial halo around the board column. Sits behind
-        all content (-z-10), purely decorative (aria-hidden). The gradient
-        anchors low-center to feel like a stage light from below the board. */}
-    <div class="stage-backdrop pointer-events-none absolute inset-0 -z-10" aria-hidden="true"></div>
-
     {/* Visually hidden but read aloud by screen readers and indexed by search engines. */}
     <h1 class="sr-only">4thewin — Connect 4, but smarter</h1>
 
