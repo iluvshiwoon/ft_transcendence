@@ -58,40 +58,34 @@ const boardVariant: BoardVariant = VALID_VARIANTS.includes(requested as BoardVar
 >
   <main
     id="main"
-    class="mx-auto flex w-full max-w-7xl flex-col px-margin-mobile pt-28 pb-8 md:h-full md:overflow-hidden md:px-margin-desktop md:pt-28 md:pb-4"
+    class="relative mx-auto flex w-full max-w-7xl flex-col px-margin-mobile pt-28 pb-8 md:h-full md:overflow-hidden md:px-margin-desktop md:pt-28 md:pb-4"
   >
-    {/* Hero slot — vertically centered in the upper portion of the page,
-        between the TopNav pill and the board. flex-1 wrapper grabs a
-        third of the available vertical space; grid:place-items-center
-        stacks h1 + state-label in the same cell so the cross-fade
-        animation swaps them in place without layout shift. */}
-    <div class="flex flex-1 items-center justify-center md:flex-1">
-      <div class="grid place-items-center">
-        <h1
-          id="hero-pitch"
-          class="hero-draw col-start-1 row-start-1 font-display text-3xl font-light italic leading-none tracking-wide text-foreground md:text-4xl"
-        >
-          Connect 4, but smarter.
-        </h1>
-        <div
-          class="page-reveal col-start-1 row-start-1"
-          style="--reveal-delay: 2.5s"
-        >
-          <Headline state="your-turn" />
-        </div>
-      </div>
+    {/* Hero — absolutely positioned over the entire main content area.
+        Big italic Fraunces text, centered horizontally + vertically in
+        the visible page area (top-28 clears the floating TopNav pill).
+        Animates: draws in left-to-right, holds, then exits up + blur.
+        After exit, the layout below (kicker + grid) is fully revealed. */}
+    <h1
+      id="hero-pitch"
+      class="hero-draw absolute top-28 right-0 bottom-0 left-0 z-10 flex items-center justify-center px-margin-mobile font-display text-5xl font-light italic leading-none tracking-tight text-foreground md:px-margin-desktop md:text-7xl lg:text-display"
+    >
+      Connect 4, but smarter.
+    </h1>
+
+    {/* Kicker — small game-state label above the grid. Reveals after the
+        hero exits, in its original (pre-intro-redesign) position. */}
+    <div
+      class="page-reveal mb-6 flex justify-center md:mb-8"
+      style="--reveal-delay: 2.5s"
+    >
+      <Headline state="your-turn" />
     </div>
 
-    {/* Game grid — flex-[2] on desktop so it occupies the lower two-thirds
-        of the page (more space than hero since the board needs ~360px),
-        with the board vertically centered in that area. Mobile stays
-        natural flow (single column, ordered). */}
-    <div class="grid grid-cols-1 gap-10 md:grid-cols-12 md:flex-[2] md:items-center md:gap-gutter">
+    {/* Game grid — board centered in the remaining vertical space, side
+        panels flanking on desktop. Reveals after the kicker. */}
+    <div class="grid grid-cols-1 gap-10 md:flex-1 md:grid-cols-12 md:items-center md:gap-gutter">
 
-      {/* AITelemetry — desktop left, mobile after the board.
-          Reveals last in the intro stagger; the dim-on-default treatment
-          was dropped since the new intro animation creates hierarchy via
-          reveal timing instead. */}
+      {/* AITelemetry — desktop left, mobile after the board */}
       <div
         class="page-reveal order-2 flex justify-center md:order-1 md:col-span-3"
         style="--reveal-delay: 2.9s"
@@ -99,8 +93,7 @@ const boardVariant: BoardVariant = VALID_VARIANTS.includes(requested as BoardVar
         <AITelemetry />
       </div>
 
-      {/* Board — centered horizontally inside its column. Reveals after
-          the state label so the user's eye flows: state → board. */}
+      {/* Board */}
       <div
         class="page-reveal order-1 flex justify-center md:order-2 md:col-span-6"
         style="--reveal-delay: 2.7s"
@@ -108,8 +101,7 @@ const boardVariant: BoardVariant = VALID_VARIANTS.includes(requested as BoardVar
         <Board variant={boardVariant} />
       </div>
 
-      {/* Leaderboard — desktop right, mobile last. Same reveal timing
-          as AITelemetry (symmetric peripheral panels). */}
+      {/* Leaderboard — desktop right, mobile last */}
       <div
         class="page-reveal order-3 flex justify-center md:order-3 md:col-span-3"
         style="--reveal-delay: 2.9s"
