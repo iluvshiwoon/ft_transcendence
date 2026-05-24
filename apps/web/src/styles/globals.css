@@ -724,17 +724,19 @@
 .hero-word {
   display: inline-block;
   overflow: hidden;
-  /* Soft mask gradient: bottom 30% of the mask fades to transparent, so
-     when the inner span translates up from below it appears to FADE in
-     at the bottom edge rather than hard-clip at the overflow boundary.
-     Eliminates the "straight line" artifact visible during reveal. */
-  -webkit-mask-image: linear-gradient(to top, transparent 0%, black 30%, black 100%);
-          mask-image: linear-gradient(to top, transparent 0%, black 30%, black 100%);
-  /* Slight line-height padding so descenders (the comma's tail) don't
-     get clipped at rest. The inner's translate baseline is the inner's
-     own height which still hides the word at -100%. */
-  line-height: 1.15;
   vertical-align: bottom;
+  /* Extend the mask box 0.3em BELOW the visible text via padding-bottom.
+     The gradient fade is confined to that padding zone, NOT to the text.
+     At rest the visible text sits entirely in the opaque region of the
+     mask — no gradient on the settled word. During the reveal, as the
+     inner translates up from below, its leading bottom edge passes
+     through the gradient zone and fades in softly (no hard cut line).
+     Negative margin-bottom keeps external layout flush. */
+  padding-bottom: 0.3em;
+  margin-bottom: -0.3em;
+  line-height: 1;
+  -webkit-mask-image: linear-gradient(to top, transparent 0%, black 0.3em, black 100%);
+          mask-image: linear-gradient(to top, transparent 0%, black 0.3em, black 100%);
 }
 .hero-word-inner {
   display: inline-block;
