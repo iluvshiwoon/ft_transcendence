@@ -71,14 +71,36 @@ const boardVariant: BoardVariant = VALID_VARIANTS.includes(requested as BoardVar
         Surrounding text uses text-foreground/70 (foreground at 70% alpha)
         so that in light mode the non-emphasized text reads lighter (paler)
         and in dark mode it reads dimmer. Either direction makes 'smarter'
-        — which stays at full text-emphasis — pop more by contrast. */}
+        — which stays at full text-emphasis — pop more by contrast.
+
+        Animation: each letter wears .hero-letter with a --i index for a
+        staggered clip-path + blur draw. The h1 wraps with .hero-letters
+        which handles only the exit (after all letters have drawn). */}
     <h1
       id="hero-pitch"
-      class="hero-draw absolute top-28 right-0 bottom-0 left-0 z-10 flex flex-col items-center justify-center px-margin-mobile text-center font-display font-light italic tracking-tight text-foreground/70 md:px-margin-desktop"
+      class="hero-letters absolute top-28 right-0 bottom-0 left-0 z-10 flex flex-col items-center justify-center px-margin-mobile text-center font-display font-light italic tracking-tight text-foreground/70 md:px-margin-desktop"
     >
-      <span class="text-5xl leading-none md:text-7xl lg:text-[7.5rem]">Connect 4,</span>
-      <span class="text-7xl leading-[0.95] md:text-[6.5rem] lg:text-[9rem]">
-        but <span class="text-emphasis font-medium">smarter</span>.
+      <span class="text-5xl leading-none md:text-7xl lg:text-[7.5rem]" aria-label="Connect 4,">
+        {Array.from("Connect 4,").map((char, i) => (
+          <span class="hero-letter" style={`--i:${i}`} aria-hidden="true">
+            {char === " " ? "\u00A0" : char}
+          </span>
+        ))}
+      </span>
+      <span class="text-7xl leading-[0.95] md:text-[6.5rem] lg:text-[9rem]" aria-label="but smarter.">
+        {Array.from("but ").map((char, i) => (
+          <span class="hero-letter" style={`--i:${10 + i}`} aria-hidden="true">
+            {char === " " ? "\u00A0" : char}
+          </span>
+        ))}
+        <span class="text-emphasis font-medium">
+          {Array.from("smarter").map((char, i) => (
+            <span class="hero-letter" style={`--i:${14 + i}`} aria-hidden="true">
+              {char}
+            </span>
+          ))}
+        </span>
+        <span class="hero-letter" style="--i:21" aria-hidden="true">.</span>
       </span>
     </h1>
 

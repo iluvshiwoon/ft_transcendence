@@ -698,20 +698,29 @@
  * paint with no animation.
  * ============================================================================= */
 
-/* Phase 1+3: draw the hero, then exit it */
-@keyframes hero-draw {
-  0%   { clip-path: inset(0 100% 0 0); filter: blur(3px); }
+/* Phase 1+3: per-letter draw of the hero, then exit it as a whole.
+   Each letter wears .hero-letter with a --i index; the per-letter
+   animation reveals the letter via clip-path with a soft leading-edge
+   blur that clears as it settles. The wrapper h1 wears .hero-letters
+   and handles only the exit phase (no draw) — letters draw themselves. */
+@keyframes hero-letter-draw {
+  0%   { clip-path: inset(0 100% 0 0); filter: blur(2px); }
   100% { clip-path: inset(0 0% 0 0);   filter: blur(0);   }
 }
 @keyframes hero-exit {
   0%   { opacity: 1; filter: blur(0);    transform: translateY(0);    }
   100% { opacity: 0; filter: blur(10px); transform: translateY(-14px); }
 }
-.hero-draw {
-  animation:
-    hero-draw 1.8s cubic-bezier(0.4, 0, 0.2, 1) forwards,
-    hero-exit 0.8s cubic-bezier(0.4, 0, 0.2, 1) 2.3s forwards;
-  will-change: clip-path, opacity, filter, transform;
+.hero-letter {
+  display: inline-block;
+  clip-path: inset(0 100% 0 0);
+  filter: blur(2px);
+  animation: hero-letter-draw 0.4s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+  animation-delay: calc(var(--i, 0) * 70ms);
+}
+.hero-letters {
+  animation: hero-exit 0.8s cubic-bezier(0.4, 0, 0.2, 1) 2.3s forwards;
+  will-change: opacity, filter, transform;
 }
 
 /* Page-reveal: subtle fade-up for state label, board, side panels.
@@ -728,13 +737,17 @@
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .hero-draw, .page-reveal {
+  .hero-letter, .hero-letters, .page-reveal {
     animation: none;
   }
-  .hero-draw {
+  .hero-letter {
+    /* Reset the static initial state so letters are visible on first paint */
+    clip-path: none;
+    filter: none;
+  }
+  .hero-letters {
     /* Hero is hidden in reduced-motion — final state has it gone */
     opacity: 0;
-    clip-path: none;
   }
   .page-reveal {
     opacity: 1;
