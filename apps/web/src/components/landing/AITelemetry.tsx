@@ -89,7 +89,7 @@ export function AITelemetry({
   return (
     <section
       aria-labelledby="ai-telemetry-heading"
-      className="flex w-full max-w-[220px] flex-col gap-10 font-mono text-mono-sm text-muted-foreground"
+      className="flex w-full max-w-[220px] flex-col items-end gap-10 font-mono text-mono-sm text-muted-foreground"
     >
       <h2 id="ai-telemetry-heading" className="sr-only">
         AI telemetry
@@ -157,7 +157,7 @@ export function AITelemetry({
       </div>
 
       {/* Stats */}
-      <ul className="flex flex-col gap-1 uppercase opacity-70">
+      <ul className="flex w-[184px] flex-col gap-1 uppercase opacity-70">
         <li>Depth: {stats.depth}</li>
         <li>Nodes/sec: {stats.nodesPerSec}</li>
         <li>Eval Time: {stats.evalTimeMs}ms</li>
