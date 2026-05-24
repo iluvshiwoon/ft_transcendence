@@ -129,6 +129,32 @@ export function Board({ pieces = WIREFRAME_BOARD, className, variant = "default"
           className,
         )}
       >
+        {/* Under-glass color layer (z-0). Plain bg-pawn-* circles at the same
+            grid positions as the on-top pieces. The lg-filter at z-0 (later
+            in DOM, so painted on top) has backdrop-filter blur + filter:url
+            so it picks these colors up as the backdrop and smears them — the
+            warm tint visible through the glass plate around each piece. */}
+        <div
+          className="pointer-events-none absolute inset-0 z-0 p-4 sm:p-5 md:p-6"
+          aria-hidden="true"
+        >
+          <div className="grid grid-cols-7 gap-2 sm:gap-3 md:gap-4">
+            {pieces.map((row, rowIdx) =>
+              row.map((cell, colIdx) => (
+                <div
+                  key={`under-${rowIdx}-${colIdx}`}
+                  className={cn(
+                    "size-9 rounded-full sm:size-10 md:size-12",
+                    cell === "red" && "bg-pawn-red",
+                    cell === "yellow" && "bg-pawn-yellow",
+                    // Empty cells contribute nothing — transparent so the
+                    // page bg shows through the glass with no color bias.
+                  )}
+                />
+              )),
+            )}
+          </div>
+        </div>
         <div className="lg-filter" aria-hidden="true" />
         <div className="lg-overlay" aria-hidden="true" />
         <div className="lg-specular" aria-hidden="true" />
