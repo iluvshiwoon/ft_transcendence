@@ -61,18 +61,19 @@ const boardVariant: BoardVariant = VALID_VARIANTS.includes(requested as BoardVar
     class="relative mx-auto flex w-full max-w-7xl flex-col px-margin-mobile pt-28 pb-8 md:h-full md:overflow-hidden md:px-margin-desktop md:pt-28 md:pb-4"
   >
     {/* Hero — absolutely positioned over the entire main content area.
-        Original two-line treatment with two minimal additions:
-          - Span wrapping the second line for a larger font size
-          - Inner span on the word 'smarter' for the brand accent color
-        Everything else matches the original (h1 classes, br, text-foreground,
-        leading-none, capital C). */}
+        Two-line treatment with sibling spans (flex-col stacks them).
+        Sizes are arbitrary so font-weight from text-display (which has
+        800 baked into the token) doesn't override the h1's font-light.
+        Line 2 is ~1.5x line 1 for clear visible hierarchy. The word
+        'smarter' uses text-emphasis (darker color) + font-medium (heavier
+        weight) — color alone was too subtle. */}
     <h1
       id="hero-pitch"
-      class="hero-draw absolute top-28 right-0 bottom-0 left-0 z-10 grid place-items-center px-margin-mobile text-center font-display text-5xl font-light italic leading-none tracking-tight text-foreground md:px-margin-desktop md:text-7xl lg:text-display"
+      class="hero-draw absolute top-28 right-0 bottom-0 left-0 z-10 flex flex-col items-center justify-center px-margin-mobile text-center font-display font-light italic tracking-tight text-foreground md:px-margin-desktop"
     >
-      Connect 4,<br />
-      <span class="text-6xl md:text-8xl lg:text-9xl">
-        but <span class="text-accent">smarter</span>.
+      <span class="text-5xl leading-none md:text-7xl lg:text-[7.5rem]">Connect 4,</span>
+      <span class="text-7xl leading-[0.95] md:text-[6.5rem] lg:text-[9rem]">
+        but <span class="text-emphasis font-medium">smarter</span>.
       </span>
     </h1>
 
