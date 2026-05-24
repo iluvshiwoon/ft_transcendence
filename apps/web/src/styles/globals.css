@@ -792,16 +792,21 @@ html.grid-on .grid-overlay {
 }
 
 /* Page-reveal: subtle fade-up for state label, board, side panels.
-   Each element gets its own delay via inline style --reveal-delay. */
+/* Page-reveal: fade-up for state label, board, side panels.
+   Each element gets its own delay via inline style --reveal-delay.
+   Translates up 20px and clears a 6px blur — mirrors the hero exit's
+   blur+translate so the transition feels like one continuous motion
+   (hero blurs and translates UP out, components clear blur and
+   translate UP into place). */
 @keyframes page-reveal {
-  0%   { opacity: 0; transform: translateY(10px); }
-  100% { opacity: 1; transform: translateY(0);    }
+  0%   { opacity: 0; transform: translateY(20px); filter: blur(6px); }
+  100% { opacity: 1; transform: translateY(0);    filter: blur(0);   }
 }
 .page-reveal {
   opacity: 0;
-  animation: page-reveal 1s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+  animation: page-reveal 1s cubic-bezier(0.22, 1, 0.36, 1) forwards;
   animation-delay: var(--reveal-delay, 0s);
-  will-change: opacity, transform;
+  will-change: opacity, transform, filter;
 }
 
 @media (prefers-reduced-motion: reduce) {
