@@ -89,7 +89,7 @@ export function AITelemetry({
   return (
     <section
       aria-labelledby="ai-telemetry-heading"
-      className="flex w-full max-w-[220px] flex-col items-end gap-10 font-mono text-mono-sm text-muted-foreground"
+      className="flex w-full max-w-[220px] flex-col gap-10 font-mono text-mono-sm text-muted-foreground"
     >
       <h2 id="ai-telemetry-heading" className="sr-only">
         AI telemetry
@@ -97,7 +97,7 @@ export function AITelemetry({
 
       {/* Thinking matrix */}
       <div aria-hidden="true">
-        <div className="grid w-max grid-cols-7 gap-3">
+        <div className="grid w-full grid-cols-7 gap-[18px]">
           {Array.from({ length: ROWS }, (_, r) =>
             Array.from({ length: COLS }, (_, c) => {
               const isLandingCell = columnLandingRows[c] === r;
@@ -141,9 +141,10 @@ export function AITelemetry({
         </div>
       </div>
 
-      {/* Evaluation bar — width matches matrix (size-4 × 7 + gap-3 × 6 = 184px) */}
+      {/* Evaluation bar — fills the section width (220px) to match the
+          matrix above and the slider below. */}
       <div
-        className="relative h-2 w-[184px] rounded-full border border-muted-foreground opacity-70"
+        className="relative h-2 w-full rounded-full border border-muted-foreground opacity-70"
         role="meter"
         aria-label="Search progress"
         aria-valuenow={Math.round(evalRatio * 100)}
@@ -157,17 +158,17 @@ export function AITelemetry({
       </div>
 
       {/* Stats */}
-      <ul className="flex w-[184px] flex-col gap-1 uppercase opacity-70">
+      <ul className="flex w-full flex-col gap-1 uppercase opacity-70">
         <li>Depth: {stats.depth}</li>
         <li>Nodes/sec: {stats.nodesPerSec}</li>
         <li>Eval Time: {stats.evalTimeMs}ms</li>
       </ul>
 
-      {/* Value slider — total width 184px to match matrix and eval bar.
-          Layout: w-8 label + gap-3 + w-32 bar + ml-1 + w-2 dashed continuation = 184. */}
-      <div className="flex w-[184px] items-center gap-3 pt-2 opacity-70" aria-hidden="true">
+      {/* Value slider — fills the section width. Layout: w-8 label +
+          gap-3 + flex-1 bar (grows to fill) + ml-1 + w-2 dashed continuation. */}
+      <div className="flex w-full items-center gap-3 pt-2 opacity-70" aria-hidden="true">
         <span className="w-8 shrink-0 text-right">{evalScore}</span>
-        <div className="relative flex h-2 w-32 items-center bg-muted-foreground">
+        <div className="relative flex h-2 flex-1 items-center bg-muted-foreground">
           <div className="absolute right-0 h-5 w-0.5 translate-x-1/2 bg-foreground" />
           <div className="absolute left-full ml-1 h-px w-2 border-t border-dashed border-muted-foreground" />
         </div>
