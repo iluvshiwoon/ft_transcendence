@@ -37,7 +37,8 @@ export type BoardVariant =
   | "wood"
   | "none"
   | "recessed"
-  | "liquid-glass";
+  | "liquid-glass"
+  | "raised";
 
 export const ROWS = 6;
 export const COLS = 7;
@@ -88,6 +89,9 @@ function plateClasses(variant: BoardVariant): string {
     case "liquid-glass":
       // Handled in the dedicated render branch — this string isn't applied.
       return "";
+    case "raised":
+      // No outer shadow class — board-raised utility owns the slope shadow.
+      return "board-raised rounded-[28px]";
     default:
       return "bg-board shadow-2xl";
   }
@@ -108,6 +112,10 @@ function emptyCellClasses(variant: BoardVariant): string {
       return "board-recessed-cell";
     case "liquid-glass":
       return "board-liquid-glass-cell";
+    case "raised":
+      // Reuse the carved-well cells from no-plate variant. The recess effect
+      // works the same: dark interior + top rim shadow + bottom highlight.
+      return "board-none-cell";
     default:
       return "bg-board-cell";
   }
