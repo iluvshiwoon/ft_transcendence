@@ -32,9 +32,10 @@ import { Board, type BoardVariant } from "~/components/landing/Board";
 import { AITelemetry } from "~/components/landing/AITelemetry";
 import { Leaderboard } from "~/components/landing/Leaderboard";
 
-// EXPERIMENT — board variant from ?board=X. liquid-glass is now the chosen
-// default. The rest of the variants are kept (and the toggle below) so we
-// can switch skins later without reimplementing them.
+// Board variant from ?board=X — liquid-glass is the chosen default. The
+// other variants are kept (Board.tsx + globals.css) so we can switch skins
+// later without reimplementing them. No visible toggle in the UI; switch
+// via URL during dev (e.g. /?board=raised).
 const VALID_VARIANTS: BoardVariant[] = [
   "default",
   "branded",
@@ -49,17 +50,6 @@ const requested = Astro.url.searchParams.get("board") ?? "liquid-glass";
 const boardVariant: BoardVariant = VALID_VARIANTS.includes(requested as BoardVariant)
   ? (requested as BoardVariant)
   : "liquid-glass";
-
-const VARIANT_LABELS: Record<BoardVariant, string> = {
-  default: "Default",
-  branded: "Branded",
-  glass: "Glass",
-  wood: "Wood",
-  none: "No plate",
-  recessed: "Recessed",
-  "liquid-glass": "Liquid Glass",
-  raised: "Raised",
-};
 ---
 
 <RootLayout
@@ -70,11 +60,37 @@ const VARIANT_LABELS: Record<BoardVariant, string> = {
     id="main"
     class="mx-auto w-full max-w-7xl px-margin-mobile pt-28 pb-12 md:px-margin-desktop md:pt-32"
   >
-    {/* Visually hidden but read aloud by screen readers and indexed by search engines. */}
-    <h1 class="sr-only">4thewin — Connect 4, but smarter</h1>
+    {/* Hero — page pitch + CTA. The h1 is the page's main title (was
+        previously sr-only); SEO and screen readers see the same string
+        as before, but now it's also the visual hero. */}
+    <section
+      class="mx-auto mb-12 flex max-w-3xl flex-col items-center gap-6 text-center md:mb-16 md:gap-7"
+      aria-labelledby="hero-pitch"
+    >
+      <h1
+        id="hero-pitch"
+        class="font-display text-4xl font-light italic leading-[1.05] tracking-tight text-foreground md:text-5xl lg:text-6xl"
+      >
+        Connect 4, but smarter.
+      </h1>
+      <p class="max-w-prose text-base leading-relaxed text-muted-foreground md:text-lg">
+        Play in your browser against an AI that actually thinks. No signup needed.
+      </p>
+      <a
+        href="/signup"
+        class="inline-flex h-11 items-center gap-2 rounded-full bg-foreground px-7 text-base font-medium text-background transition-colors hover:bg-foreground/90 active:scale-[0.98]"
+      >
+        Play now
+        <span aria-hidden="true">→</span>
+      </a>
+    </section>
 
-    {/* Hero kicker — centered above the 3-column grid */}
-    <div class="mb-10 flex justify-center md:mb-12">
+    {/* Game-state kicker — sits just above the grid, announces game state
+        for screen readers via Headline's role=status / aria-live. Demoted
+        from the previous "the only headline on the page" treatment now
+        that the real hero owns that slot. Will become live state when the
+        AI module is wired (step 6). */}
+    <div class="mb-8 flex justify-center md:mb-10">
       <Headline state="your-turn" />
     </div>
 
@@ -103,13 +119,13 @@ const VARIANT_LABELS: Record<BoardVariant, string> = {
     </div>
   </main>
 
-  {/* EXPERIMENT — SVG filter for the liquid-glass board variant.
+  {/* SVG filter for the liquid-glass board variant.
       Defines the lg-dist filter referenced by `.lg-filter` in globals.css.
       feTurbulence generates fractal noise; feDisplacementMap warps the
       backdrop using the noise as a displacement map → refraction effect.
       Browser support: works in Chromium (Chrome/Edge); falls back to a
       plain frosted blur in Safari/Firefox where backdrop-filter + SVG
-      filter URL isn't supported. Adapted from cssscript.com lg-* recipe. */}
+      filter URL isn't supported. */}
   <svg aria-hidden="true" style="position:absolute;width:0;height:0;pointer-events:none;">
     <defs>
       <filter id="lg-dist" x="0%" y="0%" width="100%" height="100%">
@@ -119,33 +135,4 @@ const VARIANT_LABELS: Record<BoardVariant, string> = {
       </filter>
     </defs>
   </svg>
-
-  {/* EXPERIMENT — board variant toggle. Floating bottom-right, fixed.
-      Remove this entire block + the variant prop on <Board /> + the URL
-      param logic in the frontmatter once a direction is picked. */}
-  <div
-    class="fixed bottom-4 right-4 z-50 flex flex-col gap-2 rounded-lg border border-border bg-surface p-3 shadow-2xl"
-    aria-label="Board variant picker (experiment)"
-  >
-    <p class="font-mono text-mono-sm uppercase text-muted-foreground">Board style</p>
-    <div class="flex flex-wrap gap-1.5">
-      {VALID_VARIANTS.map((v) => {
-        const isActive = v === boardVariant;
-        return (
-          <a
-            href={`/?board=${v}`}
-            class:list={[
-              "rounded-md border px-2.5 py-1 font-mono text-mono-sm transition-colors",
-              isActive
-                ? "border-foreground bg-foreground text-background"
-                : "border-border bg-surface text-foreground hover:border-foreground",
-            ]}
-            aria-current={isActive ? "true" : undefined}
-          >
-            {VARIANT_LABELS[v]}
-          </a>
-        );
-      })}
-    </div>
-  </div>
 </RootLayout>
