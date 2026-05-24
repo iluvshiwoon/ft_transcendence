@@ -795,32 +795,52 @@ html.grid-on .grid-overlay {
 /* Page-reveal: fade-up for state label, board, side panels.
    Each element gets its own delay via inline style --reveal-delay.
 
-   Anti-flicker for dark mode (where the board's pawn pieces have outer
-   glow box-shadows and the backdrop-filter is more prominent):
-     - opacity range is 0.001 → 0.999, NEVER hits exactly 0 or 1.
-       Any opacity strictly between 0 and 1 keeps the element in its
-       own stacking context. If opacity touches 0 or 1, the browser
-       collapses the context, re-evaluating backdrop-filter against a
-       different backdrop → visible color flicker on the board.
-     - animation-fill-mode: both applies the 0% keyframe BEFORE the
-       animation starts (during the delay window), so the element is
-       already at opacity 0.001 + translateY(20px) waiting in its
-       stacking context.
-     - isolation: isolate explicitly forces the stacking context too,
-       belt-and-suspenders for browser differences. */
-@keyframes page-reveal {
-  0%   { opacity: 0.001; transform: translateY(20px); }
-  100% { opacity: 0.999; transform: translateY(0);    }
+   Anti-flicker for dark mode: animating opacity ON the board wrapper
+   caused the entire board to flicker at the end of the animation —
+   the board's backdrop-filter (in lg-filter) re-evaluated against
+   different backdrops as the wrapper's compositor layer was being
+   constructed/torn down by the opacity transition.
+
+   Solution: the wrapper itself never animates opacity. Two separate
+   animations work in parallel:
+     - page-reveal-translate: animates ONLY transform on the wrapper
+       (translateY 20px → 0). Pure transform, GPU-accelerated, no
+       compositor mode change.
+     - page-reveal-cover: animates the ::before pseudo-element from
+       opaque (full page-bg color, hiding everything) to transparent.
+       The pseudo-element has no backdrop-filter and no children, so
+       its opacity transition is trivial — no flicker.
+
+   Net visual effect is still "rise + fade in" but the board's
+   backdrop-filter renders against a stable backdrop the entire time. */
+@keyframes page-reveal-translate {
+  0%   { transform: translate3d(0, 20px, 0); }
+  100% { transform: translate3d(0, 0, 0);    }
+}
+@keyframes page-reveal-cover {
+  0%   { opacity: 1; }
+  100% { opacity: 0; }
 }
 .page-reveal {
-  opacity: 0.001;
+  position: relative;
   isolation: isolate;
-  animation: page-reveal 1s cubic-bezier(0.4, 0, 0.2, 1) both;
+  transform: translate3d(0, 20px, 0);
+  animation: page-reveal-translate 1s cubic-bezier(0.4, 0, 0.2, 1) both;
+  animation-delay: var(--reveal-delay, 0s);
+}
+.page-reveal::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: 100;
+  background: var(--color-background);
+  pointer-events: none;
+  animation: page-reveal-cover 1s cubic-bezier(0.4, 0, 0.2, 1) both;
   animation-delay: var(--reveal-delay, 0s);
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .hero-word-inner, .hero-letters, .page-reveal {
+  .hero-word-inner, .hero-letters, .page-reveal, .page-reveal::before {
     animation: none;
   }
   .hero-word-inner {
@@ -834,7 +854,10 @@ html.grid-on .grid-overlay {
     opacity: 0;
   }
   .page-reveal {
-    opacity: 1;
     transform: none;
+  }
+  .page-reveal::before {
+    /* Cover element invisible from the start — no fade-in needed */
+    opacity: 0;
   }
 }
