@@ -109,12 +109,16 @@ const boardVariant: BoardVariant = VALID_VARIANTS.includes(requested as BoardVar
         <AITelemetry />
       </div>
 
-      {/* Middle column: kicker + board stacked. The kicker reveals first
-          (2.5s) so the user sees the game-state label before the board
-          itself appears (2.7s). */}
-      <div class="order-1 flex flex-col items-center gap-3 md:order-2 md:col-span-6 md:gap-4">
+      {/* Middle column: board with kicker positioned above it.
+          Mobile: flex-col with the kicker in normal flow above the board.
+          Desktop (md+): kicker is ABSOLUTELY positioned above the board, so
+          the column's flex height equals just the board's height. With
+          items-center on the grid, all 3 columns then align around the
+          board's center — the side panels are anchored to the board, not
+          to the kicker+board block. */}
+      <div class="order-1 flex flex-col items-center gap-3 md:order-2 md:col-span-6 md:gap-0 md:relative">
         <div
-          class="page-reveal"
+          class="page-reveal flex w-full justify-center md:absolute md:bottom-[calc(100%+0.75rem)] md:left-0"
           style="--reveal-delay: 2.5s"
         >
           <Headline state="your-turn" />
