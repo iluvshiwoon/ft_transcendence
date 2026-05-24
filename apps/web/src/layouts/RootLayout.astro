@@ -122,5 +122,50 @@ const authed = await isAuthenticated(Astro);
       <slot />
     </div>
     <SiteFooter />
+
+    {/* DEV: 8-column grid overlay — toggle via the button below.
+        Hidden by default; shown when <html> has the .grid-on class
+        (controlled by the script + button). Appears on every page. */}
+    <div class="grid-overlay pointer-events-none fixed inset-0 z-50" aria-hidden="true">
+      <div class="mx-auto h-full w-full max-w-7xl px-margin-mobile md:px-margin-desktop">
+        <div class="grid h-full grid-cols-8 gap-gutter">
+          {Array.from({ length: 8 }).map((_, i) => (
+            <div class="flex items-start justify-center border-x border-accent/30 bg-accent/10 pt-2">
+              <span class="font-mono text-xs text-accent/70">{i + 1}</span>
+            </div>
+          ))}
+        </div>
+      </div>
+    </div>
+
+    {/* Grid toggle button — fixed bottom-right, always visible. */}
+    <button
+      id="grid-toggle"
+      type="button"
+      class="fixed bottom-4 right-4 z-[100] rounded-full border border-border bg-surface px-3 py-1.5 font-mono text-mono-sm uppercase text-muted-foreground shadow-lg transition-colors hover:bg-foreground hover:text-background"
+      aria-label="Toggle 8-column grid overlay"
+    >
+      Grid
+    </button>
+
+    {/* Grid overlay state: read from localStorage on load, toggle on click. */}
+    <script is:inline>
+      (function () {
+        var html = document.documentElement;
+        try {
+          if (localStorage.getItem("grid-overlay") === "on") {
+            html.classList.add("grid-on");
+          }
+        } catch (e) { /* localStorage unavailable */ }
+        document.addEventListener("click", function (e) {
+          var btn = e.target && e.target.closest && e.target.closest("#grid-toggle");
+          if (!btn) return;
+          var on = html.classList.toggle("grid-on");
+          try {
+            localStorage.setItem("grid-overlay", on ? "on" : "off");
+          } catch (e) {}
+        });
+      })();
+    </script>
   </body>
 </html>

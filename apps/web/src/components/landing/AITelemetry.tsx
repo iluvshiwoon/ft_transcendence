@@ -165,8 +165,11 @@ export function AITelemetry({
       </ul>
 
       {/* Value slider — fills the section width. Layout: w-8 label +
-          gap-3 + flex-1 bar (grows to fill) + ml-1 + w-2 dashed continuation. */}
-      <div className="flex w-full items-center gap-3 pt-2 opacity-70" aria-hidden="true">
+          gap-3 + flex-1 bar + ml-1 + w-2 dashed continuation. pr-3 on
+          the container reserves 12px on the right for the dashed mark
+          (which is absolute-positioned past the bar's right) so the
+          slider's full extent lands at the section's right edge. */}
+      <div className="flex w-full items-center gap-3 pt-2 pr-3 opacity-70" aria-hidden="true">
         <span className="w-8 shrink-0 text-right">{evalScore}</span>
         <div className="relative flex h-2 flex-1 items-center bg-muted-foreground">
           <div className="absolute right-0 h-5 w-0.5 translate-x-1/2 bg-foreground" />

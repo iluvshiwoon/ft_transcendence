@@ -702,6 +702,21 @@
 }
 
 /* =============================================================================
+ * DEV: 8-column grid overlay — toggleable, available on every page
+ *
+ * Shows the page's 8-column grid as a translucent overlay so we can verify
+ * alignment without measuring DOM. Hidden by default. The #grid-toggle
+ * button (RootLayout) adds/removes the .grid-on class on <html> and
+ * persists state in localStorage.
+ * ============================================================================= */
+.grid-overlay {
+  display: none;
+}
+html.grid-on .grid-overlay {
+  display: block;
+}
+
+/* =============================================================================
  * Landing page intro animation
  *
  * Sequence:
