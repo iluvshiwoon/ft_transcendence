@@ -545,13 +545,10 @@
   pointer-events: none;
 }
 .dark .lg-overlay {
-  /* Reduced from 0.06 → 0.03. The pawn-red/yellow utilities have outer
-     box-shadow glows in dark mode (the dome+glow recipe). With less
-     white tint over them, more of that warm glow color bleeds through
-     the glass surface — closer to the "glass diffuses piece colors"
-     feel real liquid glass would have, even though our architecture
-     has pieces on TOP of the glass rather than refracted through it. */
-  background: oklch(100% 0 0 / 0.03);
+  /* Reduced from 0.06 → 0.02. The pawn-red/yellow utilities have outer
+     box-shadow glows in dark mode; minimal white tint above them lets
+     the warm pawn glow color saturate into the glass. */
+  background: oklch(100% 0 0 / 0.02);
 }
 @utility lg-specular {
   position: absolute;
@@ -568,14 +565,26 @@
     inset 0 0 12px oklch(100% 0 0 / 0.25);
 }
 .dark .lg-specular {
-  /* Dark mode: only the upper-left rim highlight (subtle) + a much-
-     reduced inner glow. The previous version stacked an upper-left
-     rim AND a bottom-right rim AND a strong inner glow, all white;
-     against the dark page that combo read as a uniform bright "border"
-     around the entire plate rather than as glass surface sheen. */
+  /* Dark mode: nearly nothing. Only a very faint top-edge highlight where
+     light hits the upper rim of the glass. Side rims are dropped entirely
+     because they were registering as a uniform bright border around the
+     plate against the dark page bg. */
+  box-shadow: inset 0 1px 0 oklch(100% 0 0 / 0.12);
+}
+
+/* Pawn glow amplification — only when pieces are inside a liquid-glass plate.
+   The .lg-content scope keeps this isolated from other variants and other
+   uses of the pawn utilities. The bigger glow + warmer alpha in dark mode
+   makes piece-color diffusion through the glass dramatically more visible. */
+.dark .lg-content .pawn-red {
   box-shadow:
-    inset 1px 1px 0 oklch(100% 0 0 / 0.18),
-    inset 0 0 6px oklch(100% 0 0 / 0.04);
+    0 0 28px oklch(63% 0.21 25 / 0.7),
+    inset 0 -2px 4px oklch(0% 0 0 / 0.4);
+}
+.dark .lg-content .pawn-yellow {
+  box-shadow:
+    0 0 28px oklch(76% 0.16 85 / 0.7),
+    inset 0 -2px 4px oklch(0% 0 0 / 0.4);
 }
 @utility lg-content {
   position: relative;
