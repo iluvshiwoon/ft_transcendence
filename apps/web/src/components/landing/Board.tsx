@@ -26,6 +26,12 @@ import { cn } from "~/lib/utils";
 export type Cell = "empty" | "red" | "yellow";
 export type BoardState = Cell[][]; // 6 rows × 7 cols, row 0 = top
 
+/**
+ * EXPERIMENT — board visual variants. Temporary; remove once a direction is
+ * picked. See globals.css "Board variants for A/B evaluation".
+ */
+export type BoardVariant = "default" | "branded" | "glass" | "wood" | "none" | "recessed";
+
 export const ROWS = 6;
 export const COLS = 7;
 
@@ -49,6 +55,8 @@ interface BoardProps {
   pieces?: BoardState;
   /** Optional className override on the outer board plate. */
   className?: string;
+  /** EXPERIMENT — visual variant. Defaults to "default" (current style). */
+  variant?: BoardVariant;
 }
 
 function cellLabel(cell: Cell, row: number, col: number): string {
@@ -57,7 +65,43 @@ function cellLabel(cell: Cell, row: number, col: number): string {
   return `${cell === "red" ? "Red" : "Yellow"} piece, ${human}`;
 }
 
-export function Board({ pieces = WIREFRAME_BOARD, className }: BoardProps) {
+/** Plate-level classes per variant. */
+function plateClasses(variant: BoardVariant): string {
+  switch (variant) {
+    case "branded":
+      return "board-branded shadow-2xl";
+    case "glass":
+      return "board-glass shadow-xl";
+    case "wood":
+      return "board-wood shadow-2xl";
+    case "none":
+      return "board-none";
+    case "recessed":
+      return "board-recessed shadow-[0_30px_60px_-15px_oklch(0%_0_0/0.4)]";
+    default:
+      return "bg-board shadow-2xl";
+  }
+}
+
+/** Empty-cell classes per variant. */
+function emptyCellClasses(variant: BoardVariant): string {
+  switch (variant) {
+    case "branded":
+      return "board-branded-cell";
+    case "glass":
+      return "board-glass-cell";
+    case "wood":
+      return "board-wood-cell";
+    case "none":
+      return "board-none-cell";
+    case "recessed":
+      return "board-recessed-cell";
+    default:
+      return "bg-board-cell";
+  }
+}
+
+export function Board({ pieces = WIREFRAME_BOARD, className, variant = "default" }: BoardProps) {
   return (
     <div
       role="grid"
@@ -65,7 +109,8 @@ export function Board({ pieces = WIREFRAME_BOARD, className }: BoardProps) {
       aria-rowcount={ROWS}
       aria-colcount={COLS}
       className={cn(
-        "inline-block rounded-xl bg-board p-4 sm:p-5 md:p-6 shadow-2xl",
+        "inline-block rounded-xl p-4 sm:p-5 md:p-6",
+        plateClasses(variant),
         className,
       )}
     >
@@ -81,7 +126,7 @@ export function Board({ pieces = WIREFRAME_BOARD, className }: BoardProps) {
               data-cell={cell}
               className={cn(
                 "size-9 sm:size-10 md:size-12 rounded-full",
-                cell === "empty" && "bg-board-cell",
+                cell === "empty" && emptyCellClasses(variant),
                 cell === "red" && "pawn-red",
                 cell === "yellow" && "pawn-yellow",
               )}

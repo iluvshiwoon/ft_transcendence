@@ -350,6 +350,120 @@
 }
 
 /* =============================================================================
+ * EXPERIMENT — Board variants for A/B evaluation
+ *
+ * Five distinct visual treatments of the Connect-4 board, applied via a
+ * variant prop on <Board /> + URL ?board=X param. Temporary — once a
+ * direction is picked these can be deleted (or one promoted to default).
+ *
+ *   branded   — saturated brand-wine plate, cells are page-bg holes
+ *   glass     — frosted-glass translucent, backdrop-blur, soft border
+ *   wood      — warm walnut plate with subtle linear grain texture
+ *   none      — no plate at all, cells are outlined rings, pieces float
+ *   recessed  — current plate with thicker rim + deeper cell insets
+ *
+ * Each variant has both a plate utility (board-X) and a cell utility
+ * (board-X-cell). Light + dark mode handled per utility.
+ * ============================================================================= */
+
+/* --- branded: deep wine plate -------------------------------------------- */
+@utility board-branded {
+  background-color: oklch(32% 0.10 25);
+}
+.dark .board-branded {
+  background-color: oklch(22% 0.07 25);
+}
+@utility board-branded-cell {
+  background-color: var(--color-background);
+  box-shadow:
+    inset 0 2px 3px oklch(0% 0 0 / 0.3),
+    inset 0 -1px 1px oklch(100% 0 0 / 0.15);
+}
+
+/* --- glass: frosted translucent ------------------------------------------ */
+@utility board-glass {
+  background-color: oklch(60% 0.03 250 / 0.18);
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+  border: 1px solid oklch(100% 0 0 / 0.18);
+}
+.dark .board-glass {
+  background-color: oklch(40% 0.03 250 / 0.30);
+  border-color: oklch(100% 0 0 / 0.10);
+}
+@utility board-glass-cell {
+  background-color: oklch(0% 0 0 / 0.08);
+  box-shadow: inset 0 1px 2px oklch(0% 0 0 / 0.15);
+}
+.dark .board-glass-cell {
+  background-color: oklch(0% 0 0 / 0.25);
+}
+
+/* --- wood: walnut plate with subtle grain -------------------------------- */
+@utility board-wood {
+  background-color: oklch(38% 0.06 55);
+  /* Layer 1: very subtle horizontal lighten/darken sweep for depth.
+     Layer 2: very fine vertical grain lines (1px every ~6px). */
+  background-image:
+    linear-gradient(180deg,
+      oklch(100% 0 0 / 0.04) 0%,
+      transparent 30%,
+      oklch(0% 0 0 / 0.06) 100%
+    ),
+    repeating-linear-gradient(90deg,
+      transparent 0,
+      transparent 5px,
+      oklch(0% 0 0 / 0.04) 5px,
+      oklch(0% 0 0 / 0.04) 6px
+    );
+}
+.dark .board-wood {
+  background-color: oklch(25% 0.04 55);
+}
+@utility board-wood-cell {
+  background-color: oklch(28% 0.04 55);
+  box-shadow:
+    inset 0 2px 4px oklch(0% 0 0 / 0.5),
+    inset 0 -1px 1px oklch(100% 0 0 / 0.04);
+}
+.dark .board-wood-cell {
+  background-color: oklch(15% 0.02 55);
+}
+
+/* --- none: no plate, just cells ------------------------------------------ */
+@utility board-none {
+  background-color: transparent;
+  box-shadow: none;
+}
+@utility board-none-cell {
+  background-color: transparent;
+  box-shadow: inset 0 0 0 1.5px oklch(50% 0.02 250 / 0.35);
+}
+.dark .board-none-cell {
+  box-shadow: inset 0 0 0 1.5px oklch(70% 0.02 250 / 0.30);
+}
+
+/* --- recessed: current plate dialed up ----------------------------------- */
+@utility board-recessed {
+  background-color: var(--color-board);
+  border: 3px solid oklch(0% 0 0 / 0.25);
+}
+.dark .board-recessed {
+  border-color: oklch(0% 0 0 / 0.5);
+}
+@utility board-recessed-cell {
+  background-color: var(--color-board-cell);
+  box-shadow:
+    inset 0 3px 5px oklch(0% 0 0 / 0.45),
+    inset 0 -1px 1px oklch(100% 0 0 / 0.25);
+}
+.dark .board-recessed-cell {
+  box-shadow:
+    inset 0 3px 6px oklch(0% 0 0 / 0.7),
+    inset 0 -1px 1px oklch(100% 0 0 / 0.04);
+}
+
+/* =============================================================================
  * Signup progress tracker — step-4 win sequence
  *
  * The progress component sets data-current="N" on its wrapper. At N=4, after

@@ -28,9 +28,25 @@
  */
 import RootLayout from "~/layouts/RootLayout.astro";
 import Headline from "~/components/landing/Headline.astro";
-import { Board } from "~/components/landing/Board";
+import { Board, type BoardVariant } from "~/components/landing/Board";
 import { AITelemetry } from "~/components/landing/AITelemetry";
 import { Leaderboard } from "~/components/landing/Leaderboard";
+
+// EXPERIMENT — board variant from ?board=X. Remove after a direction is picked.
+const VALID_VARIANTS: BoardVariant[] = ["default", "branded", "glass", "wood", "none", "recessed"];
+const requested = Astro.url.searchParams.get("board") ?? "default";
+const boardVariant: BoardVariant = VALID_VARIANTS.includes(requested as BoardVariant)
+  ? (requested as BoardVariant)
+  : "default";
+
+const VARIANT_LABELS: Record<BoardVariant, string> = {
+  default: "Default",
+  branded: "Branded",
+  glass: "Glass",
+  wood: "Wood",
+  none: "No plate",
+  recessed: "Recessed",
+};
 ---
 
 <RootLayout
@@ -62,7 +78,7 @@ import { Leaderboard } from "~/components/landing/Leaderboard";
 
       {/* Board — centered horizontally inside its column */}
       <div class="order-1 md:order-2 md:col-span-6 flex justify-center">
-        <Board />
+        <Board variant={boardVariant} />
       </div>
 
       {/* Leaderboard — desktop right, mobile last.
@@ -73,4 +89,33 @@ import { Leaderboard } from "~/components/landing/Leaderboard";
 
     </div>
   </main>
+
+  {/* EXPERIMENT — board variant toggle. Floating bottom-right, fixed.
+      Remove this entire block + the variant prop on <Board /> + the URL
+      param logic in the frontmatter once a direction is picked. */}
+  <div
+    class="fixed bottom-4 right-4 z-50 flex flex-col gap-2 rounded-lg border border-border bg-surface p-3 shadow-2xl"
+    aria-label="Board variant picker (experiment)"
+  >
+    <p class="font-mono text-mono-sm uppercase text-muted-foreground">Board style</p>
+    <div class="flex flex-wrap gap-1.5">
+      {VALID_VARIANTS.map((v) => {
+        const isActive = v === boardVariant;
+        return (
+          <a
+            href={`/?board=${v}`}
+            class:list={[
+              "rounded-md border px-2.5 py-1 font-mono text-mono-sm transition-colors",
+              isActive
+                ? "border-foreground bg-foreground text-background"
+                : "border-border bg-surface text-foreground hover:border-foreground",
+            ]}
+            aria-current={isActive ? "true" : undefined}
+          >
+            {VARIANT_LABELS[v]}
+          </a>
+        );
+      })}
+    </div>
+  </div>
 </RootLayout>
