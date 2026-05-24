@@ -66,10 +66,15 @@ const boardVariant: BoardVariant = VALID_VARIANTS.includes(requested as BoardVar
         800 baked into the token) doesn't override the h1's font-light.
         Line 2 is ~1.5x line 1 for clear visible hierarchy. The word
         'smarter' uses text-emphasis (darker color) + font-medium (heavier
-        weight) — color alone was too subtle. */}
+        weight) — color alone was too subtle.
+
+        Surrounding text uses text-foreground/70 (foreground at 70% alpha)
+        so that in light mode the non-emphasized text reads lighter (paler)
+        and in dark mode it reads dimmer. Either direction makes 'smarter'
+        — which stays at full text-emphasis — pop more by contrast. */}
     <h1
       id="hero-pitch"
-      class="hero-draw absolute top-28 right-0 bottom-0 left-0 z-10 flex flex-col items-center justify-center px-margin-mobile text-center font-display font-light italic tracking-tight text-foreground md:px-margin-desktop"
+      class="hero-draw absolute top-28 right-0 bottom-0 left-0 z-10 flex flex-col items-center justify-center px-margin-mobile text-center font-display font-light italic tracking-tight text-foreground/70 md:px-margin-desktop"
     >
       <span class="text-5xl leading-none md:text-7xl lg:text-[7.5rem]">Connect 4,</span>
       <span class="text-7xl leading-[0.95] md:text-[6.5rem] lg:text-[9rem]">
