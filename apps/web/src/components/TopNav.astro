@@ -88,27 +88,20 @@ const { authed = false } = Astro.props;
       </svg>
     </button>
 
-    {/* Login — always rendered (invisible when authed) so the pill's
-        overall width stays consistent across auth states. Mobile hides
-        it via sm:inline-flex regardless. */}
-    <a
-      href="/login"
-      class={cn(
-        buttonVariants({ variant: "brand-outline", size: "pill" }),
-        "hidden sm:inline-flex",
-        authed && "invisible pointer-events-none",
-      )}
-      aria-hidden={authed ? "true" : undefined}
-      tabindex={authed ? -1 : undefined}
-      data-todo-integration="POST /api/auth/login — wire to apps/server"
-    >
-      Login
-    </a>
+    {!authed && (
+      <a
+        href="/login"
+        class={cn(buttonVariants({ variant: "brand-outline", size: "pill" }), "hidden sm:inline-flex")}
+        data-todo-integration="POST /api/auth/login — wire to apps/server"
+      >
+        Login
+      </a>
+    )}
 
     {authed ? (
       <a
         href="/play"
-        class={cn(buttonVariants({ variant: "brand-filled", size: "pill" }), "min-w-[120px] justify-center gap-1.5")}
+        class={cn(buttonVariants({ variant: "brand-filled", size: "pill" }), "gap-1.5")}
       >
         Play
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="size-3.5" aria-hidden="true">
@@ -119,7 +112,7 @@ const { authed = false } = Astro.props;
     ) : (
       <a
         href="/signup"
-        class={cn(buttonVariants({ variant: "brand-filled", size: "pill" }), "min-w-[120px] justify-center gap-1.5")}
+        class={cn(buttonVariants({ variant: "brand-filled", size: "pill" }), "gap-1.5")}
         data-todo-integration="POST /api/auth/signup — wire to apps/server"
       >
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="size-3.5" aria-hidden="true">
