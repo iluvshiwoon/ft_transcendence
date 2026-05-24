@@ -150,23 +150,6 @@ const boardVariant: BoardVariant = VALID_VARIANTS.includes(requested as BoardVar
     </div>
   </main>
 
-  {/* TEMPORARY 8-column grid overlay — for design alignment verification.
-      Fixed over the viewport, pointer-events: none so it doesn't block
-      interactions. Matches the page's max-w-7xl + margin-mobile/desktop
-      padding so columns line up with actual content. Remove when no
-      longer needed. */}
-  <div class="pointer-events-none fixed inset-0 z-50">
-    <div class="mx-auto h-full w-full max-w-7xl px-margin-mobile md:px-margin-desktop">
-      <div class="grid h-full grid-cols-8 gap-gutter">
-        {Array.from({ length: 8 }).map((_, i) => (
-          <div class="border-x border-accent/30 bg-accent/10 flex items-start justify-center pt-2">
-            <span class="font-mono text-xs text-accent/70">{i + 1}</span>
-          </div>
-        ))}
-      </div>
-    </div>
-  </div>
-
   {/* SVG filter for the liquid-glass board variant.
       Defines the lg-dist filter referenced by `.lg-filter` in globals.css.
       feTurbulence generates fractal noise; feDisplacementMap warps the
