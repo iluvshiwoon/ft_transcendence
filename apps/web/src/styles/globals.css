@@ -382,21 +382,39 @@
 
 /* --- glass: frosted translucent ------------------------------------------ */
 @utility board-glass {
-  background-color: oklch(60% 0.03 250 / 0.18);
-  backdrop-filter: blur(14px);
-  -webkit-backdrop-filter: blur(14px);
-  border: 1px solid oklch(100% 0 0 / 0.18);
+  /* Frosted-white tint, heavy blur, inset top highlight + bottom shadow
+     so the plate reads as actual glass with thickness — not just a tinted
+     rectangle. saturate(1.3) makes whatever bg shows through pop slightly. */
+  background-color: oklch(95% 0.005 250 / 0.32);
+  backdrop-filter: blur(18px) saturate(1.3);
+  -webkit-backdrop-filter: blur(18px) saturate(1.3);
+  border: 1px solid oklch(100% 0 0 / 0.4);
+  box-shadow:
+    inset 0 1px 1px oklch(100% 0 0 / 0.5),
+    inset 0 -1px 1px oklch(0% 0 0 / 0.1);
 }
 .dark .board-glass {
-  background-color: oklch(40% 0.03 250 / 0.30);
-  border-color: oklch(100% 0 0 / 0.10);
+  background-color: oklch(45% 0.02 250 / 0.45);
+  backdrop-filter: blur(22px) saturate(1.4);
+  -webkit-backdrop-filter: blur(22px) saturate(1.4);
+  border-color: oklch(100% 0 0 / 0.18);
+  box-shadow:
+    inset 0 1px 1px oklch(100% 0 0 / 0.18),
+    inset 0 -1px 1px oklch(0% 0 0 / 0.3);
 }
 @utility board-glass-cell {
-  background-color: oklch(0% 0 0 / 0.08);
-  box-shadow: inset 0 1px 2px oklch(0% 0 0 / 0.15);
+  /* Cells are transparent windows — page bg shows through the plate's
+     blur-filtered view. Strong inset shadows give them depth so they
+     read as wells pressed into the glass, not flat circles. */
+  background-color: oklch(0% 0 0 / 0);
+  box-shadow:
+    inset 0 2px 4px oklch(0% 0 0 / 0.18),
+    inset 0 -1px 1px oklch(100% 0 0 / 0.25);
 }
 .dark .board-glass-cell {
-  background-color: oklch(0% 0 0 / 0.25);
+  box-shadow:
+    inset 0 2px 5px oklch(0% 0 0 / 0.55),
+    inset 0 -1px 1px oklch(100% 0 0 / 0.05);
 }
 
 /* --- wood: walnut plate with subtle grain -------------------------------- */
@@ -430,17 +448,32 @@
   background-color: oklch(15% 0.02 55);
 }
 
-/* --- none: no plate, just cells ------------------------------------------ */
+/* --- none: no plate, just cells as recessed wells ------------------------ */
 @utility board-none {
   background-color: transparent;
   box-shadow: none;
 }
 @utility board-none-cell {
-  background-color: transparent;
-  box-shadow: inset 0 0 0 1.5px oklch(50% 0.02 250 / 0.35);
+  /* Each cell is a soft depression in the page surface. No plate means
+     no container — the well IS the visual unit. Radial gradient
+     simulates curvature, inset shadow adds the depression, and the
+     bottom highlight catches light off the well's edge. */
+  background: radial-gradient(circle at 50% 35%,
+    oklch(0% 0 0 / 0.02) 0%,
+    oklch(0% 0 0 / 0.06) 60%,
+    oklch(0% 0 0 / 0.10) 100%);
+  box-shadow:
+    inset 0 2px 4px oklch(0% 0 0 / 0.18),
+    inset 0 -1.5px 2px oklch(100% 0 0 / 0.55);
 }
 .dark .board-none-cell {
-  box-shadow: inset 0 0 0 1.5px oklch(70% 0.02 250 / 0.30);
+  background: radial-gradient(circle at 50% 35%,
+    oklch(0% 0 0 / 0.20) 0%,
+    oklch(0% 0 0 / 0.35) 60%,
+    oklch(0% 0 0 / 0.45) 100%);
+  box-shadow:
+    inset 0 2px 5px oklch(0% 0 0 / 0.65),
+    inset 0 -1.5px 2px oklch(100% 0 0 / 0.06);
 }
 
 /* --- recessed: current plate dialed up ----------------------------------- */
