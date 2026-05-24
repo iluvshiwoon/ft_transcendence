@@ -765,6 +765,7 @@
   animation-delay: calc(var(--i, 0) * 150ms);
 }
 .hero-letters {
+  pointer-events: none;
   animation: hero-exit 0.8s cubic-bezier(0.4, 0, 0.2, 1) 2.3s forwards;
   will-change: opacity, filter, transform;
 }
