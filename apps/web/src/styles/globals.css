@@ -518,50 +518,29 @@
 }
 
 /* --- raised: board pops out of the page with no hard edge --------------- *
- * The board IS the page surface, swelled upward. There's no plate, no
- * separating border, AND no outer drop shadow — a drop shadow makes the
- * board read as a floating card with a halo, not as a part of the page
- * that's been pulled up. The slope's visible 3D shape comes from layered
- * gradients:
- *   1. Linear gradient (135deg) — directional shading. Bright at upper-
- *      left (light source), shadow at lower-right (slope away from light).
- *      The middle is transparent so it doesn't tint the crest. This is
- *      what makes the eye read "curved rise."
- *   2. Radial gradient — base bg color, lighter in the center, fading to
- *      the page bg at the edges so the boundary disappears.
- * Crest inset highlight catches the bright line where light hits the very
- * top of the rise. */
+ * Neumorphism / soft-UI raised effect (the standard technique). Two
+ * opposing outer box-shadows create the impression the element is
+ * extruded from the page surface:
+ *   - Light shadow (negative offset, lighter-than-bg color) — the
+ *     upper-left edge of the rise, lit by the implied light source
+ *   - Dark shadow (positive offset, darker-than-bg color) — the
+ *     lower-right edge of the rise, in cast shadow
+ * The element bg matches the page bg so it reads as a continuous surface
+ * that's been pushed up; no separate plate color, no hard boundary.
+ * Shadow colors are PICKED FROM the surface — slightly lighter and
+ * slightly darker variants of var(--color-background) — which is what
+ * makes the slope feel soft instead of harshly outlined. */
 @utility board-raised {
-  background:
-    linear-gradient(135deg,
-      oklch(100% 0 0 / 0.25) 0%,
-      transparent 35%,
-      transparent 65%,
-      oklch(0% 0 0 / 0.10) 100%
-    ),
-    radial-gradient(
-      ellipse 100% 90% at 50% 45%,
-      oklch(98% 0.010 80) 0%,
-      oklch(96% 0.014 85) 40%,
-      var(--color-background) 90%
-    );
-  box-shadow: inset 0 1.5px 0 oklch(100% 0 0 / 0.55);
+  background: var(--color-background);
+  box-shadow:
+    -16px -16px 36px oklch(99% 0.005 85),
+    16px 16px 36px oklch(82% 0.025 75);
 }
 .dark .board-raised {
-  background:
-    linear-gradient(135deg,
-      oklch(100% 0 0 / 0.08) 0%,
-      transparent 35%,
-      transparent 65%,
-      oklch(0% 0 0 / 0.35) 100%
-    ),
-    radial-gradient(
-      ellipse 100% 90% at 50% 45%,
-      oklch(24% 0 0) 0%,
-      oklch(19% 0 0) 40%,
-      var(--color-background) 90%
-    );
-  box-shadow: inset 0 1.5px 0 oklch(100% 0 0 / 0.10);
+  background: var(--color-background);
+  box-shadow:
+    -16px -16px 36px oklch(22% 0 0),
+    16px 16px 36px oklch(6% 0 0);
 }
 
 /* --- liquid-glass: Apple-style 4-layer structure ------------------------- *
