@@ -681,33 +681,70 @@
  * Landing page hero → game-state cross-fade
  *
  * On first paint, the hero pitch ("Connect 4, but smarter.") is visible in
- * the hero slot. After ~3s it fades out while the game-state label ("YOUR
- * TURN") fades in to take its place. Both elements share the same grid
- * cell via col-start-1 row-start-1 + place-items-center, so layout doesn't
- * shift — only opacity animates.
+ * the hero slot. After a beat it transitions out while the game-state label
+ * ("YOUR TURN") transitions in. Both elements share the same grid cell so
+ * layout doesn't shift — only properties animate.
+ *
+ * The transition uses opacity + blur + Y-translate together (not just
+ * opacity) because pure cross-fade reads as a slideshow, not as one text
+ * giving way to another. Blur makes it feel like one is "out of focus"
+ * while the other comes into focus; Y-translate gives it directional
+ * motion (outgoing lifts up, incoming arrives from below). Phases overlap
+ * intentionally — the incoming text is already moving as the outgoing
+ * one is still finishing — which is what keeps it from feeling robotic.
  *
  * Reduced-motion users skip the animation entirely: hero starts hidden,
  * state label starts visible. Same final state, no transition.
  * ============================================================================= */
 @keyframes hero-fadeout {
-  0%, 70% { opacity: 1; }
-  100% { opacity: 0; }
+  0% {
+    opacity: 1;
+    filter: blur(0);
+    transform: translateY(0);
+  }
+  55% {
+    opacity: 1;
+    filter: blur(0);
+    transform: translateY(0);
+  }
+  100% {
+    opacity: 0;
+    filter: blur(10px);
+    transform: translateY(-14px);
+  }
 }
 @keyframes hero-fadein {
-  0%, 65% { opacity: 0; }
-  100% { opacity: 1; }
+  0% {
+    opacity: 0;
+    filter: blur(10px);
+    transform: translateY(14px);
+  }
+  50% {
+    opacity: 0;
+    filter: blur(10px);
+    transform: translateY(14px);
+  }
+  100% {
+    opacity: 1;
+    filter: blur(0);
+    transform: translateY(0);
+  }
 }
 .hero-fadeout {
   opacity: 1;
-  animation: hero-fadeout 4s ease-out forwards;
+  animation: hero-fadeout 3.6s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+  will-change: opacity, filter, transform;
 }
 .hero-fadein {
   opacity: 0;
-  animation: hero-fadein 4s ease-out forwards;
+  animation: hero-fadein 3.6s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+  will-change: opacity, filter, transform;
 }
 @media (prefers-reduced-motion: reduce) {
   .hero-fadeout, .hero-fadein {
     animation: none;
+    transform: none;
+    filter: none;
   }
   .hero-fadeout { opacity: 0; }
   .hero-fadein { opacity: 1; }

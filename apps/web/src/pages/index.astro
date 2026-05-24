@@ -60,26 +60,30 @@ const boardVariant: BoardVariant = VALID_VARIANTS.includes(requested as BoardVar
     id="main"
     class="mx-auto flex w-full max-w-7xl flex-col px-margin-mobile pt-28 pb-8 md:h-full md:overflow-hidden md:px-margin-desktop md:pt-28 md:pb-4"
   >
-    {/* Hero slot — h1 and game-state label share the same grid cell.
-        On page load the h1 is visible; after ~3s it fades out while the
-        game-state Headline fades in. The grid cell is sized by the larger
-        element so there's no layout shift during the cross-fade. */}
-    <div class="mb-6 grid place-items-center md:mb-8">
-      <h1
-        id="hero-pitch"
-        class="hero-fadeout col-start-1 row-start-1 font-display text-3xl font-light italic leading-none tracking-wide text-foreground md:text-4xl"
-      >
-        Connect 4, but smarter.
-      </h1>
-      <div class="hero-fadein col-start-1 row-start-1">
-        <Headline state="your-turn" />
+    {/* Hero slot — vertically centered in the upper portion of the page,
+        between the TopNav pill and the board. flex-1 wrapper grabs a
+        third of the available vertical space; grid:place-items-center
+        stacks h1 + state-label in the same cell so the cross-fade
+        animation swaps them in place without layout shift. */}
+    <div class="flex flex-1 items-center justify-center md:flex-1">
+      <div class="grid place-items-center">
+        <h1
+          id="hero-pitch"
+          class="hero-fadeout col-start-1 row-start-1 font-display text-3xl font-light italic leading-none tracking-wide text-foreground md:text-4xl"
+        >
+          Connect 4, but smarter.
+        </h1>
+        <div class="hero-fadein col-start-1 row-start-1">
+          <Headline state="your-turn" />
+        </div>
       </div>
     </div>
 
-    {/* Game grid — flex-1 on desktop so it fills the remaining vertical
-        space below the hero slot, with the board vertically centered in
-        that space. Mobile stays natural flow (single column, ordered). */}
-    <div class="grid grid-cols-1 gap-10 md:flex-1 md:grid-cols-12 md:items-center md:gap-gutter">
+    {/* Game grid — flex-[2] on desktop so it occupies the lower two-thirds
+        of the page (more space than hero since the board needs ~360px),
+        with the board vertically centered in that area. Mobile stays
+        natural flow (single column, ordered). */}
+    <div class="grid grid-cols-1 gap-10 md:grid-cols-12 md:flex-[2] md:items-center md:gap-gutter">
 
       {/* AITelemetry — desktop left, mobile after the board.
           On desktop the panel sits at 80% opacity by default and fades up to
