@@ -91,17 +91,14 @@ const boardVariant: BoardVariant = VALID_VARIANTS.includes(requested as BoardVar
       </span>
     </h1>
 
-    {/* Kicker — small game-state label above the grid. Reveals after the
-        hero exits, in its original (pre-intro-redesign) position. */}
-    <div
-      class="page-reveal mb-6 flex justify-center md:mb-8"
-      style="--reveal-delay: 2.5s"
-    >
-      <Headline state="your-turn" />
-    </div>
-
-    {/* Game grid — board centered in the remaining vertical space, side
-        panels flanking on desktop. Reveals after the kicker. */}
+    {/* Game grid — board + kicker stacked in the middle column, AITelemetry
+        and Leaderboard flanking. items-center vertically centers all three
+        columns together so the board reads as the focal point with its
+        companions anchored to it. The kicker (YOUR TURN) was previously
+        a separate row above the grid, but that put it stuck at the top of
+        the page with a big gap before the board — visually disconnected.
+        Putting it INSIDE the board column means it always sits right above
+        the board no matter how the layout flexes. */}
     <div class="grid grid-cols-1 gap-10 md:flex-1 md:grid-cols-12 md:items-center md:gap-gutter">
 
       {/* AITelemetry — desktop left, mobile after the board */}
@@ -112,12 +109,22 @@ const boardVariant: BoardVariant = VALID_VARIANTS.includes(requested as BoardVar
         <AITelemetry />
       </div>
 
-      {/* Board */}
-      <div
-        class="page-reveal order-1 flex justify-center md:order-2 md:col-span-6"
-        style="--reveal-delay: 2.7s"
-      >
-        <Board variant={boardVariant} />
+      {/* Middle column: kicker + board stacked. The kicker reveals first
+          (2.5s) so the user sees the game-state label before the board
+          itself appears (2.7s). */}
+      <div class="order-1 flex flex-col items-center gap-3 md:order-2 md:col-span-6 md:gap-4">
+        <div
+          class="page-reveal"
+          style="--reveal-delay: 2.5s"
+        >
+          <Headline state="your-turn" />
+        </div>
+        <div
+          class="page-reveal"
+          style="--reveal-delay: 2.7s"
+        >
+          <Board variant={boardVariant} />
+        </div>
       </div>
 
       {/* Leaderboard — desktop right, mobile last */}
