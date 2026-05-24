@@ -62,45 +62,33 @@ const boardVariant: BoardVariant = VALID_VARIANTS.includes(requested as BoardVar
   >
     {/* Hero — absolutely positioned over the entire main content area.
         Two-line treatment with sibling spans (flex-col stacks them).
-        Sizes are arbitrary so font-weight from text-display (which has
-        800 baked into the token) doesn't override the h1's font-light.
-        Line 2 is ~1.5x line 1 for clear visible hierarchy. The word
-        'smarter' uses text-emphasis (darker color) + font-medium (heavier
-        weight) — color alone was too subtle.
-
-        Surrounding text uses text-foreground/70 (foreground at 70% alpha)
-        so that in light mode the non-emphasized text reads lighter (paler)
-        and in dark mode it reads dimmer. Either direction makes 'smarter'
-        — which stays at full text-emphasis — pop more by contrast.
-
-        Animation: each letter wears .hero-letter with a --i index for a
-        staggered clip-path + blur draw. The h1 wraps with .hero-letters
-        which handles only the exit (after all letters have drawn). */}
+        Words reveal one at a time from below an overflow-hidden mask:
+        each word starts off-canvas at translateY(100%) with opacity 0 +
+        blur 8px, then slides up as it fades in and unblurs. Stagger of
+        150ms between words. The word 'smarter' is in text-emphasis +
+        font-medium so it pops against the dimmer surrounding text. */}
     <h1
       id="hero-pitch"
       class="hero-letters absolute top-28 right-0 bottom-0 left-0 z-10 flex flex-col items-center justify-center px-margin-mobile text-center font-display font-light italic tracking-tight text-foreground/70 md:px-margin-desktop"
     >
-      <span class="text-5xl leading-none md:text-7xl lg:text-[7.5rem]" aria-label="Connect 4,">
-        {Array.from("Connect 4,").map((char, i) => (
-          <span class="hero-letter" style={`--i:${i}`} aria-hidden="true">
-            {char === " " ? "\u00A0" : char}
-          </span>
-        ))}
-      </span>
-      <span class="text-7xl leading-[0.95] md:text-[6.5rem] lg:text-[9rem]" aria-label="but smarter.">
-        {Array.from("but ").map((char, i) => (
-          <span class="hero-letter" style={`--i:${10 + i}`} aria-hidden="true">
-            {char === " " ? "\u00A0" : char}
-          </span>
-        ))}
-        <span class="text-emphasis font-medium">
-          {Array.from("smarter").map((char, i) => (
-            <span class="hero-letter" style={`--i:${14 + i}`} aria-hidden="true">
-              {char}
-            </span>
-          ))}
+      <span class="text-5xl leading-none md:text-7xl lg:text-[7.5rem]">
+        <span class="hero-word" style="--i:0">
+          <span class="hero-word-inner">Connect</span>
+        </span>{" "}
+        <span class="hero-word" style="--i:1">
+          <span class="hero-word-inner">4,</span>
         </span>
-        <span class="hero-letter" style="--i:21" aria-hidden="true">.</span>
+      </span>
+      <span class="text-7xl leading-[0.95] md:text-[6.5rem] lg:text-[9rem]">
+        <span class="hero-word" style="--i:2">
+          <span class="hero-word-inner">but</span>
+        </span>{" "}
+        <span class="hero-word" style="--i:3">
+          <span class="hero-word-inner text-emphasis font-medium">smarter</span>
+        </span>
+        <span class="hero-word" style="--i:4">
+          <span class="hero-word-inner">.</span>
+        </span>
       </span>
     </h1>
 

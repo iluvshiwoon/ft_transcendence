@@ -698,25 +698,45 @@
  * paint with no animation.
  * ============================================================================= */
 
-/* Phase 1+3: per-letter draw of the hero, then exit it as a whole.
-   Each letter wears .hero-letter with a --i index; the per-letter
-   animation reveals the letter via clip-path with a soft leading-edge
-   blur that clears as it settles. The wrapper h1 wears .hero-letters
-   and handles only the exit phase (no draw) — letters draw themselves. */
-@keyframes hero-letter-draw {
-  0%   { clip-path: inset(0 100% 0 0); filter: blur(2px); }
-  100% { clip-path: inset(0 0% 0 0);   filter: blur(0);   }
+/* Phase 1+3: word-by-word mask reveal of the hero, then exit it as a whole.
+   Each word wears .hero-word (overflow:hidden mask) wrapping a .hero-word-
+   inner whose initial transform pushes it 100% below the visible area.
+   The inner animates upward into view, fading in and clearing a soft blur
+   as it settles — the word emerges from "below the line" as if being
+   typeset. Stagger via --i. The wrapper h1 wears .hero-letters and runs
+   only the exit phase (after all words have arrived). */
+@keyframes hero-word-reveal {
+  0% {
+    transform: translateY(100%);
+    opacity: 0;
+    filter: blur(8px);
+  }
+  100% {
+    transform: translateY(0);
+    opacity: 1;
+    filter: blur(0);
+  }
 }
 @keyframes hero-exit {
   0%   { opacity: 1; filter: blur(0);    transform: translateY(0);    }
   100% { opacity: 0; filter: blur(10px); transform: translateY(-14px); }
 }
-.hero-letter {
+.hero-word {
   display: inline-block;
-  clip-path: inset(0 100% 0 0);
-  filter: blur(2px);
-  animation: hero-letter-draw 0.4s cubic-bezier(0.4, 0, 0.2, 1) forwards;
-  animation-delay: calc(var(--i, 0) * 70ms);
+  overflow: hidden;
+  /* Slight line-height padding so descenders (the comma's tail) don't
+     get clipped at rest. The inner's translate baseline is the inner's
+     own height which still hides the word at -100%. */
+  line-height: 1.15;
+  vertical-align: bottom;
+}
+.hero-word-inner {
+  display: inline-block;
+  transform: translateY(100%);
+  opacity: 0;
+  filter: blur(8px);
+  animation: hero-word-reveal 0.9s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+  animation-delay: calc(var(--i, 0) * 150ms);
 }
 .hero-letters {
   animation: hero-exit 0.8s cubic-bezier(0.4, 0, 0.2, 1) 2.3s forwards;
@@ -737,12 +757,13 @@
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .hero-letter, .hero-letters, .page-reveal {
+  .hero-word-inner, .hero-letters, .page-reveal {
     animation: none;
   }
-  .hero-letter {
-    /* Reset the static initial state so letters are visible on first paint */
-    clip-path: none;
+  .hero-word-inner {
+    /* Words appear in their final position immediately, no slide */
+    transform: none;
+    opacity: 1;
     filter: none;
   }
   .hero-letters {
