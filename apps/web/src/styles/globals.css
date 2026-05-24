@@ -532,15 +532,34 @@
  * makes the slope feel soft instead of harshly outlined. */
 @utility board-raised {
   background: var(--color-background);
+  /* Five-layer shadow stack for realistic raised dome:
+       1. Outer light (upper-left) — bright halo where light wraps around
+          the lit edge of the rise
+       2. Outer dark (lower-right) — cast shadow where the rise blocks
+          light from reaching the page surface
+       3. Inset light (upper-left) — surface itself catches light on the
+          upper-left side of the dome (curvature shading)
+       4. Inset dark (lower-right) — surface curves into shadow on the
+          lower-right side (curvature shading)
+       5. Crest highlight (top edge) — thin bright line where light hits
+          the very top of the rise (specular)
+     All five layers agree on a single upper-left light source, which is
+     what makes the dome read consistently as a single 3D shape. */
   box-shadow:
-    -16px -16px 36px oklch(99% 0.005 85),
-    16px 16px 36px oklch(82% 0.025 75);
+    -18px -18px 40px oklch(99% 0.005 85),
+    18px 18px 40px oklch(82% 0.025 75),
+    inset 8px 8px 18px oklch(100% 0 0 / 0.35),
+    inset -8px -8px 18px oklch(0% 0 0 / 0.04),
+    inset 0 1.5px 0 oklch(100% 0 0 / 0.5);
 }
 .dark .board-raised {
   background: var(--color-background);
   box-shadow:
-    -16px -16px 36px oklch(22% 0 0),
-    16px 16px 36px oklch(6% 0 0);
+    -18px -18px 40px oklch(22% 0 0),
+    18px 18px 40px oklch(6% 0 0),
+    inset 8px 8px 18px oklch(100% 0 0 / 0.06),
+    inset -8px -8px 18px oklch(0% 0 0 / 0.3),
+    inset 0 1.5px 0 oklch(100% 0 0 / 0.10);
 }
 
 /* --- liquid-glass: Apple-style 4-layer structure ------------------------- *

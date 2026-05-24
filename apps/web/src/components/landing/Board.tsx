@@ -91,7 +91,8 @@ function plateClasses(variant: BoardVariant): string {
       return "";
     case "raised":
       // No outer shadow class — board-raised utility owns the slope shadow.
-      return "board-raised rounded-[28px]";
+      // Larger border-radius (36px) for softer dome feel.
+      return "board-raised rounded-[36px]";
     default:
       return "bg-board shadow-2xl";
   }
