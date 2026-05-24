@@ -782,7 +782,7 @@ html.grid-on .grid-overlay {
   transform: translateY(100%);
   opacity: 0;
   filter: blur(8px);
-  animation: hero-word-reveal 0.9s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+  animation: hero-word-reveal 0.9s cubic-bezier(0.4, 0, 0.2, 1) forwards;
   animation-delay: calc(var(--i, 0) * 150ms);
 }
 .hero-letters {
@@ -804,7 +804,7 @@ html.grid-on .grid-overlay {
 }
 .page-reveal {
   opacity: 0;
-  animation: page-reveal 1s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+  animation: page-reveal 1s cubic-bezier(0.4, 0, 0.2, 1) forwards;
   animation-delay: var(--reveal-delay, 0s);
   will-change: opacity, transform, filter;
 }
