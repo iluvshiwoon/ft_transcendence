@@ -32,7 +32,9 @@ import { Board, type BoardVariant } from "~/components/landing/Board";
 import { AITelemetry } from "~/components/landing/AITelemetry";
 import { Leaderboard } from "~/components/landing/Leaderboard";
 
-// EXPERIMENT — board variant from ?board=X. Remove after a direction is picked.
+// EXPERIMENT — board variant from ?board=X. liquid-glass is now the chosen
+// default. The rest of the variants are kept (and the toggle below) so we
+// can switch skins later without reimplementing them.
 const VALID_VARIANTS: BoardVariant[] = [
   "default",
   "branded",
@@ -43,10 +45,10 @@ const VALID_VARIANTS: BoardVariant[] = [
   "liquid-glass",
   "raised",
 ];
-const requested = Astro.url.searchParams.get("board") ?? "default";
+const requested = Astro.url.searchParams.get("board") ?? "liquid-glass";
 const boardVariant: BoardVariant = VALID_VARIANTS.includes(requested as BoardVariant)
   ? (requested as BoardVariant)
-  : "default";
+  : "liquid-glass";
 
 const VARIANT_LABELS: Record<BoardVariant, string> = {
   default: "Default",
