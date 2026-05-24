@@ -333,12 +333,10 @@ function SkinSwatch({
           // Uniform 2px ring + 2px offset across all swatches so they have
           // identical visual size regardless of selection state.
           //
-          // ring-offset uses foreground/15 (not background) so the gap is
-          // visible against ANY swatch fill — including grid-linen, which
-          // is literally the page bg color and used to blend its fill into
-          // the offset gap, making the swatch look like a single cream
-          // blob extending all the way to the ring.
-          "size-9 ring-2 ring-offset-2 ring-offset-foreground/15",
+          // ring-offset-white gives every swatch a clearly visible white
+          // halo between its fill and the ring — including grid-linen
+          // whose cream fill used to blend with a bg-colored offset.
+          "size-9 ring-2 ring-offset-2 ring-offset-white",
           shape === "circle" ? "rounded-full" : "rounded-md",
           skin.swatchClass,
           selected
