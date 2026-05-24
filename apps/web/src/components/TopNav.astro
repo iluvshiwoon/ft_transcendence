@@ -44,7 +44,7 @@ const { authed = false } = Astro.props;
   ]}
   aria-label="Site navigation"
 >
-  {/* Left group: brand mark + menu placeholder */}
+  {/* Left group: brand mark */}
   <div class="flex items-center gap-3 md:gap-4">
     <a
       href="/"
@@ -53,19 +53,6 @@ const { authed = false } = Astro.props;
     >
       4
     </a>
-    <Button
-      variant="ghost"
-      size="icon"
-      aria-label="Open menu"
-      title="Open menu"
-      data-todo-integration="hamburger menu — wire to shadcn DropdownMenu. On mobile, include a Login entry (the desktop pill exposes Login directly; mobile hides it for breathing room)."
-    >
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="size-4" aria-hidden="true">
-        <line x1="4" x2="20" y1="6" y2="6"></line>
-        <line x1="4" x2="20" y1="12" y2="12"></line>
-        <line x1="4" x2="20" y1="18" y2="18"></line>
-      </svg>
-    </Button>
   </div>
 
   {/* Right group: theme toggle + auth CTAs */}
