@@ -454,26 +454,36 @@
   box-shadow: none;
 }
 @utility board-none-cell {
-  /* Each cell is a soft depression in the page surface. No plate means
-     no container — the well IS the visual unit. Radial gradient
-     simulates curvature, inset shadow adds the depression, and the
-     bottom highlight catches light off the well's edge. */
-  background: radial-gradient(circle at 50% 35%,
-    oklch(0% 0 0 / 0.02) 0%,
-    oklch(0% 0 0 / 0.06) 60%,
-    oklch(0% 0 0 / 0.10) 100%);
+  /* Each cell is a well carved into the page surface itself. The visual
+     trick to "carved-in" (not "popping out"):
+       1. Solid darker-than-page bg (so the whole cell reads as a recess)
+       2. Multi-layer inset TOP shadow — the dominant cue. Stacks a sharp
+          rim shadow on top of a soft deep-well shadow. Both eye and brain
+          read 'this area is in shadow at the top → light-blocked → depressed'
+       3. Minimal bottom highlight (~15-20% white). Too bright reads as a
+          rounded button bottom; too dim and the well looks flat-bottomed.
+     The gradient bg from the previous version was DROPPED — radial light-
+     center / dark-edges is the same shading pattern a dome has, so it was
+     fighting the inset shadows for "is this raised or recessed?" */
+  background-color: oklch(0% 0 0 / 0.05);
   box-shadow:
-    inset 0 2px 4px oklch(0% 0 0 / 0.18),
-    inset 0 -1.5px 2px oklch(100% 0 0 / 0.55);
+    /* Sharp top rim shadow — the carved edge */
+    inset 0 1.5px 1.5px oklch(0% 0 0 / 0.30),
+    /* Deep well shadow — the well's interior darkness */
+    inset 0 5px 10px -1px oklch(0% 0 0 / 0.25),
+    /* Subtle floor highlight — very dim, only suggests rim curvature */
+    inset 0 -1px 1px oklch(100% 0 0 / 0.20);
 }
 .dark .board-none-cell {
-  background: radial-gradient(circle at 50% 35%,
-    oklch(0% 0 0 / 0.20) 0%,
-    oklch(0% 0 0 / 0.35) 60%,
-    oklch(0% 0 0 / 0.45) 100%);
+  /* Dark mode: lightened from oklch(0% 0 0 / 0.45) → 0.18. The previous
+     value was oversaturated black on a near-black page → wells looked like
+     voids into nothing. 0.18 keeps them visibly recessed while still
+     reading as part of the page surface, not holes punched through it. */
+  background-color: oklch(0% 0 0 / 0.18);
   box-shadow:
-    inset 0 2px 5px oklch(0% 0 0 / 0.65),
-    inset 0 -1.5px 2px oklch(100% 0 0 / 0.06);
+    inset 0 1.5px 1.5px oklch(0% 0 0 / 0.55),
+    inset 0 5px 10px -1px oklch(0% 0 0 / 0.40),
+    inset 0 -1px 1px oklch(100% 0 0 / 0.05);
 }
 
 /* --- recessed: current plate dialed up ----------------------------------- */
