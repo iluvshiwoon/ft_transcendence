@@ -479,16 +479,19 @@
        v1: bg 0.45 → too dark, wells looked like voids
        v2: bg 0.18 → still too dark
        v3: bg 0.10 → cells lost visibility against dark page bg
-       v4: bg 0.14 + tiny outer highlight rim → wells visible AND
-           still feel carved, not void-like
-     The 0.5px outer highlight ring at very low alpha defines each
-     well's edge against the dark page without making the cell
-     interior any darker than it needs to be. */
-  background-color: oklch(0% 0 0 / 0.14);
+       v4: bg 0.14 + 0.5px/0.05 rim → still not visible enough
+       v5: bg 0.18 + 1px/0.12 rim → wells visible via clear edges,
+           interior stays in the carved-not-void band
+     Two levers used together: a slight bg bump AND a more
+     pronounced outer rim highlight. Boundary definition does most
+     of the visibility work; the rim is what makes the grid
+     structure read clearly against the dark page. */
+  background-color: oklch(0% 0 0 / 0.18);
   box-shadow:
-    /* Outer rim highlight — page surface around the well catches
-       a bit of light, defining the cell boundary against the page bg */
-    0 0 0 0.5px oklch(100% 0 0 / 0.05),
+    /* Outer rim highlight — defines each well's boundary as a
+       thin bright outline against the dark page surface. The grid
+       reads as a structure of cells, not a uniform dark area. */
+    0 0 0 1px oklch(100% 0 0 / 0.12),
     inset 0 2px 2px oklch(0% 0 0 / 0.50),
     inset 0 6px 12px -1px oklch(0% 0 0 / 0.32),
     inset 0 -1px 1px oklch(100% 0 0 / 0.05);
