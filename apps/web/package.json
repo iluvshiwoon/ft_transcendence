@@ -30,6 +30,11 @@
     "tailwind-merge": "^3.6.0",
     "tailwindcss": "^4.2.4"
   },
+  "onlybuildep":[
+    "fastify-socket.io ",
+    "sharp",
+    "esbuild"
+  ],
   "devDependencies": {
     "@types/node": "^25.6.0",
     "typescript": "^6.0.3"

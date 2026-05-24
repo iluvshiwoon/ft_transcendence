@@ -18,6 +18,9 @@
 import { Button, buttonVariants } from "~/components/ui/button";
 import { ThemeToggle } from "~/components/ThemeToggle";
 import { cn } from "~/lib/utils";
+
+// Mock auth gate: treat /profile as the signed-in state until real auth lands.
+const isAuthed = Astro.url.pathname.startsWith("/profile");
 ---
 
 <header
@@ -59,24 +62,43 @@ import { cn } from "~/lib/utils";
   <div class="flex items-center gap-2.5 md:gap-3">
     <ThemeToggle client:only="react" />
 
+    {/* TEMP: until auth lands, expose /profile from any page. */}
     <a
-      href="/login"
-      class={cn(buttonVariants({ variant: "brand-outline", size: "pill" }), "hidden sm:inline-flex")}
-      data-todo-integration="POST /api/auth/login — wire to apps/server"
+      href="/profile"
+      class={cn(buttonVariants({ variant: "ghost", size: "pill" }), "hidden sm:inline-flex")}
     >
-      Login
+      Profile
     </a>
 
-    <a
-      href="/signup"
-      class={cn(buttonVariants({ variant: "brand-filled", size: "pill" }), "gap-1.5")}
-      data-todo-integration="POST /api/auth/signup — wire to apps/server"
-    >
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="size-3.5" aria-hidden="true">
-        <path d="M5 12h14"></path>
-        <path d="m12 5 7 7-7 7"></path>
-      </svg>
-      Sign up
-    </a>
+    {isAuthed ? (
+      <a
+        href="/profile"
+        class={cn(buttonVariants({ variant: "brand-outline", size: "pill" }))}
+      >
+        Profile
+      </a>
+    ) : (
+      <>
+        <a
+          href="/login"
+          class={cn(buttonVariants({ variant: "brand-outline", size: "pill" }), "hidden sm:inline-flex")}
+          data-todo-integration="POST /api/auth/login — wire to apps/server"
+        >
+          Login
+        </a>
+
+        <a
+          href="/signup"
+          class={cn(buttonVariants({ variant: "brand-filled", size: "pill" }), "gap-1.5")}
+          data-todo-integration="POST /api/auth/signup — wire to apps/server"
+        >
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="size-3.5" aria-hidden="true">
+            <path d="M5 12h14"></path>
+            <path d="m12 5 7 7-7 7"></path>
+          </svg>
+          Sign up
+        </a>
+      </>
+    )}
   </div>
 </header>
