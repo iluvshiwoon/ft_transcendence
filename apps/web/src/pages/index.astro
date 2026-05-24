@@ -31,6 +31,21 @@ import Headline from "~/components/landing/Headline.astro";
 import { Board, type BoardVariant } from "~/components/landing/Board";
 import { AITelemetry } from "~/components/landing/AITelemetry";
 import { Leaderboard } from "~/components/landing/Leaderboard";
+import heroPaths from "~/data/hero-paths.json";
+
+// Compute global letter index per line so each letter's --i can stagger
+// across the entire hero (line 1 letters 0..N, line 2 starts at N+1).
+const line1 = heroPaths[0];
+const line2 = heroPaths[1];
+const line1LetterCount = line1.letters.length;
+
+// Pre-compute the emphasis flag per line-2 letter so we don't inline the
+// comparison inside JSX (Astro's parser treats `< 10` as a JSX tag start).
+// 'but smarter.' — chars at indices 4..10 are 's','m','a','r','t','e','r'.
+const line2Letters = line2.letters.map((letter) => ({
+  ...letter,
+  isSmarter: letter.i >= 4 && letter.i <= 10,
+}));
 
 // Board variant from ?board=X — liquid-glass is the chosen default. The
 // other variants are kept (Board.tsx + globals.css) so we can switch skins
@@ -61,46 +76,51 @@ const boardVariant: BoardVariant = VALID_VARIANTS.includes(requested as BoardVar
     class="relative mx-auto flex w-full max-w-7xl flex-col px-margin-mobile pt-28 pb-8 md:h-full md:overflow-hidden md:px-margin-desktop md:pt-28 md:pb-4"
   >
     {/* Hero — absolutely positioned over the entire main content area.
-        Two-line treatment with sibling spans (flex-col stacks them).
-        Sizes are arbitrary so font-weight from text-display (which has
-        800 baked into the token) doesn't override the h1's font-light.
-        Line 2 is ~1.5x line 1 for clear visible hierarchy. The word
-        'smarter' uses text-emphasis (darker color) + font-medium (heavier
-        weight) — color alone was too subtle.
-
-        Surrounding text uses text-foreground/70 (foreground at 70% alpha)
-        so that in light mode the non-emphasized text reads lighter (paler)
-        and in dark mode it reads dimmer. Either direction makes 'smarter'
-        — which stays at full text-emphasis — pop more by contrast.
-
-        Animation: each letter wears .hero-letter with a --i index for a
-        staggered clip-path + blur draw. The h1 wraps with .hero-letters
-        which handles only the exit (after all letters have drawn). */}
+        Two-line treatment with sibling SVGs (flex-col stacks them).
+        Paths are pre-generated at build time from the Fraunces italic
+        font outlines (see scripts/gen-hero-paths.mjs). Each letter is
+        an individual <path> element with stroke + no fill initially;
+        CSS animates stroke-dashoffset → 0 to draw the outline (Chinese
+        ink-brush style), then fill-opacity → 1 to flood the letter
+        with color. Letters stagger via the --i CSS var. */}
     <h1
       id="hero-pitch"
       class="hero-letters absolute top-28 right-0 bottom-0 left-0 z-10 flex flex-col items-center justify-center px-margin-mobile text-center font-display font-light italic tracking-tight text-foreground/70 md:px-margin-desktop"
     >
-      <span class="text-5xl leading-none md:text-7xl lg:text-[7.5rem]" aria-label="Connect 4,">
-        {Array.from("Connect 4,").map((char, i) => (
-          <span class="hero-letter" style={`--i:${i}`} aria-hidden="true">
-            {char === " " ? "\u00A0" : char}
-          </span>
-        ))}
-      </span>
-      <span class="text-7xl leading-[0.95] md:text-[6.5rem] lg:text-[9rem]" aria-label="but smarter.">
-        {Array.from("but ").map((char, i) => (
-          <span class="hero-letter" style={`--i:${10 + i}`} aria-hidden="true">
-            {char === " " ? "\u00A0" : char}
-          </span>
-        ))}
-        <span class="text-emphasis font-medium">
-          {Array.from("smarter").map((char, i) => (
-            <span class="hero-letter" style={`--i:${14 + i}`} aria-hidden="true">
-              {char}
-            </span>
+      <span class="text-5xl leading-none md:text-7xl lg:text-[7.5rem]" aria-label={line1.text}>
+        <svg
+          viewBox={`0 0 ${line1.viewBox.width} ${line1.viewBox.height}`}
+          xmlns="http://www.w3.org/2000/svg"
+          aria-hidden="true"
+          class="block h-[1.4em] w-auto overflow-visible"
+        >
+          {line1.letters.map((letter) => (
+            <path
+              d={letter.d}
+              class="hero-stroke"
+              style={`--length:${letter.length};--i:${letter.i}`}
+            />
           ))}
-        </span>
-        <span class="hero-letter" style="--i:21" aria-hidden="true">.</span>
+        </svg>
+      </span>
+      <span class="text-7xl leading-[0.95] md:text-[6.5rem] lg:text-[9rem]" aria-label={line2.text}>
+        <svg
+          viewBox={`0 0 ${line2.viewBox.width} ${line2.viewBox.height}`}
+          xmlns="http://www.w3.org/2000/svg"
+          aria-hidden="true"
+          class="block h-[1.4em] w-auto overflow-visible"
+        >
+          {line2Letters.map((letter) => (
+            <path
+              d={letter.d}
+              class:list={[
+                "hero-stroke",
+                letter.isSmarter && "hero-stroke--emphasis",
+              ]}
+              style={`--length:${letter.length};--i:${line1LetterCount + letter.i}`}
+            />
+          ))}
+        </svg>
       </span>
     </h1>
 
