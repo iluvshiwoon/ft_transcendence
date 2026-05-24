@@ -330,16 +330,20 @@ function SkinSwatch({
       <span
         aria-hidden="true"
         className={cn(
-          "size-9 ring-2 ring-offset-2 ring-offset-background",
+          // Uniform 2px ring + 2px offset across all swatches so they have
+          // identical visual size regardless of selection state.
+          //
+          // ring-offset uses foreground/15 (not background) so the gap is
+          // visible against ANY swatch fill — including grid-linen, which
+          // is literally the page bg color and used to blend its fill into
+          // the offset gap, making the swatch look like a single cream
+          // blob extending all the way to the ring.
+          "size-9 ring-2 ring-offset-2 ring-offset-foreground/15",
           shape === "circle" ? "rounded-full" : "rounded-md",
           skin.swatchClass,
-          // Same ring width across states so the visual size is constant —
-          // only the color changes to indicate selection. Foreground-derived
-          // tint contrasts in both modes (was ring-border which collapsed to
-          // ~12% white in dark mode after opacity-80 multiplied through).
           selected
             ? "ring-foreground"
-            : "ring-foreground/20 opacity-80 group-hover:opacity-100",
+            : "ring-foreground/30 opacity-80 group-hover:opacity-100",
         )}
       />
       <span className="font-mono text-mono-sm uppercase text-muted-foreground">{skin.label}</span>
