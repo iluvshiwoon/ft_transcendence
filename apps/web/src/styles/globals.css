@@ -643,16 +643,22 @@
 }
 
 /* Cells inside the liquid-glass plate. Transparent fills so the page bg
-   refracts through; subtle inset shadows for "well in glass" depth. */
+   refracts through; subtle inset shadows for "well in glass" depth.
+   The first shadow is an INVISIBLE placeholder rim (0 spread, 0 alpha) —
+   it pairs with the rim shadow in board-liquid-glass-cell-hover so CSS
+   can interpolate the same shadow count when transitioning idle ↔ hover.
+   Without it, the 3rd shadow appearing/disappearing snaps abruptly. */
 @utility board-liquid-glass-cell {
   background-color: oklch(0% 0 0 / 0.08);
   box-shadow:
+    inset 0 0 0 0 oklch(100% 0 0 / 0),
     inset 0 2px 3px oklch(0% 0 0 / 0.25),
     inset 0 -1px 1px oklch(100% 0 0 / 0.4);
 }
 .dark .board-liquid-glass-cell {
   background-color: oklch(0% 0 0 / 0.20);
   box-shadow:
+    inset 0 0 0 0 oklch(100% 0 0 / 0),
     inset 0 2px 4px oklch(0% 0 0 / 0.5),
     inset 0 -1px 1px oklch(100% 0 0 / 0.1);
 }
