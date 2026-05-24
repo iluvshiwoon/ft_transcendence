@@ -23,6 +23,11 @@
     "tailwindcss": "^4.2.4",
     "clsx": "^2.1.1"
   },
+  "onlybuildep":[
+    "fastify-socket.io ",
+    "sharp",
+    "esbuild"
+  ],
   "devDependencies": {
     "@types/node": "^25.6.0",
     "typescript": "^6.0.3"
