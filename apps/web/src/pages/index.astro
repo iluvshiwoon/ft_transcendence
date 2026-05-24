@@ -58,43 +58,39 @@ const boardVariant: BoardVariant = VALID_VARIANTS.includes(requested as BoardVar
 >
   <main
     id="main"
-    class="mx-auto w-full max-w-7xl px-margin-mobile pt-28 pb-12 md:px-margin-desktop md:pt-32"
+    class="mx-auto flex w-full max-w-7xl flex-col px-margin-mobile pt-28 pb-8 md:h-svh md:overflow-hidden md:px-margin-desktop md:pt-28 md:pb-6"
   >
-    {/* Hero — page pitch + CTA. The h1 is the page's main title (was
-        previously sr-only); SEO and screen readers see the same string
-        as before, but now it's also the visual hero. */}
+    {/* Hero — page pitch only, no CTA. The user plays the game directly
+        on the page (the board is right below); the conversion moment
+        comes after the game ends, not at the top. The h1 is the page's
+        main title (was sr-only); SEO + screen readers see the same
+        string as before, but it's now also the visual hero. */}
     <section
-      class="mx-auto mb-12 flex max-w-3xl flex-col items-center gap-6 text-center md:mb-16 md:gap-7"
+      class="mx-auto flex max-w-3xl flex-col items-center gap-3 text-center md:gap-4"
       aria-labelledby="hero-pitch"
     >
       <h1
         id="hero-pitch"
-        class="font-display text-4xl font-light italic leading-[1.05] tracking-tight text-foreground md:text-5xl lg:text-6xl"
+        class="font-display text-3xl font-light italic leading-[1.05] tracking-tight text-foreground md:text-4xl lg:text-5xl"
       >
         Connect 4, but smarter.
       </h1>
-      <p class="max-w-prose text-base leading-relaxed text-muted-foreground md:text-lg">
+      <p class="max-w-prose text-sm leading-relaxed text-muted-foreground md:text-base">
         Play in your browser against an AI that actually thinks. No signup needed.
       </p>
-      <a
-        href="/signup"
-        class="inline-flex h-11 items-center gap-2 rounded-full bg-foreground px-7 text-base font-medium text-background transition-colors hover:bg-foreground/90 active:scale-[0.98]"
-      >
-        Play now
-        <span aria-hidden="true">→</span>
-      </a>
     </section>
 
     {/* Game-state kicker — sits just above the grid, announces game state
-        for screen readers via Headline's role=status / aria-live. Demoted
-        from the previous "the only headline on the page" treatment now
-        that the real hero owns that slot. Will become live state when the
-        AI module is wired (step 6). */}
-    <div class="mb-8 flex justify-center md:mb-10">
+        for screen readers via Headline's role=status / aria-live. Will
+        become live state when the AI module is wired (step 6). */}
+    <div class="mt-6 mb-6 flex justify-center md:mt-8 md:mb-4">
       <Headline state="your-turn" />
     </div>
 
-    <div class="grid grid-cols-1 gap-10 md:grid-cols-12 md:gap-gutter md:items-start">
+    {/* Game grid — flex-1 on desktop so it fills the remaining vertical
+        space below the hero, with the board vertically centered in that
+        space. Mobile stays natural flow (single column, ordered). */}
+    <div class="grid grid-cols-1 gap-10 md:flex-1 md:grid-cols-12 md:items-center md:gap-gutter">
 
       {/* AITelemetry — desktop left, mobile after the board.
           On desktop the panel sits at 80% opacity by default and fades up to
