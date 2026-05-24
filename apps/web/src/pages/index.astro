@@ -61,20 +61,19 @@ const boardVariant: BoardVariant = VALID_VARIANTS.includes(requested as BoardVar
     class="relative mx-auto flex w-full max-w-7xl flex-col px-margin-mobile pt-28 pb-8 md:h-full md:overflow-hidden md:px-margin-desktop md:pt-28 md:pb-4"
   >
     {/* Hero — absolutely positioned over the entire main content area.
-        Two-line treatment with hierarchy: a small muted "connect 4," kicker
-        over a big foreground "but smarter." statement. Lowercase italic
-        Fraunces throughout — literary register. The size + color contrast
-        carries the visual weight, NOT just a line break. */}
+        Two-line treatment with hierarchy: 'connect 4,' at the original
+        size, 'but smarter.' bigger, and the word 'smarter' alone wears
+        the brand accent (wine red). Lowercase italic Fraunces. */}
     <h1
       id="hero-pitch"
       class="hero-draw absolute top-28 right-0 bottom-0 left-0 z-10 grid place-items-center px-margin-mobile text-center md:px-margin-desktop"
     >
       <span class="font-display font-light italic leading-tight tracking-tight">
-        <span class="block text-lg text-muted-foreground md:text-xl lg:text-2xl">
+        <span class="block text-5xl text-muted-foreground md:text-7xl lg:text-display">
           connect 4,
         </span>
-        <span class="block text-5xl text-foreground md:text-7xl lg:text-display">
-          but smarter.
+        <span class="block text-6xl text-foreground md:text-8xl lg:text-9xl">
+          but <span class="text-accent">smarter</span>.
         </span>
       </span>
     </h1>
