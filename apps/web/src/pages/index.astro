@@ -39,8 +39,13 @@ import { Leaderboard } from "~/components/landing/Leaderboard";
 >
   <main
     id="main"
-    class="mx-auto w-full max-w-7xl px-margin-mobile pt-28 pb-12 md:px-margin-desktop md:pt-32"
+    class="relative mx-auto w-full max-w-7xl px-margin-mobile pt-28 pb-12 md:px-margin-desktop md:pt-32"
   >
+    {/* Stage backdrop — warm radial halo around the board column. Sits behind
+        all content (-z-10), purely decorative (aria-hidden). The gradient
+        anchors low-center to feel like a stage light from below the board. */}
+    <div class="stage-backdrop pointer-events-none absolute inset-0 -z-10" aria-hidden="true"></div>
+
     {/* Visually hidden but read aloud by screen readers and indexed by search engines. */}
     <h1 class="sr-only">4thewin — Connect 4, but smarter</h1>
 
@@ -52,10 +57,11 @@ import { Leaderboard } from "~/components/landing/Leaderboard";
     <div class="grid grid-cols-1 gap-10 md:grid-cols-12 md:gap-gutter md:items-start">
 
       {/* AITelemetry — desktop left, mobile after the board.
-          justify-center on desktop so the panel sits in the middle of the
-          space to the left of the board, with breathing room on both sides.
-          Matches the leaderboard column layout for visual symmetry. */}
-      <div class="order-2 md:order-1 md:col-span-3 flex justify-center">
+          On desktop the panel sits at 80% opacity by default and fades up to
+          full on hover or focus-within, so it reads as ambient context for
+          the board (the actual hero) rather than co-equal content. Mobile
+          keeps full opacity since the panels are stacked, not peripheral. */}
+      <div class="order-2 md:order-1 md:col-span-3 flex justify-center md:opacity-80 md:transition-opacity md:duration-300 md:hover:opacity-100 md:focus-within:opacity-100">
         <AITelemetry />
       </div>
 
@@ -65,8 +71,8 @@ import { Leaderboard } from "~/components/landing/Leaderboard";
       </div>
 
       {/* Leaderboard — desktop right, mobile last.
-          justify-center mirrors the AI telemetry column. */}
-      <div class="order-3 md:order-3 md:col-span-3 flex justify-center">
+          Same dim-on-default / restore-on-hover treatment as AITelemetry. */}
+      <div class="order-3 md:order-3 md:col-span-3 flex justify-center md:opacity-80 md:transition-opacity md:duration-300 md:hover:opacity-100 md:focus-within:opacity-100">
         <Leaderboard />
       </div>
 

@@ -65,7 +65,7 @@ export function Board({ pieces = WIREFRAME_BOARD, className }: BoardProps) {
       aria-rowcount={ROWS}
       aria-colcount={COLS}
       className={cn(
-        "inline-block rounded-xl bg-board p-4 sm:p-5 md:p-6 shadow-sm",
+        "inline-block rounded-xl bg-board p-4 sm:p-5 md:p-6 shadow-2xl",
         className,
       )}
     >

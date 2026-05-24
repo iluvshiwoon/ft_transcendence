@@ -350,6 +350,33 @@
 }
 
 /* =============================================================================
+ * Atmospheric utilities
+ *
+ * stage-backdrop — warm radial gradient anchored low-center. Used on the
+ * landing page <main> as a -z-10 absolutely-positioned backdrop, so the
+ * board (which sits in the visual middle of the page) is haloed by a
+ * brand-tinted glow without affecting any element's actual color. The
+ * gradient is intentionally subtle — it should read as "atmosphere," not
+ * as a colored panel.
+ * ============================================================================= */
+@utility stage-backdrop {
+  background: radial-gradient(
+    ellipse 70% 55% at 50% 65%,
+    oklch(50% 0.18 25 / 0.10) 0%,
+    transparent 70%
+  );
+}
+.dark .stage-backdrop {
+  /* Dark mode: bump alpha + saturation slightly so the warm tint reads
+     against the deep-ink page bg. Same anchor + ellipse geometry. */
+  background: radial-gradient(
+    ellipse 70% 55% at 50% 65%,
+    oklch(60% 0.22 25 / 0.18) 0%,
+    transparent 70%
+  );
+}
+
+/* =============================================================================
  * Signup progress tracker — step-4 win sequence
  *
  * The progress component sets data-current="N" on its wrapper. At N=4, after
