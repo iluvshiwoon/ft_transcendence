@@ -109,25 +109,33 @@ const boardVariant: BoardVariant = VALID_VARIANTS.includes(requested as BoardVar
         <AITelemetry />
       </div>
 
-      {/* Middle column: board with kicker positioned above it.
-          Mobile: flex-col with the kicker in normal flow above the board.
-          Desktop (md+): kicker is ABSOLUTELY positioned above the board, so
+      {/* Middle column: board with prompt positioned above it.
+          Mobile: flex-col with the prompt in normal flow above the board.
+          Desktop (md+): prompt is ABSOLUTELY positioned above the board, so
           the column's flex height equals just the board's height. With
           items-center on the grid, all 3 columns then align around the
           board's center — the side panels are anchored to the board, not
-          to the kicker+board block. */}
+          to the prompt+board block.
+
+          The prompt 'Click a column to play.' replaces the old YOUR TURN
+          state label. Same italic Fraunces voice as the hero, dimmed to
+          text-foreground/70 so it's an invitation rather than a heavy
+          headline. Hides on first click via inline JS (board not yet
+          wired; once the game module lands the click handler will
+          drive both piece-drop AND prompt dismissal). */}
       <div class="order-1 flex flex-col items-center gap-3 md:order-2 md:col-span-6 md:gap-0 md:relative">
-        <div
-          class="page-reveal flex w-full justify-center md:absolute md:bottom-[calc(100%+0.75rem)] md:left-0"
+        <p
+          id="play-prompt"
+          class="page-reveal flex w-full justify-center text-center font-display text-2xl font-light italic text-foreground/70 select-none md:absolute md:bottom-[calc(100%+0.75rem)] md:left-0 md:text-3xl"
           style="--reveal-delay: 2.5s"
         >
-          <Headline state="your-turn" />
-        </div>
+          Click a column to play.
+        </p>
         <div
           class="page-reveal"
           style="--reveal-delay: 2.7s"
         >
-          <Board variant={boardVariant} />
+          <Board variant={boardVariant} client:load />
         </div>
       </div>
 
@@ -158,4 +166,19 @@ const boardVariant: BoardVariant = VALID_VARIANTS.includes(requested as BoardVar
       </filter>
     </defs>
   </svg>
+
+  {/* Hide the play-prompt on first click on the board. Inline so it runs
+      without hydration overhead. Will be replaced by the game module's
+      first-move handler once the AI/click pipeline is wired. */}
+  <script is:inline>
+    (function () {
+      var prompt = document.getElementById("play-prompt");
+      var board = document.querySelector('[role="grid"][aria-label="Connect 4 board"]');
+      if (!prompt || !board) return;
+      board.addEventListener("click", function () {
+        prompt.style.transition = "opacity 0.3s ease-out";
+        prompt.style.opacity = "0";
+      }, { once: true });
+    })();
+  </script>
 </RootLayout>

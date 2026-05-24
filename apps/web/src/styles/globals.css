@@ -657,6 +657,24 @@
     inset 0 -1px 1px oklch(100% 0 0 / 0.1);
 }
 
+/* Column-hover highlight. Applied to all empty cells in the column the
+   user is hovering. A bright inset rim + slightly stronger shading reads
+   as "this column is targeted for the next drop". */
+@utility board-liquid-glass-cell-hover {
+  background-color: oklch(0% 0 0 / 0.14);
+  box-shadow:
+    inset 0 0 0 1.5px oklch(100% 0 0 / 0.55),
+    inset 0 2px 3px oklch(0% 0 0 / 0.20),
+    inset 0 -1px 1px oklch(100% 0 0 / 0.55);
+}
+.dark .board-liquid-glass-cell-hover {
+  background-color: oklch(0% 0 0 / 0.30);
+  box-shadow:
+    inset 0 0 0 1.5px oklch(100% 0 0 / 0.30),
+    inset 0 2px 4px oklch(0% 0 0 / 0.55),
+    inset 0 -1px 1px oklch(100% 0 0 / 0.18);
+}
+
 /* =============================================================================
  * Signup progress tracker — step-4 win sequence
  *

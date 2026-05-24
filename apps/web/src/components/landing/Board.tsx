@@ -21,6 +21,8 @@
  *       final row using `translate-y` keyframes. CSS-only; no JS animation.
  */
 
+import { useState } from "react";
+
 import { cn } from "~/lib/utils";
 
 export type Cell = "empty" | "red" | "yellow";
@@ -123,6 +125,13 @@ function emptyCellClasses(variant: BoardVariant): string {
 }
 
 export function Board({ pieces = WIREFRAME_BOARD, className, variant = "default" }: BoardProps) {
+  // Column-hover state for the liquid-glass variant. Hit zones overlay the
+  // board (extending above + below) so users can hover slightly outside
+  // the plate and still target a column. The hovered column's empty cells
+  // get the board-liquid-glass-cell-hover utility — bright inset rim
+  // signaling "this column is targeted for the next drop".
+  const [hoveredCol, setHoveredCol] = useState<number | null>(null);
+
   // Liquid-glass uses a layered DOM structure (filter / overlay / specular /
   // content) — the cssscript.com lg-* recipe. Branched out so the other
   // variants stay simple single-div renders.
@@ -133,61 +142,85 @@ export function Board({ pieces = WIREFRAME_BOARD, className, variant = "default"
         aria-label="Connect 4 board"
         aria-rowcount={ROWS}
         aria-colcount={COLS}
-        className={cn(
-          "relative inline-block overflow-hidden rounded-xl shadow-2xl",
-          className,
-        )}
+        className={cn("relative inline-block", className)}
       >
-        {/* Under-glass color layer (z-0). Plain bg-pawn-* circles at the same
-            grid positions as the on-top pieces. The lg-filter at z-0 (later
-            in DOM, so painted on top) has backdrop-filter blur + filter:url
-            so it picks these colors up as the backdrop and smears them — the
-            warm tint visible through the glass plate around each piece. */}
-        <div
-          className="pointer-events-none absolute inset-0 z-0 p-4 sm:p-5 md:p-6"
-          aria-hidden="true"
-        >
-          <div className="grid grid-cols-7 gap-2 sm:gap-3 md:gap-4">
-            {pieces.map((row, rowIdx) =>
-              row.map((cell, colIdx) => (
-                <div
-                  key={`under-${rowIdx}-${colIdx}`}
-                  className={cn(
-                    "size-9 rounded-full sm:size-10 md:size-12",
-                    cell === "red" && "bg-pawn-red",
-                    cell === "yellow" && "bg-pawn-yellow",
-                    // Empty cells contribute nothing — transparent so the
-                    // page bg shows through the glass with no color bias.
-                  )}
-                />
-              )),
-            )}
+        {/* Glass plate — overflow-hidden + rounded for the glass surface;
+            kept as an inner wrapper so the hit zones below can extend
+            above/below the board without being clipped by it. */}
+        <div className="relative overflow-hidden rounded-xl shadow-2xl">
+          {/* Under-glass color layer (z-0). Plain bg-pawn-* circles at the same
+              grid positions as the on-top pieces. The lg-filter at z-0 (later
+              in DOM, so painted on top) has backdrop-filter blur + filter:url
+              so it picks these colors up as the backdrop and smears them — the
+              warm tint visible through the glass plate around each piece. */}
+          <div
+            className="pointer-events-none absolute inset-0 z-0 p-4 sm:p-5 md:p-6"
+            aria-hidden="true"
+          >
+            <div className="grid grid-cols-7 gap-2 sm:gap-3 md:gap-4">
+              {pieces.map((row, rowIdx) =>
+                row.map((cell, colIdx) => (
+                  <div
+                    key={`under-${rowIdx}-${colIdx}`}
+                    className={cn(
+                      "size-9 rounded-full sm:size-10 md:size-12",
+                      cell === "red" && "bg-pawn-red",
+                      cell === "yellow" && "bg-pawn-yellow",
+                    )}
+                  />
+                )),
+              )}
+            </div>
+          </div>
+          <div className="lg-filter" aria-hidden="true" />
+          <div className="lg-overlay" aria-hidden="true" />
+          <div className="lg-specular" aria-hidden="true" />
+          <div className="lg-content p-4 sm:p-5 md:p-6">
+            <div className="grid grid-cols-7 gap-2 sm:gap-3 md:gap-4">
+              {pieces.map((row, rowIdx) =>
+                row.map((cell, colIdx) => {
+                  const isHoveredCol = hoveredCol === colIdx;
+                  return (
+                    <div
+                      key={`${rowIdx}-${colIdx}`}
+                      role="gridcell"
+                      aria-rowindex={rowIdx + 1}
+                      aria-colindex={colIdx + 1}
+                      aria-label={cellLabel(cell, rowIdx, colIdx)}
+                      data-cell={cell}
+                      className={cn(
+                        "size-9 sm:size-10 md:size-12 rounded-full transition-shadow duration-150",
+                        cell === "empty" &&
+                          (isHoveredCol
+                            ? "board-liquid-glass-cell-hover"
+                            : emptyCellClasses(variant)),
+                        cell === "red" && "pawn-red",
+                        cell === "yellow" && "pawn-yellow",
+                      )}
+                    />
+                  );
+                }),
+              )}
+            </div>
           </div>
         </div>
-        <div className="lg-filter" aria-hidden="true" />
-        <div className="lg-overlay" aria-hidden="true" />
-        <div className="lg-specular" aria-hidden="true" />
-        <div className="lg-content p-4 sm:p-5 md:p-6">
-          <div className="grid grid-cols-7 gap-2 sm:gap-3 md:gap-4">
-            {pieces.map((row, rowIdx) =>
-              row.map((cell, colIdx) => (
-                <div
-                  key={`${rowIdx}-${colIdx}`}
-                  role="gridcell"
-                  aria-rowindex={rowIdx + 1}
-                  aria-colindex={colIdx + 1}
-                  aria-label={cellLabel(cell, rowIdx, colIdx)}
-                  data-cell={cell}
-                  className={cn(
-                    "size-9 sm:size-10 md:size-12 rounded-full",
-                    cell === "empty" && emptyCellClasses(variant),
-                    cell === "red" && "pawn-red",
-                    cell === "yellow" && "pawn-yellow",
-                  )}
-                />
-              )),
-            )}
-          </div>
+
+        {/* Column hit zones — overlaid on the board, extending 60px above
+            and below it so users can hover slightly outside the plate and
+            still target a column. cursor:pointer overrides the default
+            text-cursor that was visible over the cells. */}
+        <div
+          className="absolute -top-[60px] -bottom-[60px] left-0 right-0 z-20 grid grid-cols-7 gap-2 px-4 sm:gap-3 sm:px-5 md:gap-4 md:px-6"
+          onMouseLeave={() => setHoveredCol(null)}
+          aria-hidden="true"
+        >
+          {Array.from({ length: COLS }).map((_, c) => (
+            <div
+              key={`hit-${c}`}
+              className="h-full cursor-pointer"
+              onMouseEnter={() => setHoveredCol(c)}
+            />
+          ))}
         </div>
       </div>
     );
