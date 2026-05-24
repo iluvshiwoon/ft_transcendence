@@ -31,16 +31,22 @@ const widthClass = wide ? "max-w-md md:max-w-3xl" : "max-w-md";
   <main
     id="main"
     class:list={[
-      "mx-auto flex w-full flex-1 flex-col justify-center gap-10 px-margin-mobile pt-[126px] pb-4 md:pt-[113px] md:pb-0",
+      "mx-auto flex w-full flex-1 flex-col justify-center px-margin-mobile pt-[126px] pb-4 md:pt-[113px] md:pb-0",
       widthClass,
     ]}
   >
-    {/* Progress tracker — React island so the drop-in animation plays */}
-    <SignupProgress current={current} client:load />
+    {/* Card is the centered layout element. Progress tracker sits
+        above it via absolute positioning so it doesn't affect the
+        centering calculation. */}
+    <div class="relative">
+      <div class="absolute right-0 bottom-[calc(100%+1.5rem)] left-0">
+        <SignupProgress current={current} client:load />
+      </div>
 
-    {/* Focused signup card */}
-    <div class="rounded-xl border border-border bg-surface p-6 shadow-sm md:p-8">
-      <slot />
+      {/* Focused signup card */}
+      <div class="rounded-xl border border-border bg-surface p-6 shadow-sm md:p-8">
+        <slot />
+      </div>
     </div>
   </main>
 </RootLayout>
