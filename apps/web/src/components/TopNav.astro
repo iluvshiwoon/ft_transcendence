@@ -44,7 +44,8 @@ const { authed = false } = Astro.props;
   ]}
   aria-label="Site navigation"
 >
-  {/* Left group: brand mark */}
+  {/* Left group: brand mark + invisible spacer (keeps the pill's width
+      consistent with the previous design that had a hamburger here). */}
   <div class="flex items-center gap-3 md:gap-4">
     <a
       href="/"
@@ -53,6 +54,7 @@ const { authed = false } = Astro.props;
     >
       4
     </a>
+    <div class="size-9 shrink-0" aria-hidden="true"></div>
   </div>
 
   {/* Right group: theme toggle + auth CTAs */}
