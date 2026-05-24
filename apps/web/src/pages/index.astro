@@ -69,11 +69,14 @@ const boardVariant: BoardVariant = VALID_VARIANTS.includes(requested as BoardVar
       <div class="grid place-items-center">
         <h1
           id="hero-pitch"
-          class="hero-fadeout col-start-1 row-start-1 font-display text-3xl font-light italic leading-none tracking-wide text-foreground md:text-4xl"
+          class="hero-draw col-start-1 row-start-1 font-display text-3xl font-light italic leading-none tracking-wide text-foreground md:text-4xl"
         >
           Connect 4, but smarter.
         </h1>
-        <div class="hero-fadein col-start-1 row-start-1">
+        <div
+          class="page-reveal col-start-1 row-start-1"
+          style="--reveal-delay: 2.5s"
+        >
           <Headline state="your-turn" />
         </div>
       </div>
@@ -86,22 +89,31 @@ const boardVariant: BoardVariant = VALID_VARIANTS.includes(requested as BoardVar
     <div class="grid grid-cols-1 gap-10 md:grid-cols-12 md:flex-[2] md:items-center md:gap-gutter">
 
       {/* AITelemetry — desktop left, mobile after the board.
-          On desktop the panel sits at 80% opacity by default and fades up to
-          full on hover or focus-within, so it reads as ambient context for
-          the board (the actual hero) rather than co-equal content. Mobile
-          keeps full opacity since the panels are stacked, not peripheral. */}
-      <div class="order-2 md:order-1 md:col-span-3 flex justify-center md:opacity-80 md:transition-opacity md:duration-300 md:hover:opacity-100 md:focus-within:opacity-100">
+          Reveals last in the intro stagger; the dim-on-default treatment
+          was dropped since the new intro animation creates hierarchy via
+          reveal timing instead. */}
+      <div
+        class="page-reveal order-2 flex justify-center md:order-1 md:col-span-3"
+        style="--reveal-delay: 2.9s"
+      >
         <AITelemetry />
       </div>
 
-      {/* Board — centered horizontally inside its column */}
-      <div class="order-1 md:order-2 md:col-span-6 flex justify-center">
+      {/* Board — centered horizontally inside its column. Reveals after
+          the state label so the user's eye flows: state → board. */}
+      <div
+        class="page-reveal order-1 flex justify-center md:order-2 md:col-span-6"
+        style="--reveal-delay: 2.7s"
+      >
         <Board variant={boardVariant} />
       </div>
 
-      {/* Leaderboard — desktop right, mobile last.
-          Same dim-on-default / restore-on-hover treatment as AITelemetry. */}
-      <div class="order-3 md:order-3 md:col-span-3 flex justify-center md:opacity-80 md:transition-opacity md:duration-300 md:hover:opacity-100 md:focus-within:opacity-100">
+      {/* Leaderboard — desktop right, mobile last. Same reveal timing
+          as AITelemetry (symmetric peripheral panels). */}
+      <div
+        class="page-reveal order-3 flex justify-center md:order-3 md:col-span-3"
+        style="--reveal-delay: 2.9s"
+      >
         <Leaderboard />
       </div>
 

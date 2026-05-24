@@ -678,74 +678,66 @@
 }
 
 /* =============================================================================
- * Landing page hero → game-state cross-fade
+ * Landing page intro animation
  *
- * On first paint, the hero pitch ("Connect 4, but smarter.") is visible in
- * the hero slot. After a beat it transitions out while the game-state label
- * ("YOUR TURN") transitions in. Both elements share the same grid cell so
- * layout doesn't shift — only properties animate.
+ * Sequence:
+ *   t=0          page loads, only TopNav visible
+ *   0 → 1.8s    hero ("Connect 4, but smarter.") draws in via clip-path
+ *               sweep with a soft blur on the leading edge that clears as
+ *               the text settles ("ink wet" feel)
+ *   1.8 → 2.3s  brief hold — hero is fully drawn, settled
+ *   2.3 → 3.1s  hero exits (blur + Y-translate, opacity 1 → 0)
+ *   2.5 → 3.5s  state label ("YOUR TURN") fades in
+ *   2.7 → 3.7s  board fades in (slight stagger after state label)
+ *   2.9 → 3.9s  side panels (telemetry + leaderboard) fade in
  *
- * The transition uses opacity + blur + Y-translate together (not just
- * opacity) because pure cross-fade reads as a slideshow, not as one text
- * giving way to another. Blur makes it feel like one is "out of focus"
- * while the other comes into focus; Y-translate gives it directional
- * motion (outgoing lifts up, incoming arrives from below). Phases overlap
- * intentionally — the incoming text is already moving as the outgoing
- * one is still finishing — which is what keeps it from feeling robotic.
+ * Each entrance overlaps the previous, so the page assembles itself in
+ * one continuous motion rather than discrete steps.
  *
- * Reduced-motion users skip the animation entirely: hero starts hidden,
- * state label starts visible. Same final state, no transition.
+ * Reduced-motion users skip the entire intro — final state shows on first
+ * paint with no animation.
  * ============================================================================= */
-@keyframes hero-fadeout {
-  0% {
-    opacity: 1;
-    filter: blur(0);
-    transform: translateY(0);
-  }
-  55% {
-    opacity: 1;
-    filter: blur(0);
-    transform: translateY(0);
-  }
-  100% {
-    opacity: 0;
-    filter: blur(10px);
-    transform: translateY(-14px);
-  }
+
+/* Phase 1+3: draw the hero, then exit it */
+@keyframes hero-draw {
+  0%   { clip-path: inset(0 100% 0 0); filter: blur(3px); }
+  100% { clip-path: inset(0 0% 0 0);   filter: blur(0);   }
 }
-@keyframes hero-fadein {
-  0% {
-    opacity: 0;
-    filter: blur(10px);
-    transform: translateY(14px);
-  }
-  50% {
-    opacity: 0;
-    filter: blur(10px);
-    transform: translateY(14px);
-  }
-  100% {
-    opacity: 1;
-    filter: blur(0);
-    transform: translateY(0);
-  }
+@keyframes hero-exit {
+  0%   { opacity: 1; filter: blur(0);    transform: translateY(0);    }
+  100% { opacity: 0; filter: blur(10px); transform: translateY(-14px); }
 }
-.hero-fadeout {
-  opacity: 1;
-  animation: hero-fadeout 3.6s cubic-bezier(0.4, 0, 0.2, 1) forwards;
-  will-change: opacity, filter, transform;
+.hero-draw {
+  animation:
+    hero-draw 1.8s cubic-bezier(0.4, 0, 0.2, 1) forwards,
+    hero-exit 0.8s cubic-bezier(0.4, 0, 0.2, 1) 2.3s forwards;
+  will-change: clip-path, opacity, filter, transform;
 }
-.hero-fadein {
+
+/* Page-reveal: subtle fade-up for state label, board, side panels.
+   Each element gets its own delay via inline style --reveal-delay. */
+@keyframes page-reveal {
+  0%   { opacity: 0; transform: translateY(10px); }
+  100% { opacity: 1; transform: translateY(0);    }
+}
+.page-reveal {
   opacity: 0;
-  animation: hero-fadein 3.6s cubic-bezier(0.4, 0, 0.2, 1) forwards;
-  will-change: opacity, filter, transform;
+  animation: page-reveal 1s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+  animation-delay: var(--reveal-delay, 0s);
+  will-change: opacity, transform;
 }
+
 @media (prefers-reduced-motion: reduce) {
-  .hero-fadeout, .hero-fadein {
+  .hero-draw, .page-reveal {
     animation: none;
-    transform: none;
-    filter: none;
   }
-  .hero-fadeout { opacity: 0; }
-  .hero-fadein { opacity: 1; }
+  .hero-draw {
+    /* Hero is hidden in reduced-motion — final state has it gone */
+    opacity: 0;
+    clip-path: none;
+  }
+  .page-reveal {
+    opacity: 1;
+    transform: none;
+  }
 }
