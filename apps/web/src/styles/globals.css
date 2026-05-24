@@ -794,28 +794,28 @@ html.grid-on .grid-overlay {
 /* Page-reveal: subtle fade-up for state label, board, side panels.
 /* Page-reveal: fade-up for state label, board, side panels.
    Each element gets its own delay via inline style --reveal-delay.
-   Translates up 20px + fades in. Blur was REMOVED from the keyframe
-   because it caused flicker on the board: the board has its own
-   backdrop-filter + multiple composited layers (under-glass color
-   layer, lg-filter, lg-overlay, lg-specular, cells), and animating
-   filter:blur on the wrapping element forced the browser to
-   re-composite the whole stack each frame. When the animation's
-   blur hit 0, the layer was demoted causing a visible snap. */
+
+   Two anti-flicker tricks (the board's backdrop-filter + SVG filter +
+   multiple composited layers were causing a color flicker at the
+   moment opacity reached exactly 1.0, when the browser collapsed the
+   opacity-stacking-context):
+
+     1. End opacity at 0.999 instead of 1. Visually identical, but the
+        stacking context (created by any opacity < 1) stays in place
+        permanently. backdrop-filter inside renders against a stable
+        backdrop, no re-evaluation snap.
+     2. isolation: isolate explicitly forces a stacking context too,
+        belt-and-suspenders for browsers that handle opacity stacking
+        contexts differently (Safari/Firefox edge cases). */
 @keyframes page-reveal {
-  0%   { opacity: 0; transform: translateY(20px); }
-  100% { opacity: 1; transform: translateY(0);    }
+  0%   { opacity: 0;     transform: translateY(20px); }
+  100% { opacity: 0.999; transform: translateY(0);    }
 }
 .page-reveal {
   opacity: 0;
+  isolation: isolate;
   animation: page-reveal 1s cubic-bezier(0.4, 0, 0.2, 1) forwards;
   animation-delay: var(--reveal-delay, 0s);
-  /* will-change intentionally OMITTED — when present, the browser
-     promotes the element to a GPU compositor layer for the animation,
-     then demotes it at the end. The demote re-rasterizes the element,
-     which causes a visible color flicker on the board (because of its
-     multiple composited layers: under-glass colors, backdrop-filter,
-     overlay, specular, cells). Modern browsers auto-optimize plain
-     opacity+transform animations without the will-change hint. */
 }
 
 @media (prefers-reduced-motion: reduce) {
