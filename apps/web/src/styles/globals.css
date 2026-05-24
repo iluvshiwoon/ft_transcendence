@@ -517,6 +517,76 @@
     inset 0 -1px 1px oklch(100% 0 0 / 0.04);
 }
 
+/* --- liquid-glass: Apple-style 4-layer structure ------------------------- *
+ * Adapted from cssscript.com/liquid-glass-ui (CC-MIT).
+ * Real liquid-glass requires four stacked layers:
+ *   .lg-filter   — backdrop-blur + SVG displacement filter (refraction)
+ *   .lg-overlay  — translucent color tint
+ *   .lg-specular — inset rim highlights (surface sheen)
+ *   .lg-content  — actual content on top of all the layers
+ * The SVG filter (#lg-dist) is defined once on the page; here we just
+ * reference it. Specular box-shadows do most of the "glass" work in
+ * browsers that don't support backdrop-filter + SVG filter (Safari, FF). */
+@utility lg-filter {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  backdrop-filter: blur(2px);
+  -webkit-backdrop-filter: blur(2px);
+  filter: url(#lg-dist);
+  isolation: isolate;
+  pointer-events: none;
+}
+@utility lg-overlay {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  background: oklch(100% 0 0 / 0.20);
+  pointer-events: none;
+}
+.dark .lg-overlay {
+  background: oklch(100% 0 0 / 0.06);
+}
+@utility lg-specular {
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+  border-radius: inherit;
+  pointer-events: none;
+  /* Multi-layer inset shadows: bright top-left rim (light source upper-left),
+     soft inner glow, faint inner shadow at bottom-right for the "back" of
+     the glass. This is what gives the layer its glass-surface sheen. */
+  box-shadow:
+    inset 1px 1px 0 oklch(100% 0 0 / 0.5),
+    inset -1px -1px 0 oklch(100% 0 0 / 0.15),
+    inset 0 0 12px oklch(100% 0 0 / 0.25);
+}
+.dark .lg-specular {
+  box-shadow:
+    inset 1px 1px 0 oklch(100% 0 0 / 0.25),
+    inset -1px -1px 0 oklch(100% 0 0 / 0.08),
+    inset 0 0 14px oklch(100% 0 0 / 0.10);
+}
+@utility lg-content {
+  position: relative;
+  z-index: 3;
+}
+
+/* Cells inside the liquid-glass plate. Transparent fills so the page bg
+   refracts through; subtle inset shadows for "well in glass" depth. */
+@utility board-liquid-glass-cell {
+  background-color: oklch(0% 0 0 / 0.08);
+  box-shadow:
+    inset 0 2px 3px oklch(0% 0 0 / 0.25),
+    inset 0 -1px 1px oklch(100% 0 0 / 0.4);
+}
+.dark .board-liquid-glass-cell {
+  background-color: oklch(0% 0 0 / 0.20);
+  box-shadow:
+    inset 0 2px 4px oklch(0% 0 0 / 0.5),
+    inset 0 -1px 1px oklch(100% 0 0 / 0.1);
+}
+
 /* =============================================================================
  * Signup progress tracker — step-4 win sequence
  *

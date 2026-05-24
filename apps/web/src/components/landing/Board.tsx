@@ -30,7 +30,14 @@ export type BoardState = Cell[][]; // 6 rows × 7 cols, row 0 = top
  * EXPERIMENT — board visual variants. Temporary; remove once a direction is
  * picked. See globals.css "Board variants for A/B evaluation".
  */
-export type BoardVariant = "default" | "branded" | "glass" | "wood" | "none" | "recessed";
+export type BoardVariant =
+  | "default"
+  | "branded"
+  | "glass"
+  | "wood"
+  | "none"
+  | "recessed"
+  | "liquid-glass";
 
 export const ROWS = 6;
 export const COLS = 7;
@@ -78,6 +85,9 @@ function plateClasses(variant: BoardVariant): string {
       return "board-none";
     case "recessed":
       return "board-recessed shadow-[0_30px_60px_-15px_oklch(0%_0_0/0.4)]";
+    case "liquid-glass":
+      // Handled in the dedicated render branch — this string isn't applied.
+      return "";
     default:
       return "bg-board shadow-2xl";
   }
@@ -96,12 +106,58 @@ function emptyCellClasses(variant: BoardVariant): string {
       return "board-none-cell";
     case "recessed":
       return "board-recessed-cell";
+    case "liquid-glass":
+      return "board-liquid-glass-cell";
     default:
       return "bg-board-cell";
   }
 }
 
 export function Board({ pieces = WIREFRAME_BOARD, className, variant = "default" }: BoardProps) {
+  // Liquid-glass uses a layered DOM structure (filter / overlay / specular /
+  // content) — the cssscript.com lg-* recipe. Branched out so the other
+  // variants stay simple single-div renders.
+  if (variant === "liquid-glass") {
+    return (
+      <div
+        role="grid"
+        aria-label="Connect 4 board"
+        aria-rowcount={ROWS}
+        aria-colcount={COLS}
+        className={cn(
+          "relative inline-block overflow-hidden rounded-xl shadow-2xl",
+          className,
+        )}
+      >
+        <div className="lg-filter" aria-hidden="true" />
+        <div className="lg-overlay" aria-hidden="true" />
+        <div className="lg-specular" aria-hidden="true" />
+        <div className="lg-content p-4 sm:p-5 md:p-6">
+          <div className="grid grid-cols-7 gap-2 sm:gap-3 md:gap-4">
+            {pieces.map((row, rowIdx) =>
+              row.map((cell, colIdx) => (
+                <div
+                  key={`${rowIdx}-${colIdx}`}
+                  role="gridcell"
+                  aria-rowindex={rowIdx + 1}
+                  aria-colindex={colIdx + 1}
+                  aria-label={cellLabel(cell, rowIdx, colIdx)}
+                  data-cell={cell}
+                  className={cn(
+                    "size-9 sm:size-10 md:size-12 rounded-full",
+                    cell === "empty" && emptyCellClasses(variant),
+                    cell === "red" && "pawn-red",
+                    cell === "yellow" && "pawn-yellow",
+                  )}
+                />
+              )),
+            )}
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div
       role="grid"
