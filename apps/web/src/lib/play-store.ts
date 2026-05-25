@@ -188,8 +188,15 @@ class PlayStore {
         view: res.state,
         telemetry: res.aiMove?.telemetry ?? null,
         lastAiMove: res.aiMove ? { col: res.aiMove.col, row: res.aiMove.row } : null,
-        thinking: false,
+        // thinking stays true while red drops — prevents clicks during
+        // the AI's piece animation. Cleared after another PIECE_ANIM_MS.
       });
+      // If the AI actually played (game still in progress), wait for
+      // the red piece's drop animation to finish before unlocking input.
+      if (res.aiMove) {
+        await new Promise<void>((resolve) => setTimeout(resolve, PIECE_ANIM_MS));
+      }
+      this.set({ thinking: false });
     } catch (e) {
       this.set({ thinking: false });
       if (e instanceof PlayApiError) {

@@ -209,16 +209,18 @@ export function AITelemetry({
     : null;
 
   const finalColumnScores =
-    columnScores ?? liveColumnScores ?? (snap.view ? new Array(COLS).fill(0) : DEFAULT_COLUMN_SCORES);
+    columnScores ?? liveColumnScores ?? new Array(COLS).fill(0);
   // Live mode: only show landing-row markers AFTER the AI has actually
   // evaluated the position (i.e. telemetry exists). Pre-move = empty grid.
   const finalLandingRows =
     columnLandingRows ??
     (snap.telemetry ? decisionLandingRows : null) ??
-    (snap.view ? new Array(COLS).fill(-1) : DEFAULT_LANDING_ROWS);
+    new Array(COLS).fill(-1);
+  // Stats are blank pre-game (no telemetry yet). Wireframe defaults
+  // only used when explicit `stats` prop is passed (styleguide).
   const finalStats =
-    stats ?? liveStats ?? { depth: 8, nodesPerSec: "142k", evalTimeMs: 42 };
-  const finalEvalScore = evalScore ?? liveEvalScore ?? 132;
+    stats ?? liveStats ?? null;
+  const finalEvalScore = evalScore ?? liveEvalScore ?? null;
 
   // Best column = the AI's actual chosen move when we have one in store.
   // This is the source of truth for "which move did the AI pick" — falling
@@ -283,11 +285,12 @@ export function AITelemetry({
         </div>
       </div>
 
-      {/* Stats */}
+      {/* Stats — em-dashes pre-game (no telemetry yet), real values
+          after each AI move. */}
       <ul className="flex w-full flex-col gap-1 uppercase opacity-70">
-        <li>Depth: {finalStats.depth}</li>
-        <li>Nodes/sec: {finalStats.nodesPerSec}</li>
-        <li>Eval Time: {finalStats.evalTimeMs}ms</li>
+        <li>Depth: {finalStats?.depth ?? "—"}</li>
+        <li>Nodes/sec: {finalStats?.nodesPerSec ?? "—"}</li>
+        <li>Eval Time: {finalStats ? `${finalStats.evalTimeMs}ms` : "—"}</li>
       </ul>
 
       {/* Position strength — tug-of-war between AI (red, left) and YOU
