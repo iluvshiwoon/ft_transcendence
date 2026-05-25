@@ -291,31 +291,51 @@ export function AITelemetry({
       </ul>
 
       {/* Position strength — tug-of-war between AI (red, left) and YOU
-          (yellow, right). The main bar splits at the thumb position:
-          everything to the left of the thumb is red-tinted (AI territory),
-          everything to the right is yellow-tinted (YOU territory).
-          The small bar continues the YOU territory past the thumb-bar
-          boundary as a stable yellow accent — flush with the main bar
-          and using the same underlay so the colors read continuously.
-          Tints at /40 opacity stay subtle. */}
+          (yellow, right). The slider is composed of a flex-1 main bar
+          and an 8px small bar (replacing the previous dashed line); the
+          two render as one continuous strip thanks to gap-0 + matching
+          /20 muted underlay + /40 colored fills. The thumb sits at the
+          AI/YOU boundary, computed across the whole slider so it lands
+          at the visual center when even.
+          When the AI is dominant enough that its territory crosses the
+          main-bar boundary (ratio close to 1, e.g. forced win), the
+          small bar transitions from yellow to red so we never see a
+          stray yellow square while AI is winning everything. */}
       <div className="flex w-full items-center gap-0 pt-2 opacity-70" aria-hidden="true">
         {/* Main bar */}
         <div className="relative h-2 flex-1 bg-muted-foreground/20">
-          {/* AI territory (red, from left) */}
-          <div
-            className="absolute left-0 top-0 h-full bg-pawn-red/40 transition-[width] duration-500"
-            style={{ width: `${(livePositionRatio ?? 0.5) * 100}%` }}
-          />
-          {/* YOU territory (yellow, from right) */}
-          <div
-            className="absolute right-0 top-0 h-full bg-pawn-yellow/40 transition-[width] duration-500"
-            style={{ width: `${(1 - (livePositionRatio ?? 0.5)) * 100}%` }}
-          />
-          {/* Thumb at the split point. The slider has a flex-1 main bar
-              + 8px small bar, so the visual center of the entire slider
-              is offset 4px right of the main bar's geometric center.
-              Compensate with calc(ratio% + ratio*8px) so ratio=0.5 lands
-              exactly in the visual middle of the whole slider. */}
+          {(() => {
+            const ratio = livePositionRatio ?? 0.5;
+            // Approximate fraction of the slider taken by the main bar.
+            // Small bar is fixed 8px; main bar is flex-1 (~96% of total
+            // for typical 200px+ widths). The exact value isn't critical
+            // — it just controls when the small bar starts shifting from
+            // yellow to red. 0.96 reads correctly across reasonable
+            // slider widths.
+            const MAIN_FRACTION = 0.96;
+            // Within the main bar's frame, the red fill goes from 0 to
+            // (ratio / MAIN_FRACTION) of the main bar (clamped to 100%).
+            // Once the global ratio passes MAIN_FRACTION, the main bar
+            // is fully red and the small bar starts transitioning.
+            const mainRed = Math.min(1, ratio / MAIN_FRACTION) * 100;
+            const mainYellow = 100 - mainRed;
+            return (
+              <>
+                <div
+                  className="absolute left-0 top-0 h-full bg-pawn-red/40 transition-[width] duration-500"
+                  style={{ width: `${mainRed}%` }}
+                />
+                <div
+                  className="absolute right-0 top-0 h-full bg-pawn-yellow/40 transition-[width] duration-500"
+                  style={{ width: `${mainYellow}%` }}
+                />
+              </>
+            );
+          })()}
+          {/* Thumb at the split point. Positioned across the entire
+              slider (main + small) by using calc(ratio% + ratio*8px)
+              so ratio=0.5 lands exactly in the visual middle of the
+              whole slider. */}
           <div
             className="absolute top-1/2 h-5 w-0.5 -translate-x-1/2 -translate-y-1/2 bg-foreground transition-[left] duration-500"
             style={{
@@ -323,12 +343,34 @@ export function AITelemetry({
             }}
           />
         </div>
-        {/* Small bar — same dimensions as the previous dashed continuation,
-            same underlay + tint as the main bar's YOU side, so the yellow
-            reads as one continuous strip. Sits flush with the main bar
-            (gap-0 above). */}
+        {/* Small bar — territorial extension of the main bar. When the
+            global ratio < MAIN_FRACTION, this stays fully yellow (user's
+            territory continues past the main bar). When ratio passes
+            MAIN_FRACTION (AI dominant), red bleeds into the small bar
+            and yellow recedes. At ratio=1 it's fully red — no stray
+            yellow square. */}
         <div className="relative h-2 w-2 bg-muted-foreground/20">
-          <div className="absolute inset-0 bg-pawn-yellow/40" />
+          {(() => {
+            const ratio = livePositionRatio ?? 0.5;
+            const MAIN_FRACTION = 0.96;
+            const SMALL_FRACTION = 1 - MAIN_FRACTION;
+            // How much of the small bar is now red (0..1).
+            const smallInner = Math.max(0, Math.min(1, (ratio - MAIN_FRACTION) / SMALL_FRACTION));
+            const smallRed = smallInner * 100;
+            const smallYellow = 100 - smallRed;
+            return (
+              <>
+                <div
+                  className="absolute left-0 top-0 h-full bg-pawn-red/40 transition-[width] duration-500"
+                  style={{ width: `${smallRed}%` }}
+                />
+                <div
+                  className="absolute right-0 top-0 h-full bg-pawn-yellow/40 transition-[width] duration-500"
+                  style={{ width: `${smallYellow}%` }}
+                />
+              </>
+            );
+          })()}
         </div>
       </div>
     </section>

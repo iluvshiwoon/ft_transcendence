@@ -171,8 +171,19 @@ class PlayStore {
       hasPlayed: true,
     });
 
+    // Run the request and the minimum animation delay in parallel. We
+    // don't apply the AI's piece until both promises resolve, so even if
+    // the AI computes very fast (obvious move = ~50ms) the red piece
+    // still waits for the yellow piece's drop to finish before appearing.
+    // PIECE_ANIM_MS must match the .piece-drop animation duration in
+    // globals.css.
+    const PIECE_ANIM_MS = 450;
+    const animationFinished = new Promise<void>((resolve) =>
+      setTimeout(resolve, PIECE_ANIM_MS),
+    );
+
     try {
-      const res = await makeMove(col);
+      const [res] = await Promise.all([makeMove(col), animationFinished]);
       this.set({
         view: res.state,
         telemetry: res.aiMove?.telemetry ?? null,
