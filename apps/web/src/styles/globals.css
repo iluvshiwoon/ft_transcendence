@@ -956,13 +956,16 @@ html.hero-seen .page-reveal {
 /* Smooth transition class for matrix cells. When the AI evaluation
    changes between turns, each cell's --matrix-base-opacity (driven by
    the column's normalized score) and its background-color (driven by
-   whether it's a landing cell) interpolate over 500ms instead of
+   whether it's a landing cell) interpolate over 800ms instead of
    snapping. The matrix-pulse animation continues over the smoothly-
-   changing base, so the wave keeps running without visible discontinuity. */
+   changing base, so the wave keeps running without visible discontinuity.
+   Per-column stagger via transition-delay makes the recalibration
+   sweep across the matrix rather than all 42 cells transitioning in
+   lockstep — feels like a deliberate re-evaluation. */
 .matrix-cell {
   transition:
-    --matrix-base-opacity 500ms ease-out,
-    background-color 500ms ease-out;
+    --matrix-base-opacity 800ms cubic-bezier(0.4, 0, 0.2, 1),
+    background-color 800ms cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 @media (prefers-reduced-motion: reduce) {

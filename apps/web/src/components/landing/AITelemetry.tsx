@@ -253,6 +253,13 @@ export function AITelemetry({
               const isBestMove = isLandingCell && c === bestColumn;
 
               const waveDelay = `${c * COLUMN_STAGGER_MS}ms`;
+              // Per-column transition delay so when the AI evaluation
+              // updates, the matrix recalibrates as a sweep from left to
+              // right rather than a uniform snap. ~60ms × 7 columns =
+              // ~420ms between leftmost and rightmost cell starting their
+              // transition; combined with the 800ms transition duration
+              // each cell takes, the total visual settle is ~1.2s.
+              const transitionDelay = `${c * 60}ms`;
 
               // Static styles must MATCH keyframe 0% (the trough), so when the
               // animation kicks in at the staggered delay there's no visible
@@ -263,6 +270,7 @@ export function AITelemetry({
                 opacity: baseOpacity * 0.8,
                 transform: "scale(0.92)",
                 ["--matrix-base-opacity" as never]: baseOpacity.toFixed(3),
+                transitionDelay,
               };
               if (isBestMove) {
                 inlineStyle.animation = `matrix-pulse 3s ease-in-out ${waveDelay} infinite, sonar-ping 5s ease-out 0ms infinite`;
