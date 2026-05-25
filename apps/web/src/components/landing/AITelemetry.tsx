@@ -295,11 +295,10 @@ export function AITelemetry({
           everything to the left of the thumb is red-tinted (AI territory),
           everything to the right is yellow-tinted (YOU territory).
           The small bar continues the YOU territory past the thumb-bar
-          boundary as a stable yellow accent.
-          Tints are at /30 opacity so the colors stay subtle — dominant
-          visual is still the muted bar shape, the colors only suggest
-          which side is winning. */}
-      <div className="flex w-full items-center gap-1 pt-2 opacity-70" aria-hidden="true">
+          boundary as a stable yellow accent — flush with the main bar
+          and using the same underlay so the colors read continuously.
+          Tints at /40 opacity stay subtle. */}
+      <div className="flex w-full items-center gap-0 pt-2 opacity-70" aria-hidden="true">
         {/* Main bar */}
         <div className="relative h-2 flex-1 bg-muted-foreground/20">
           {/* AI territory (red, from left) */}
@@ -318,9 +317,13 @@ export function AITelemetry({
             style={{ left: `${(livePositionRatio ?? 0.5) * 100}%` }}
           />
         </div>
-        {/* Small bar — extends the YOU territory, replaces the previous
-            dashed continuation. */}
-        <div className="h-2 w-2 bg-pawn-yellow/40" />
+        {/* Small bar — same dimensions as the previous dashed continuation,
+            same underlay + tint as the main bar's YOU side, so the yellow
+            reads as one continuous strip. Sits flush with the main bar
+            (gap-0 above). */}
+        <div className="relative h-2 w-2 bg-muted-foreground/20">
+          <div className="absolute inset-0 bg-pawn-yellow/40" />
+        </div>
       </div>
     </section>
   );
