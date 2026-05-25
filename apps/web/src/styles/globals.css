@@ -165,7 +165,14 @@
         (scale 0.92, 80% opacity) at rest AND at keyframe 0%, so when the
         animation kicks in there's no visible jump on reload. They pulse UP
         to peak at 50% (scale 1.04, full opacity) — visible growth + brighten.
-     2. sonar-ping: best-move cell radiates a soft ring every 5s. */
+     2. sonar-ping: best-move cell radiates a soft ring every 5s.
+     The matrix's per-cell opacity is driven by `--matrix-base-opacity`,
+     which is set inline based on the AI's score for that cell's column.
+     Registered as a CSS @property below so the variable can interpolate
+     when the AI evaluation changes — the cell's brightness smoothly
+     transitions to the new value over 500ms while the pulse animation
+     continues uninterrupted. Firefox / Safari without @property support
+     fall back to instant updates (acceptable degradation). */
   --animate-matrix-pulse: matrix-pulse 3s ease-in-out infinite;
   --animate-sonar-ping: sonar-ping 5s ease-out infinite;
 
@@ -929,5 +936,37 @@ html.hero-seen .page-reveal {
   .piece-drop,
   .piece-fade-in {
     animation: none;
+  }
+}
+
+
+/* @property registration for --matrix-base-opacity. Without this, CSS
+   custom properties are typed as `<unrecognised>` and CSS can't
+   interpolate them — assignments are instant. Registering with
+   `<number>` syntax makes the variable animatable so transitions and
+   smooth state changes work when the AI evaluation updates.
+   Browser support: Chromium-based browsers (good), Firefox 128+,
+   Safari 16.4+. Older browsers fall back to instant changes. */
+@property --matrix-base-opacity {
+  syntax: '<number>';
+  initial-value: 0.35;
+  inherits: false;
+}
+
+/* Smooth transition class for matrix cells. When the AI evaluation
+   changes between turns, each cell's --matrix-base-opacity (driven by
+   the column's normalized score) and its background-color (driven by
+   whether it's a landing cell) interpolate over 500ms instead of
+   snapping. The matrix-pulse animation continues over the smoothly-
+   changing base, so the wave keeps running without visible discontinuity. */
+.matrix-cell {
+  transition:
+    --matrix-base-opacity 500ms ease-out,
+    background-color 500ms ease-out;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .matrix-cell {
+    transition: none;
   }
 }

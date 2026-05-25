@@ -274,7 +274,7 @@ export function AITelemetry({
                 <span
                   key={`${r}-${c}`}
                   className={cn(
-                    "size-4 rounded-full",
+                    "matrix-cell size-4 rounded-full",
                     // All landing cells use the dark color so even low-scored
                     // candidates remain visible (opacity does the gradient).
                     isLandingCell ? "bg-foreground" : "bg-muted-foreground",
