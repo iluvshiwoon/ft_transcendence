@@ -159,7 +159,11 @@ export function Board({ pieces, className, variant = "default" }: BoardProps) {
   }, []);
 
   const livePieces: BoardState | null = snap.view ? viewBoardFromServer(snap.view.board) : null;
-  const renderedPieces: BoardState = livePieces ?? pieces ?? WIREFRAME_BOARD;
+  // Default to an empty board (not the wireframe) when neither live data
+  // nor an explicit prop is provided — avoids the "wireframe pieces flash
+  // on first paint before /start completes" problem that was visible on
+  // page refresh.
+  const renderedPieces: BoardState = livePieces ?? pieces ?? EMPTY_BOARD;
 
   const handleColumnClick = (col: number) => {
     void playStore.play(col);
@@ -237,21 +241,37 @@ export function Board({ pieces, className, variant = "default" }: BoardProps) {
                       aria-colindex={colIdx + 1}
                       aria-label={cellLabel(cell, rowIdx, colIdx)}
                       data-cell={cell}
-                      className={cn(
-                        "size-9 sm:size-10 md:size-12 rounded-full transition-[background-color,box-shadow] duration-200 ease-out",
-                        cell === "empty" &&
-                          (isHoveredCol
+                      className="relative size-9 sm:size-10 md:size-12 rounded-full"
+                    >
+                      {/* Empty cell appearance — always rendered. Stays
+                          visible under the piece overlay during the drop
+                          animation so the destination cell never blanks
+                          out as the piece falls in. */}
+                      <div
+                        className={cn(
+                          "absolute inset-0 rounded-full transition-[background-color,box-shadow] duration-200 ease-out",
+                          isHoveredCol && !isFilled
                             ? "board-liquid-glass-cell-hover"
-                            : emptyCellClasses(variant)),
-                        cell === "red" && "pawn-red piece-drop",
-                        cell === "yellow" && "pawn-yellow piece-drop",
+                            : emptyCellClasses(variant),
+                        )}
+                      />
+                      {/* Sharp piece overlay — only when filled. Uses
+                          piece-fade-in (opacity from 0 to 1 in the last
+                          20% of the drop duration) instead of a slide,
+                          so during the fall the user sees only the
+                          refracted under-glass tint moving through the
+                          column. The crisp circle materializes when the
+                          piece "settles" into the cutout. */}
+                      {isFilled && (
+                        <div
+                          className={cn(
+                            "absolute inset-0 rounded-full piece-fade-in",
+                            cell === "red" && "pawn-red",
+                            cell === "yellow" && "pawn-yellow",
+                          )}
+                        />
                       )}
-                      style={
-                        isFilled
-                          ? ({ ["--drop-start" as never]: `-${(rowIdx + 1) * 100}%` } as React.CSSProperties)
-                          : undefined
-                      }
-                    />
+                    </div>
                   );
                 }),
               )}
@@ -308,18 +328,27 @@ export function Board({ pieces, className, variant = "default" }: BoardProps) {
                 aria-colindex={colIdx + 1}
                 aria-label={cellLabel(cell, rowIdx, colIdx)}
                 data-cell={cell}
-                className={cn(
-                  "size-9 sm:size-10 md:size-12 rounded-full",
-                  cell === "empty" && emptyCellClasses(variant),
-                  cell === "red" && "pawn-red piece-drop",
-                  cell === "yellow" && "pawn-yellow piece-drop",
+                className="relative size-9 sm:size-10 md:size-12 rounded-full"
+              >
+                <div
+                  className={cn(
+                    "absolute inset-0 rounded-full",
+                    emptyCellClasses(variant),
+                  )}
+                />
+                {isFilled && (
+                  <div
+                    className={cn(
+                      "absolute inset-0 rounded-full piece-drop",
+                      cell === "red" && "pawn-red",
+                      cell === "yellow" && "pawn-yellow",
+                    )}
+                    style={
+                      { ["--drop-start" as never]: `-${(rowIdx + 1) * 100}%` } as React.CSSProperties
+                    }
+                  />
                 )}
-                style={
-                  isFilled
-                    ? ({ ["--drop-start" as never]: `-${(rowIdx + 1) * 100}%` } as React.CSSProperties)
-                    : undefined
-                }
-              />
+              </div>
             );
           }),
         )}

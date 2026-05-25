@@ -870,16 +870,17 @@ html.hero-seen .page-reveal {
 
 
 /* Piece-drop — gravity-style fall for newly-placed Connect 4 pieces.
-   Each filled cell on the Board renders a div with .piece-drop and an
-   inline `--drop-start` CSS variable carrying the starting translateY
-   (in % of cell height, scaled to the piece's landing row so a piece
-   landing at row 0 starts ~1 cell above its cell, and a piece landing
-   at row 5 starts ~6 cells above — visually all pieces appear to fall
-   from above the board area, with longer falls naturally accelerating
-   more under the cubic-bezier easing).
+   Used by the under-glass color blobs (liquid-glass variant) and by the
+   sharp on-top pieces (non-liquid-glass variants). Each filled cell carries
+   an inline `--drop-start` CSS variable scaled to the piece's landing row
+   so a piece landing at row 0 starts ~1 cell above its cell, and a piece
+   landing at row 5 starts ~6 cells above — visually all pieces appear to
+   fall from above the board area, with longer falls naturally accelerating
+   more under the cubic-bezier easing. The board plate clips the visible
+   region with overflow:hidden, so the falling piece looks like it slides
+   into the board from the top.
 
-   Per-keyframe animation-timing-function lets each segment have its
-   own ease:
+   Per-keyframe animation-timing-function lets each segment have its own ease:
      0%  → 85%: gravity-style fall (slow start, fast end)
      85% → 92%: small overshoot (3px above resting position)
      92% → 100%: settle back down
@@ -904,8 +905,29 @@ html.hero-seen .page-reveal {
 .piece-drop {
   animation: piece-drop 0.45s forwards;
 }
+
+/* Piece-fade-in — used for the on-top sharp piece in the liquid-glass
+   variant. While the piece is falling we want to see only the soft
+   refracted tint (under-glass blob, animated with .piece-drop) — the
+   sharp circle materializes at the landing instant, like the piece
+   has just settled into the cell cutout.
+   Stays invisible for the first 80% of the duration, fades in over
+   the last 20%. Matches piece-drop's 0.45s duration so timing aligns. */
+@keyframes piece-fade-in {
+  0%, 80% {
+    opacity: 0;
+  }
+  100% {
+    opacity: 1;
+  }
+}
+.piece-fade-in {
+  animation: piece-fade-in 0.45s forwards;
+}
+
 @media (prefers-reduced-motion: reduce) {
-  .piece-drop {
+  .piece-drop,
+  .piece-fade-in {
     animation: none;
   }
 }

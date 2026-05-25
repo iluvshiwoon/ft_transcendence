@@ -160,6 +160,12 @@ class PlayStore {
 
     this.set({
       view: optimistic,
+      // Clear telemetry + lastAiMove so the matrix empties out during AI
+      // compute. Without this, the matrix stays anchored to the previous
+      // AI move (now stale) and re-renders twice per turn — once from the
+      // player's optimistic update, again when the new AI move arrives.
+      telemetry: null,
+      lastAiMove: null,
       thinking: true,
       error: null,
       hasPlayed: true,
