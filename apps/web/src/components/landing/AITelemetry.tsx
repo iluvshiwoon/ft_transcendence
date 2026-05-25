@@ -190,9 +190,13 @@ export function AITelemetry({
     stats ?? liveStats ?? { depth: 8, nodesPerSec: "142k", evalTimeMs: 42 };
   const finalEvalScore = evalScore ?? liveEvalScore ?? 132;
 
-  // Best-move column = highest score.
-  const maxScore = Math.max(...finalColumnScores);
-  const bestColumn = maxScore > 0 ? finalColumnScores.indexOf(maxScore) : -1;
+  // Best column = the AI's actual chosen move when we have one in store.
+  // This is the source of truth for "which move did the AI pick" — falling
+  // back to argmax(scores) only for the wireframe default state.
+  const bestColumn =
+    snap.lastAiMove?.col ?? (Math.max(...finalColumnScores) > 0
+      ? finalColumnScores.indexOf(Math.max(...finalColumnScores))
+      : -1);
 
   return (
     <section
@@ -211,7 +215,7 @@ export function AITelemetry({
               const isLandingCell = finalLandingRows[c] === r;
               const score = isLandingCell ? (finalColumnScores[c] ?? 0) : 0;
               const baseOpacity = isLandingCell ? scoreOpacity(score) : BASE_OPACITY;
-              const isBestMove = isLandingCell && c === bestColumn && score > 0;
+              const isBestMove = isLandingCell && c === bestColumn;
 
               const waveDelay = `${c * COLUMN_STAGGER_MS}ms`;
 
@@ -236,9 +240,9 @@ export function AITelemetry({
                   key={`${r}-${c}`}
                   className={cn(
                     "size-4 rounded-full",
-                    isLandingCell && score > 0
-                      ? "bg-foreground"
-                      : "bg-muted-foreground",
+                    // All landing cells use the dark color so even low-scored
+                    // candidates remain visible (opacity does the gradient).
+                    isLandingCell ? "bg-foreground" : "bg-muted-foreground",
                     !isBestMove && "animate-matrix-pulse",
                   )}
                   style={inlineStyle}

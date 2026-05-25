@@ -26,7 +26,7 @@ import { checkWin, isDraw } from "./check_board.js";
 
 const DEFAULT_TIME_BUDGET_MS = 500;
 const MAX_DEPTH = 16;
-const MARGIN_EPS = 1;
+const MARGIN_EPS = 0;
 const MOVE_ORDER = [3, 2, 4, 1, 5, 0, 6];
 
 // Score scale anchors (terminal scores live well above any heuristic value).
