@@ -311,10 +311,16 @@ export function AITelemetry({
             className="absolute right-0 top-0 h-full bg-pawn-yellow/40 transition-[width] duration-500"
             style={{ width: `${(1 - (livePositionRatio ?? 0.5)) * 100}%` }}
           />
-          {/* Thumb at the split point */}
+          {/* Thumb at the split point. The slider has a flex-1 main bar
+              + 8px small bar, so the visual center of the entire slider
+              is offset 4px right of the main bar's geometric center.
+              Compensate with calc(ratio% + ratio*8px) so ratio=0.5 lands
+              exactly in the visual middle of the whole slider. */}
           <div
             className="absolute top-1/2 h-5 w-0.5 -translate-x-1/2 -translate-y-1/2 bg-foreground transition-[left] duration-500"
-            style={{ left: `${(livePositionRatio ?? 0.5) * 100}%` }}
+            style={{
+              left: `calc(${(livePositionRatio ?? 0.5) * 100}% + ${(livePositionRatio ?? 0.5) * 8}px)`,
+            }}
           />
         </div>
         {/* Small bar — same dimensions as the previous dashed continuation,
