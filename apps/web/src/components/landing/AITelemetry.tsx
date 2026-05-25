@@ -290,27 +290,29 @@ export function AITelemetry({
         <li>Eval Time: {finalStats.evalTimeMs}ms</li>
       </ul>
 
-      {/* Position strength — same look as the previous decorative slider,
-          but the fill width and thumb position are now driven by the AI's
-          projected score. Bar full + thumb on right = AI dominant. Bar
-          empty + thumb on left = YOU dominant. Center = even.
-          Calculation deliberately conservative: ±30-pt deadband + scale=150
-          so the bar barely moves on small heuristic flutters and only
-          travels meaningfully when the AI projects a real advantage. */}
+      {/* Position strength — neutral muted bar with a thumb that moves
+          based on the AI's projected score. Tiny pawn-colored dots at
+          each end identify the sides:
+            · red dot (left)  = AI side
+            · yellow dot (right, on the small accent bar) = YOU side
+          Thumb at the right tip + small accent on the right = AI dominant.
+          Thumb at the left tip + small accent on the right = YOU dominant. */}
       <div className="flex w-full items-center gap-1 pt-2 opacity-70" aria-hidden="true">
-        <div className="relative flex h-2 flex-1 items-center bg-muted-foreground/30">
-          {/* Filled portion */}
-          <div
-            className="absolute left-0 top-0 h-full bg-muted-foreground transition-[width] duration-500"
-            style={{ width: `${(livePositionRatio ?? 0.5) * 100}%` }}
-          />
-          {/* Thumb (vertical line at end of fill) */}
+        {/* Main bar */}
+        <div className="relative flex h-2 flex-1 items-center bg-muted-foreground">
+          {/* AI side accent dot */}
+          <div className="absolute left-0 top-1/2 size-1.5 -translate-y-1/2 rounded-full bg-pawn-red" />
+          {/* Thumb */}
           <div
             className="absolute h-5 w-0.5 -translate-x-1/2 bg-foreground transition-[left] duration-500"
             style={{ left: `${(livePositionRatio ?? 0.5) * 100}%` }}
           />
         </div>
-        <div className="h-px w-2 border-t border-dashed border-muted-foreground" />
+        {/* Small bar — same height as main, replaces the previous dashed
+            continuation. Carries the YOU-side accent. */}
+        <div className="relative flex h-2 w-2 items-center bg-muted-foreground">
+          <div className="absolute right-0 top-1/2 size-1.5 -translate-y-1/2 rounded-full bg-pawn-yellow" />
+        </div>
       </div>
     </section>
   );
