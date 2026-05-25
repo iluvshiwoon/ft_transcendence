@@ -261,13 +261,12 @@ export function AITelemetry({
               // each cell takes, the total visual settle is ~1.2s.
               const transitionDelay = `${c * 60}ms`;
 
-              // Static styles must MATCH keyframe 0% (the trough), so when the
-              // animation kicks in at the staggered delay there's no visible
-              // jump. The keyframe pulses UP from this trough to peak at 50%,
-              // then back — that's the visible growth + brighten the user
-              // noticed and wanted. (DESIGN.md §12)
+              // Static styles. Opacity is no longer set inline — the
+              // .matrix-cell CSS rule sets it from --matrix-base-opacity,
+              // which transitions smoothly when the AI evaluation
+              // changes. The pulse animation only scales, leaving the
+              // opacity transition free to run uninterrupted.
               const inlineStyle: React.CSSProperties = {
-                opacity: baseOpacity * 0.8,
                 transform: "scale(0.92)",
                 ["--matrix-base-opacity" as never]: baseOpacity.toFixed(3),
                 transitionDelay,

@@ -161,29 +161,33 @@
   --radius-full: 9999px;
 
   /* AI telemetry matrix — two layered animations:
-     1. matrix-pulse: column-staggered wave. Cells live at the trough state
-        (scale 0.92, 80% opacity) at rest AND at keyframe 0%, so when the
-        animation kicks in there's no visible jump on reload. They pulse UP
-        to peak at 50% (scale 1.04, full opacity) — visible growth + brighten.
+     1. matrix-pulse: column-staggered wave. Scale-only. Cells live at
+        the trough state (scale 0.92) at rest AND at keyframe 0%, so when
+        the animation kicks in there's no visible jump on reload. They
+        pulse UP to peak at 50% (scale 1.04) — visible growth.
+        Opacity is INTENTIONALLY not animated here: it's controlled
+        directly by the --matrix-base-opacity variable on each cell, so
+        when the AI evaluation updates the cell can smoothly transition
+        opacity over time without the pulse animation fighting the
+        transition.
      2. sonar-ping: best-move cell radiates a soft ring every 5s.
      The matrix's per-cell opacity is driven by `--matrix-base-opacity`,
      which is set inline based on the AI's score for that cell's column.
      Registered as a CSS @property below so the variable can interpolate
      when the AI evaluation changes — the cell's brightness smoothly
-     transitions to the new value over 500ms while the pulse animation
-     continues uninterrupted. Firefox / Safari without @property support
-     fall back to instant updates (acceptable degradation). */
+     transitions to the new value over 1200ms while the pulse animation
+     continues uninterrupted (since the pulse no longer touches opacity).
+     Firefox / Safari without @property support fall back to instant
+     updates (acceptable degradation). */
   --animate-matrix-pulse: matrix-pulse 3s ease-in-out infinite;
   --animate-sonar-ping: sonar-ping 5s ease-out infinite;
 
   @keyframes matrix-pulse {
     0%, 100% {
       transform: scale(0.92);
-      opacity: calc(var(--matrix-base-opacity, 0.35) * 0.8);
     }
     50% {
       transform: scale(1.04);
-      opacity: var(--matrix-base-opacity, 0.35);
     }
   }
 
@@ -953,19 +957,18 @@ html.hero-seen .page-reveal {
   inherits: false;
 }
 
-/* Smooth transition class for matrix cells. When the AI evaluation
-   changes between turns, each cell's --matrix-base-opacity (driven by
-   the column's normalized score) and its background-color (driven by
-   whether it's a landing cell) interpolate over 1200ms. The matrix-pulse
-   animation continues over the smoothly-changing base, so the wave
-   keeps running without visible discontinuity. Per-column stagger via
-   transition-delay makes the recalibration sweep across the matrix
-   rather than all 42 cells transitioning in lockstep. The
-   cubic-bezier(0.45, 0, 0.55, 1) ease-in-out curve makes the change
-   feel gradual at start and end (no abrupt acceleration), reducing
-   the "snap" perception. */
+/* Smooth transition class for matrix cells. Each cell's opacity is
+   driven by --matrix-base-opacity (set inline based on the AI's score
+   for the column). When the AI evaluation changes, the variable
+   smoothly transitions, dragging opacity along through the animation-
+   independent transition rule below. The matrix-pulse animation runs
+   on transform: scale only, so it doesn't fight the opacity transition.
+   Per-column stagger on transition-delay sweeps the change across the
+   matrix rather than all 42 cells changing in lockstep. */
 .matrix-cell {
+  opacity: var(--matrix-base-opacity, 0.35);
   transition:
+    opacity 1200ms cubic-bezier(0.45, 0, 0.55, 1),
     --matrix-base-opacity 1200ms cubic-bezier(0.45, 0, 0.55, 1),
     background-color 1200ms cubic-bezier(0.45, 0, 0.55, 1);
 }
