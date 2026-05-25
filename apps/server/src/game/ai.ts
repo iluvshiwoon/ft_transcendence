@@ -24,8 +24,8 @@
 import { Board, dropToken, getValidMoves, ROWS, COLS } from "./board.js";
 import { checkWin, isDraw } from "./check_board.js";
 
-const DEFAULT_TIME_BUDGET_MS = 200;
-const MAX_DEPTH = 14;
+const DEFAULT_TIME_BUDGET_MS = 500;
+const MAX_DEPTH = 16;
 const MARGIN_EPS = 1;
 const MOVE_ORDER = [3, 2, 4, 1, 5, 0, 6];
 

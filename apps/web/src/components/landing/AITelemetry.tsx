@@ -148,6 +148,19 @@ export function AITelemetry({
     ? landingRowsFromBoard(snap.view.board)
     : null;
 
+  // When the AI has played, the live landing rows reflect the board
+  // AFTER the AI's drop — so the AI's chosen column shows the row above
+  // its piece, which makes the matrix look like it's predicting the AI's
+  // NEXT move. We want the matrix anchored to the position the AI was
+  // deciding from. Patch the chosen column's landing row back to where
+  // the piece actually landed.
+  const decisionLandingRows: number[] | null =
+    liveLandingRows && snap.lastAiMove
+      ? liveLandingRows.map((row, c) =>
+          c === snap.lastAiMove!.col ? snap.lastAiMove!.row : row,
+        )
+      : liveLandingRows;
+
   const liveColumnScores: number[] | null = snap.telemetry
     ? normalizeColumnScores(snap.telemetry.columnScores)
     : null;
@@ -171,7 +184,7 @@ export function AITelemetry({
   const finalColumnScores =
     columnScores ?? liveColumnScores ?? DEFAULT_COLUMN_SCORES;
   const finalLandingRows =
-    columnLandingRows ?? liveLandingRows ?? DEFAULT_LANDING_ROWS;
+    columnLandingRows ?? decisionLandingRows ?? DEFAULT_LANDING_ROWS;
   const finalEvalRatio = evalRatio ?? liveEvalRatio ?? 1 / 3;
   const finalStats =
     stats ?? liveStats ?? { depth: 8, nodesPerSec: "142k", evalTimeMs: 42 };

@@ -18,6 +18,7 @@ import {
   makeMove,
   type PublicGameView,
   type AiTelemetry,
+  type AiMove,
   PlayApiError,
 } from "./play-api";
 
@@ -28,6 +29,8 @@ export interface PlayStoreState {
   view: PublicGameView | null;
   /** Latest AI telemetry from the most recent move. */
   telemetry: AiTelemetry | null;
+  /** Last AI move (col + row). null before the AI has played any move. */
+  lastAiMove: { col: number; row: number } | null;
   /** True between sending /move and receiving the response. */
   thinking: boolean;
   /** True after the user has dropped their first piece (drives "Pick a column" prompt). */
@@ -39,6 +42,7 @@ export interface PlayStoreState {
 const initialState: PlayStoreState = {
   view: null,
   telemetry: null,
+  lastAiMove: null,
   thinking: false,
   hasPlayed: false,
   error: null,
@@ -92,7 +96,7 @@ class PlayStore {
 
     // Game over → restart, then apply this click on the fresh game.
     if (this.state.view && this.state.view.status !== "in_progress") {
-      this.set({ telemetry: null, hasPlayed: false });
+      this.set({ telemetry: null, lastAiMove: null, hasPlayed: false });
       try {
         const { state } = await startGame();
         this.set({ view: state });
@@ -114,6 +118,7 @@ class PlayStore {
       this.set({
         view: res.state,
         telemetry: res.aiMove?.telemetry ?? null,
+        lastAiMove: res.aiMove ? { col: res.aiMove.col, row: res.aiMove.row } : null,
         thinking: false,
         hasPlayed: true,
       });

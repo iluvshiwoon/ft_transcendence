@@ -37,6 +37,8 @@ export interface AiTelemetry {
 
 export interface AiMove {
   col: number;
+  /** Row where the AI dropped its piece (0 = top, 5 = bottom). */
+  row: number;
   telemetry: AiTelemetry;
 }
 

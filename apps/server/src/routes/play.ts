@@ -166,10 +166,19 @@ export async function playRoutes(app: FastifyInstance) {
     }
 
     // Otherwise AI plays. AI is player 2.
-    let aiMove: { col: number; telemetry: MoveTelemetry } | null = null;
+    let aiMove: { col: number; row: number; telemetry: MoveTelemetry } | null = null;
     try {
       const result = findBestMove(entry.state.getState().board, 2);
-      aiMove = result;
+      // Capture landing row BEFORE applying — that's where the piece will sit.
+      const boardBefore = entry.state.getState().board;
+      let landingRow = -1;
+      for (let r = boardBefore.length - 1; r >= 0; r--) {
+        if (boardBefore[r][result.col] === 0) {
+          landingRow = r;
+          break;
+        }
+      }
+      aiMove = { col: result.col, row: landingRow, telemetry: result.telemetry };
       const aiOk = entry.state.makeMove(result.col);
       if (!aiOk) {
         // Should be impossible — findBestMove only returns valid columns.
@@ -183,7 +192,7 @@ export async function playRoutes(app: FastifyInstance) {
 
     return reply.send({
       state: publicView(entry.state),
-      aiMove: { col: aiMove.col, telemetry: aiMove.telemetry },
+      aiMove: { col: aiMove.col, row: aiMove.row, telemetry: aiMove.telemetry },
     });
   });
 
