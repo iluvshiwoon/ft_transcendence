@@ -56,17 +56,38 @@ const boardVariant: BoardVariant = VALID_VARIANTS.includes(requested as BoardVar
   title="4thewin — Connect 4, but smarter"
   description="Play Connect 4 against an AI in your browser. No signup needed to start."
 >
-  {/* Lock scroll on <html> during the hero intro animation so the user
-      can't scroll past the hero on mobile while the words are still
-      revealing. Released after ~4s when the intro completes. Reduced-
-      motion users skip the lock — they don't see the animation either. */}
+  {/* Hero intro orchestration:
+      1. If the user has seen the hero before (localStorage flag), add
+         html.hero-seen so CSS skips all the reveal animations and shows
+         components in their final state immediately.
+      2. Otherwise, run the intro: lock <html> scroll for ~4s so the user
+         can't scroll past it on mobile, and set the flag at the end so
+         next visit skips. Reduced-motion users skip lock + animations. */}
   <script is:inline>
     (function () {
-      if (window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
       var html = document.documentElement;
-      html.style.overflow = "hidden";
+      var heroSeen = false;
+      try {
+        heroSeen = localStorage.getItem("hero-seen") === "true";
+      } catch (e) {}
+
+      if (heroSeen) {
+        html.classList.add("hero-seen");
+        return;
+      }
+
+      var reduceMotion =
+        window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+      if (!reduceMotion) {
+        html.style.overflow = "hidden";
+        setTimeout(function () {
+          html.style.overflow = "";
+        }, 4000);
+      }
+
+      // Mark the hero as seen after the intro completes.
       setTimeout(function () {
-        html.style.overflow = "";
+        try { localStorage.setItem("hero-seen", "true"); } catch (e) {}
       }, 4000);
     })();
   </script>

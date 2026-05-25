@@ -848,3 +848,22 @@ html.grid-on .grid-overlay {
     transform: none;
   }
 }
+
+/* Hero-seen — user has already watched the intro on a previous visit.
+   Class is added to <html> by the inline bootstrap script in index.astro
+   when localStorage["hero-seen"] === "true". Skips the entire intro and
+   shows the final state (hero gone, components visible) immediately. */
+html.hero-seen .hero-letters {
+  display: none;
+}
+html.hero-seen .hero-word-inner {
+  animation: none;
+  transform: none;
+  opacity: 1;
+  filter: none;
+}
+html.hero-seen .page-reveal {
+  animation: none;
+  opacity: 1;
+  transform: none;
+}
