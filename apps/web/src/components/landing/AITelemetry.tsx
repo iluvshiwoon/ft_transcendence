@@ -291,27 +291,27 @@ export function AITelemetry({
       </ul>
 
       {/* Position strength — neutral muted bar with a thumb that moves
-          based on the AI's projected score. Tiny pawn-colored dots at
-          each end identify the sides:
-            · red dot (left)  = AI side
-            · yellow dot (right, on the small accent bar) = YOU side
-          Thumb at the right tip + small accent on the right = AI dominant.
-          Thumb at the left tip + small accent on the right = YOU dominant. */}
+          based on the AI's projected score. Each bar has a thin
+          pawn-color cap at its outer end:
+            · pawn-red cap on the main bar's left = AI side
+            · pawn-yellow cap on the small bar's right = YOU side
+          Caps are part of the bar form (not stuck-on dots), so the
+          color reads as "this end belongs to that side". */}
       <div className="flex w-full items-center gap-1 pt-2 opacity-70" aria-hidden="true">
         {/* Main bar */}
         <div className="relative flex h-2 flex-1 items-center bg-muted-foreground">
-          {/* AI side accent dot */}
-          <div className="absolute left-0 top-1/2 size-1.5 -translate-y-1/2 rounded-full bg-pawn-red" />
+          {/* AI side cap */}
+          <div className="absolute left-0 top-0 h-full w-1 bg-pawn-red" />
           {/* Thumb */}
           <div
             className="absolute h-5 w-0.5 -translate-x-1/2 bg-foreground transition-[left] duration-500"
             style={{ left: `${(livePositionRatio ?? 0.5) * 100}%` }}
           />
         </div>
-        {/* Small bar — same height as main, replaces the previous dashed
-            continuation. Carries the YOU-side accent. */}
+        {/* Small bar — replaces the previous dashed continuation. */}
         <div className="relative flex h-2 w-2 items-center bg-muted-foreground">
-          <div className="absolute right-0 top-1/2 size-1.5 -translate-y-1/2 rounded-full bg-pawn-yellow" />
+          {/* USER side cap */}
+          <div className="absolute right-0 top-0 h-full w-1 bg-pawn-yellow" />
         </div>
       </div>
     </section>
