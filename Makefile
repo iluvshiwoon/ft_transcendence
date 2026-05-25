@@ -1,5 +1,5 @@
 # ==============================================================================
-# ft_transcendance — Makefile
+# ft_transcendence — Makefile
 # ==============================================================================
 
 .PHONY: all up down down-force build logs ps clean re help \
@@ -74,13 +74,13 @@ logs-nginx:
 # ──────────────────────────────────────────
 
 psql:
-	podman-compose exec postgres psql -U postgres_transcendance -d postgres_transcendance
+	podman-compose exec postgres psql -U postgres_transcendence -d postgres_transcendence
 
 db-tables:
-	podman-compose exec postgres psql -U postgres_transcendance -d postgres_transcendance -c "\dt"
+	podman-compose exec postgres psql -U postgres_transcendence -d postgres_transcendence -c "\dt"
 
 db-list:
-	podman-compose exec postgres psql -U postgres_transcendance -c "\l"
+	podman-compose exec postgres psql -U postgres_transcendence -c "\l"
 
 # ──────────────────────────────────────────
 # VAULT
@@ -131,7 +131,7 @@ network-backend:
 help:
 	@echo ""
 	@echo "$(BOLD)$(CYAN)╔════════════════════════════════════════╗$(NC)"
-	@echo "$(BOLD)$(CYAN)║       ft_transcendance — Makefile      ║$(NC)"
+	@echo "$(BOLD)$(CYAN)║       ft_transcendence — Makefile      ║$(NC)"
 	@echo "$(BOLD)$(CYAN)╚════════════════════════════════════════╝$(NC)"
 	@echo ""
 	@echo "$(BOLD)$(YELLOW)  ── CONTAINERS ──────────────────────────────$(NC)"

@@ -47,7 +47,7 @@ else
     
     export VAULT_TOKEN="$(cat /vault/file/root.token)"
     
-    DB_PASS=$(vault kv get -format=json -mount=secret transcendence/database | jq -r '.data.data.db_password')
+    DB_PASS=$(vault kv get -format=json -mount=secret transcendence/database | jq -r '.data.data.password')
 fi
 
 echo "$DB_PASS" > /vault/file/.db_pass

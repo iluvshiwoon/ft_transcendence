@@ -38,7 +38,7 @@ pnpm db:studio           # ouvre une UI web pour explorer la DB
 # Container PG (à lancer une fois)
 podman start dev-pg      # redémarre PG si tu l'as stoppé
 podman stop dev-pg       # stoppe PG
-podman exec dev-pg psql -U postgres_transcendance -d postgres_transcendance  # shell SQL
+podman exec dev-pg psql -U postgres_transcendence -d postgres_transcendence  # shell SQL
 
 # API Backend
 

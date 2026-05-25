@@ -19,8 +19,8 @@
         retries: 15
         start_period: 15s
       environment:
-        POSTGRES_DB: postgres_transcendance
-        POSTGRES_USER: postgres_transcendance
+        POSTGRES_DB: postgres_transcendence
+        POSTGRES_USER: postgres_transcendence
       volumes:
         - pgdata:/var/lib/postgresql/data
         - vdata:/vault/file
@@ -91,9 +91,11 @@
           condition: service_healthy
       environment:
         DB_HOST: postgres
-        DB_NAME: postgres_transcendance
-        DB_USER: postgres_transcendance
+        DB_NAME: postgres_transcendence
+        DB_USER: postgres_transcendence
         VAULT_ADDR: http://vault_server:8200
+        OAUTH42_REDIRECT_URI: http://localhost:8080/api/auth/42/callback
+        FRONTEND_URL: http://localhost:8080
       # ports:
       #   - "3000:3000"
       volumes:
