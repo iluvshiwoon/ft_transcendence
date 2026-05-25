@@ -290,29 +290,37 @@ export function AITelemetry({
         <li>Eval Time: {finalStats.evalTimeMs}ms</li>
       </ul>
 
-      {/* Position strength — neutral muted bar with a thumb that moves
-          based on the AI's projected score. Each bar has a thin
-          pawn-color cap at its outer end:
-            · pawn-red cap on the main bar's left = AI side
-            · pawn-yellow cap on the small bar's right = YOU side
-          Caps are part of the bar form (not stuck-on dots), so the
-          color reads as "this end belongs to that side". */}
+      {/* Position strength — tug-of-war between AI (red, left) and YOU
+          (yellow, right). The main bar splits at the thumb position:
+          everything to the left of the thumb is red-tinted (AI territory),
+          everything to the right is yellow-tinted (YOU territory).
+          The small bar continues the YOU territory past the thumb-bar
+          boundary as a stable yellow accent.
+          Tints are at /30 opacity so the colors stay subtle — dominant
+          visual is still the muted bar shape, the colors only suggest
+          which side is winning. */}
       <div className="flex w-full items-center gap-1 pt-2 opacity-70" aria-hidden="true">
         {/* Main bar */}
-        <div className="relative flex h-2 flex-1 items-center bg-muted-foreground">
-          {/* AI side cap */}
-          <div className="absolute left-0 top-0 h-full w-1 bg-pawn-red" />
-          {/* Thumb */}
+        <div className="relative h-2 flex-1 bg-muted-foreground/20">
+          {/* AI territory (red, from left) */}
           <div
-            className="absolute h-5 w-0.5 -translate-x-1/2 bg-foreground transition-[left] duration-500"
+            className="absolute left-0 top-0 h-full bg-pawn-red/40 transition-[width] duration-500"
+            style={{ width: `${(livePositionRatio ?? 0.5) * 100}%` }}
+          />
+          {/* YOU territory (yellow, from right) */}
+          <div
+            className="absolute right-0 top-0 h-full bg-pawn-yellow/40 transition-[width] duration-500"
+            style={{ width: `${(1 - (livePositionRatio ?? 0.5)) * 100}%` }}
+          />
+          {/* Thumb at the split point */}
+          <div
+            className="absolute top-1/2 h-5 w-0.5 -translate-x-1/2 -translate-y-1/2 bg-foreground transition-[left] duration-500"
             style={{ left: `${(livePositionRatio ?? 0.5) * 100}%` }}
           />
         </div>
-        {/* Small bar — replaces the previous dashed continuation. */}
-        <div className="relative flex h-2 w-2 items-center bg-muted-foreground">
-          {/* USER side cap */}
-          <div className="absolute right-0 top-0 h-full w-1 bg-pawn-yellow" />
-        </div>
+        {/* Small bar — extends the YOU territory, replaces the previous
+            dashed continuation. */}
+        <div className="h-2 w-2 bg-pawn-yellow/40" />
       </div>
     </section>
   );
