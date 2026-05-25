@@ -11,6 +11,8 @@ import { and, eq } from "drizzle-orm";
 import { db } from "../db/client.js";
 import { lobbies, games } from "../db/schema.js";
 import { requireAuth } from "../auth/middleware.js";
+import { gameManager } from "../game/gameManager.js";
+import { broadcastLobbyUpdate } from "../socket/lobby.js";
 
 interface CreateLobbyBody {
   isPublic?: boolean;
@@ -118,6 +120,7 @@ export async function lobbyRoutes(app: FastifyInstance) {
         .where(eq(lobbies.id, lobbyId))
         .returning();
 
+      await broadcastLobbyUpdate(app.io, lobbyId);
       return reply.send(updated);
     }
   );
@@ -137,11 +140,13 @@ export async function lobbyRoutes(app: FastifyInstance) {
       if (lobby.creatorId === userId) {
         // Le créateur quitte → fermeture du lobby
         await db.update(lobbies).set({ status: "closed" }).where(eq(lobbies.id, lobbyId));
+        await broadcastLobbyUpdate(app.io, lobbyId);
         return reply.send({ message: "Lobby fermé" });
       }
 
       if (lobby.player2Id === userId) {
         await db.update(lobbies).set({ player2Id: null }).where(eq(lobbies.id, lobbyId));
+        await broadcastLobbyUpdate(app.io, lobbyId);
         return reply.send({ message: "Vous avez quitté le lobby" });
       }
 
@@ -179,6 +184,20 @@ export async function lobbyRoutes(app: FastifyInstance) {
 
       // Ferme le lobby
       await db.update(lobbies).set({ status: "in_progress" }).where(eq(lobbies.id, lobbyId));
+      await broadcastLobbyUpdate(app.io, lobbyId);
+
+      // Enregistre la partie active en memoire (autorite serveur).
+      gameManager.createGame({
+        gameId: game.id,
+        player1Id: lobby.creatorId,
+        player2Id: lobby.player2Id,
+        timePerPlayerSeconds: lobby.timePerPlayerSeconds,
+        isAi: false,
+      });
+
+      // Notifie les 2 joueurs via leur room personnelle qu'ils doivent rejoindre la partie.
+      app.io.to(`user:${lobby.creatorId}`).emit("game:start", { gameId: game.id });
+      app.io.to(`user:${lobby.player2Id}`).emit("game:start", { gameId: game.id });
 
       return reply.status(201).send({ gameId: game.id });
     }
