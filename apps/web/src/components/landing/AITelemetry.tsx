@@ -30,7 +30,11 @@
  *   Hook point: GameDemo island will pass these as props on every search update.
  */
 
+import { useSyncExternalStore } from "react";
+
 import { cn } from "~/lib/utils";
+import { playStore } from "~/lib/play-store";
+import type { AiTelemetry, PublicGameView } from "~/lib/play-api";
 
 interface AITelemetryProps {
   /**
@@ -75,16 +79,107 @@ function scoreOpacity(score: number): number {
 const DEFAULT_LANDING_ROWS = [5, 4, 3, 2, 3, 5, 5];
 const DEFAULT_COLUMN_SCORES = [0, 0.15, 0.55, 1.0, 0.75, 0.25, 0];
 
+/**
+ * Compute the lowest empty row for each column on a live board.
+ * Returns -1 for full columns.
+ */
+function landingRowsFromBoard(board: PublicGameView["board"]): number[] {
+  const result: number[] = [];
+  for (let c = 0; c < COLS; c++) {
+    let row = -1;
+    for (let r = ROWS - 1; r >= 0; r--) {
+      if (board[r][c] === 0) {
+        row = r;
+        break;
+      }
+    }
+    result.push(row);
+  }
+  return result;
+}
+
+/**
+ * Normalize the AI's per-column raw minimax scores to a 0..1 ramp where
+ * 1 = best move and 0 = worst (or null/full column). Forced-win scores
+ * (≥ 1_000_000) saturate at 1.
+ */
+function normalizeColumnScores(raw: Array<number | null>): number[] {
+  const valid = raw.map((s) => (s === null ? null : s));
+  const present = valid.filter((s): s is number => s !== null);
+  if (present.length === 0) return Array(COLS).fill(0);
+
+  const max = Math.max(...present);
+  const min = Math.min(...present);
+  const range = max - min;
+
+  return valid.map((s) => {
+    if (s === null) return 0;
+    if (range === 0) return 1; // all moves equally good
+    return (s - min) / range;
+  });
+}
+
+function formatNodesPerSec(n: number): string {
+  if (n >= 1_000_000) return `${(n / 1_000_000).toFixed(1)}M`;
+  if (n >= 1_000) return `${Math.round(n / 1_000)}k`;
+  return String(n);
+}
+
 export function AITelemetry({
-  columnScores = DEFAULT_COLUMN_SCORES,
-  columnLandingRows = DEFAULT_LANDING_ROWS,
-  evalRatio = 1 / 3,
-  stats = { depth: 8, nodesPerSec: "142k", evalTimeMs: 42 },
-  evalScore = 132,
+  columnScores,
+  columnLandingRows,
+  evalRatio,
+  stats,
+  evalScore,
 }: AITelemetryProps) {
+  // Subscribe to the live game store. SSR returns initialState (view=null,
+  // telemetry=null) so the component falls back to the wireframe defaults
+  // until the first AI move arrives.
+  const snap = useSyncExternalStore(
+    playStore.subscribe,
+    playStore.getSnapshot,
+    playStore.getSnapshot,
+  );
+
+  // Derive live values from the store. Each derived value is only used if
+  // the explicit prop wasn't passed AND the store has data for it. This
+  // preserves the styleguide's overridable contract.
+  const liveLandingRows: number[] | null = snap.view
+    ? landingRowsFromBoard(snap.view.board)
+    : null;
+
+  const liveColumnScores: number[] | null = snap.telemetry
+    ? normalizeColumnScores(snap.telemetry.columnScores)
+    : null;
+
+  const liveStats: AITelemetryProps["stats"] | null = snap.telemetry
+    ? {
+        depth: snap.telemetry.depth,
+        nodesPerSec: formatNodesPerSec(snap.telemetry.nodesPerSecond),
+        evalTimeMs: Math.round(snap.telemetry.evalTimeMs),
+      }
+    : null;
+
+  const liveEvalRatio: number | null = snap.telemetry
+    ? Math.max(0, Math.min(1, snap.telemetry.evalTimeMs / 200))
+    : null;
+
+  const liveEvalScore: number | null = snap.telemetry
+    ? Math.round(Math.max(-999, Math.min(999, snap.telemetry.bestScore)))
+    : null;
+
+  const finalColumnScores =
+    columnScores ?? liveColumnScores ?? DEFAULT_COLUMN_SCORES;
+  const finalLandingRows =
+    columnLandingRows ?? liveLandingRows ?? DEFAULT_LANDING_ROWS;
+  const finalEvalRatio = evalRatio ?? liveEvalRatio ?? 1 / 3;
+  const finalStats =
+    stats ?? liveStats ?? { depth: 8, nodesPerSec: "142k", evalTimeMs: 42 };
+  const finalEvalScore = evalScore ?? liveEvalScore ?? 132;
+
   // Best-move column = highest score.
-  const maxScore = Math.max(...columnScores);
-  const bestColumn = maxScore > 0 ? columnScores.indexOf(maxScore) : -1;
+  const maxScore = Math.max(...finalColumnScores);
+  const bestColumn = maxScore > 0 ? finalColumnScores.indexOf(maxScore) : -1;
 
   return (
     <section
@@ -100,8 +195,8 @@ export function AITelemetry({
         <div className="grid w-full grid-cols-7 gap-[18px]">
           {Array.from({ length: ROWS }, (_, r) =>
             Array.from({ length: COLS }, (_, c) => {
-              const isLandingCell = columnLandingRows[c] === r;
-              const score = isLandingCell ? (columnScores[c] ?? 0) : 0;
+              const isLandingCell = finalLandingRows[c] === r;
+              const score = isLandingCell ? (finalColumnScores[c] ?? 0) : 0;
               const baseOpacity = isLandingCell ? scoreOpacity(score) : BASE_OPACITY;
               const isBestMove = isLandingCell && c === bestColumn && score > 0;
 
@@ -147,21 +242,21 @@ export function AITelemetry({
         className="relative h-2 w-full rounded-full border border-muted-foreground opacity-70"
         role="meter"
         aria-label="Search progress"
-        aria-valuenow={Math.round(evalRatio * 100)}
+        aria-valuenow={Math.round(finalEvalRatio * 100)}
         aria-valuemin={0}
         aria-valuemax={100}
       >
         <div
           className="absolute left-0 top-0 h-full rounded-l-full bg-muted-foreground"
-          style={{ width: `${Math.max(0, Math.min(1, evalRatio)) * 100}%` }}
+          style={{ width: `${Math.max(0, Math.min(1, finalEvalRatio)) * 100}%` }}
         />
       </div>
 
       {/* Stats */}
       <ul className="flex w-full flex-col gap-1 uppercase opacity-70">
-        <li>Depth: {stats.depth}</li>
-        <li>Nodes/sec: {stats.nodesPerSec}</li>
-        <li>Eval Time: {stats.evalTimeMs}ms</li>
+        <li>Depth: {finalStats.depth}</li>
+        <li>Nodes/sec: {finalStats.nodesPerSec}</li>
+        <li>Eval Time: {finalStats.evalTimeMs}ms</li>
       </ul>
 
       {/* Value slider — bar + dashed continuation, fills the section width

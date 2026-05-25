@@ -21,9 +21,11 @@
  *       final row using `translate-y` keyframes. CSS-only; no JS animation.
  */
 
-import { useState } from "react";
+import { useEffect, useState, useSyncExternalStore } from "react";
 
 import { cn } from "~/lib/utils";
+import { playStore } from "~/lib/play-store";
+import type { Cell as ServerCell } from "~/lib/play-api";
 
 export type Cell = "empty" | "red" | "yellow";
 export type BoardState = Cell[][]; // 6 rows × 7 cols, row 0 = top
@@ -59,6 +61,23 @@ export const WIREFRAME_BOARD: BoardState = (() => {
   board[5][4] = "yellow";
   return board;
 })();
+
+/** All-empty 6×7 board — used as the live game's starting state. */
+export const EMPTY_BOARD: BoardState = Array.from({ length: ROWS }, () =>
+  Array(COLS).fill("empty"),
+);
+
+/**
+ * Map the server's int representation (0=empty, 1=player1=user=yellow,
+ * 2=player2=AI=red) to the UI's named cells.
+ */
+function cellFromServer(c: ServerCell): Cell {
+  return c === 0 ? "empty" : c === 1 ? "yellow" : "red";
+}
+
+function viewBoardFromServer(board: ServerCell[][]): BoardState {
+  return board.map((row) => row.map(cellFromServer));
+}
 
 interface BoardProps {
   /** 6×7 array of cells. Defaults to the wireframe's mid-game position. */
@@ -124,7 +143,28 @@ function emptyCellClasses(variant: BoardVariant): string {
   }
 }
 
-export function Board({ pieces = WIREFRAME_BOARD, className, variant = "default" }: BoardProps) {
+export function Board({ pieces, className, variant = "default" }: BoardProps) {
+  // Subscribe to the play store. SSR returns initialState (view=null), so
+  // we fall back to the explicit `pieces` prop or WIREFRAME_BOARD until the
+  // server-side game session is up.
+  const snap = useSyncExternalStore(
+    playStore.subscribe,
+    playStore.getSnapshot,
+    playStore.getSnapshot,
+  );
+
+  // Kick off /api/play/start once on mount (idempotent inside the store).
+  useEffect(() => {
+    playStore.ensureStarted();
+  }, []);
+
+  const livePieces: BoardState | null = snap.view ? viewBoardFromServer(snap.view.board) : null;
+  const renderedPieces: BoardState = livePieces ?? pieces ?? WIREFRAME_BOARD;
+
+  const handleColumnClick = (col: number) => {
+    void playStore.play(col);
+  };
+
   // Column-hover state for the liquid-glass variant. Hit zones overlay the
   // board (extending above + below) so users can hover slightly outside
   // the plate and still target a column. The hovered column's empty cells
@@ -158,7 +198,7 @@ export function Board({ pieces = WIREFRAME_BOARD, className, variant = "default"
             aria-hidden="true"
           >
             <div className="grid grid-cols-7 gap-2 sm:gap-3 md:gap-4">
-              {pieces.map((row, rowIdx) =>
+              {renderedPieces.map((row, rowIdx) =>
                 row.map((cell, colIdx) => (
                   <div
                     key={`under-${rowIdx}-${colIdx}`}
@@ -177,7 +217,7 @@ export function Board({ pieces = WIREFRAME_BOARD, className, variant = "default"
           <div className="lg-specular" aria-hidden="true" />
           <div className="lg-content p-4 sm:p-5 md:p-6">
             <div className="grid grid-cols-7 gap-2 sm:gap-3 md:gap-4">
-              {pieces.map((row, rowIdx) =>
+              {renderedPieces.map((row, rowIdx) =>
                 row.map((cell, colIdx) => {
                   const isHoveredCol = hoveredCol === colIdx;
                   return (
@@ -215,10 +255,14 @@ export function Board({ pieces = WIREFRAME_BOARD, className, variant = "default"
           aria-hidden="true"
         >
           {Array.from({ length: COLS }).map((_, c) => (
-            <div
+            <button
               key={`hit-${c}`}
-              className="h-full cursor-pointer"
+              type="button"
+              aria-label={`Drop in column ${c + 1}`}
+              className="h-full cursor-pointer bg-transparent p-0 focus:outline-none"
               onMouseEnter={() => setHoveredCol(c)}
+              onClick={() => handleColumnClick(c)}
+              disabled={snap.thinking}
             />
           ))}
         </div>
@@ -239,7 +283,7 @@ export function Board({ pieces = WIREFRAME_BOARD, className, variant = "default"
       )}
     >
       <div className="grid grid-cols-7 gap-2 sm:gap-3 md:gap-4">
-        {pieces.map((row, rowIdx) =>
+        {renderedPieces.map((row, rowIdx) =>
           row.map((cell, colIdx) => (
             <div
               key={`${rowIdx}-${colIdx}`}

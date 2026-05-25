@@ -142,7 +142,7 @@ const boardVariant: BoardVariant = VALID_VARIANTS.includes(requested as BoardVar
         class="page-reveal order-2 flex justify-center md:order-1 md:col-span-3"
         style="--reveal-delay: 2.9s"
       >
-        <AITelemetry />
+        <AITelemetry client:load />
       </div>
 
       {/* Middle column: board with prompt positioned above it.

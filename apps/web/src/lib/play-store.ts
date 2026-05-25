@@ -1,0 +1,135 @@
+/**
+ * Shared game-state store for the landing page.
+ *
+ * Two React islands subscribe to this store:
+ *   - <Board>          renders cells + handles column clicks
+ *   - <AITelemetry>    renders depth/nodes/eval-time + per-column scores
+ *
+ * Single source of truth, no prop drilling. Subscribe via `useSyncExternalStore`
+ * inside components.
+ *
+ * Server-authoritative: the store never mutates the board on the client. It
+ * only mirrors the snapshot the server returned. The only inputs are
+ * column-index clicks, which round-trip through `/api/play/move`.
+ */
+
+import {
+  startGame,
+  makeMove,
+  type PublicGameView,
+  type AiTelemetry,
+  PlayApiError,
+} from "./play-api";
+
+type Listener = () => void;
+
+export interface PlayStoreState {
+  /** Latest server snapshot, or null before the first /start round-trip. */
+  view: PublicGameView | null;
+  /** Latest AI telemetry from the most recent move. */
+  telemetry: AiTelemetry | null;
+  /** True between sending /move and receiving the response. */
+  thinking: boolean;
+  /** True after the user has dropped their first piece (drives "Pick a column" prompt). */
+  hasPlayed: boolean;
+  /** Last error from the API, or null. */
+  error: PlayApiError | null;
+}
+
+const initialState: PlayStoreState = {
+  view: null,
+  telemetry: null,
+  thinking: false,
+  hasPlayed: false,
+  error: null,
+};
+
+class PlayStore {
+  private state: PlayStoreState = initialState;
+  private listeners = new Set<Listener>();
+  private startPromise: Promise<void> | null = null;
+
+  getSnapshot = (): PlayStoreState => this.state;
+
+  subscribe = (fn: Listener): (() => void) => {
+    this.listeners.add(fn);
+    return () => {
+      this.listeners.delete(fn);
+    };
+  };
+
+  private set(patch: Partial<PlayStoreState>) {
+    this.state = { ...this.state, ...patch };
+    for (const fn of this.listeners) fn();
+  }
+
+  /** Idempotent — only triggers one /start request even if called multiple times. */
+  ensureStarted = async (): Promise<void> => {
+    if (this.state.view) return;
+    if (this.startPromise) return this.startPromise;
+    this.startPromise = (async () => {
+      try {
+        const { state } = await startGame();
+        this.set({ view: state, telemetry: null, error: null });
+      } catch (e) {
+        if (e instanceof PlayApiError) this.set({ error: e });
+      } finally {
+        this.startPromise = null;
+      }
+    })();
+    return this.startPromise;
+  };
+
+  /**
+   * User clicked a column. Returns silently if:
+   *   - AI is thinking (debounce double-click)
+   *   - column is invalid (server will reject anyway, but skip the round-trip)
+   * Auto-restarts a finished game.
+   */
+  play = async (col: number): Promise<void> => {
+    if (this.state.thinking) return;
+    if (col < 0 || col > 6) return;
+
+    // Game over → restart, then apply this click on the fresh game.
+    if (this.state.view && this.state.view.status !== "in_progress") {
+      this.set({ telemetry: null, hasPlayed: false });
+      try {
+        const { state } = await startGame();
+        this.set({ view: state });
+      } catch (e) {
+        if (e instanceof PlayApiError) this.set({ error: e });
+        return;
+      }
+    }
+
+    if (!this.state.view) {
+      // No session yet — start one first, then play.
+      await this.ensureStarted();
+      if (!this.state.view) return;
+    }
+
+    this.set({ thinking: true, error: null });
+    try {
+      const res = await makeMove(col);
+      this.set({
+        view: res.state,
+        telemetry: res.aiMove?.telemetry ?? null,
+        thinking: false,
+        hasPlayed: true,
+      });
+    } catch (e) {
+      this.set({ thinking: false });
+      if (e instanceof PlayApiError) {
+        this.set({ error: e });
+        // GAME_OVER or NO_SESSION → kick a fresh start so next click works.
+        if (e.code === "GAME_OVER" || e.code === "NO_SESSION") {
+          this.startPromise = null;
+          this.set({ view: null });
+          await this.ensureStarted();
+        }
+      }
+    }
+  };
+}
+
+export const playStore = new PlayStore();
