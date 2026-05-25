@@ -204,9 +204,12 @@ export function AITelemetry({
 
   // Position strength for the slider — AI's perspective. 0.5 = even,
   // > 0.5 means AI is winning, < 0.5 means YOU are winning.
-  const livePositionRatio: number | null = snap.telemetry
-    ? positionStrength(snap.telemetry.bestScore)
-    : null;
+  // Reads from snap.positionScore (persistent across player moves) rather
+  // than snap.telemetry.bestScore (cleared on optimistic update). Keeps
+  // the slider at its last known position during AI compute instead of
+  // snapping back to center.
+  const livePositionRatio: number | null =
+    snap.positionScore !== null ? positionStrength(snap.positionScore) : null;
 
   const finalColumnScores =
     columnScores ?? liveColumnScores ?? new Array(COLS).fill(0);

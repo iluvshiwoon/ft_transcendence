@@ -60,10 +60,17 @@ function applyPlayerMoveLocally(view: PublicGameView, col: number): PublicGameVi
 export interface PlayStoreState {
   /** Latest server snapshot, or null before the first /start round-trip. */
   view: PublicGameView | null;
-  /** Latest AI telemetry from the most recent move. */
+  /** Latest AI telemetry from the most recent move. Cleared on the
+   *  player's optimistic update so the matrix goes empty between moves. */
   telemetry: AiTelemetry | null;
-  /** Last AI move (col + row). null before the AI has played any move. */
+  /** Last AI move (col + row). null before the AI has played any move.
+   *  Cleared on the player's optimistic update along with telemetry. */
   lastAiMove: { col: number; row: number } | null;
+  /** Last known AI bestScore — used by the position slider. Unlike
+   *  `telemetry`, this is NOT cleared on the player's optimistic update,
+   *  so the slider keeps showing the previous evaluation until the new
+   *  AI response arrives instead of snapping back to center. */
+  positionScore: number | null;
   /** True between sending /move and receiving the response. */
   thinking: boolean;
   /** True after the user has dropped their first piece (drives "Pick a column" prompt). */
@@ -76,6 +83,7 @@ const initialState: PlayStoreState = {
   view: null,
   telemetry: null,
   lastAiMove: null,
+  positionScore: null,
   thinking: false,
   hasPlayed: false,
   error: null,
@@ -129,7 +137,7 @@ class PlayStore {
 
     // Game over → restart, then apply this click on the fresh game.
     if (this.state.view && this.state.view.status !== "in_progress") {
-      this.set({ telemetry: null, lastAiMove: null, hasPlayed: false });
+      this.set({ telemetry: null, lastAiMove: null, positionScore: null, hasPlayed: false });
       try {
         const { state } = await startGame();
         this.set({ view: state });
@@ -188,6 +196,10 @@ class PlayStore {
         view: res.state,
         telemetry: res.aiMove?.telemetry ?? null,
         lastAiMove: res.aiMove ? { col: res.aiMove.col, row: res.aiMove.row } : null,
+        // positionScore tracks the latest AI bestScore. If the player's
+        // move ended the game (no aiMove), keep the previous positionScore
+        // — the slider will continue to show whatever it last had.
+        positionScore: res.aiMove?.telemetry.bestScore ?? this.state.positionScore,
         // thinking stays true while red drops — prevents clicks during
         // the AI's piece animation. Cleared after another PIECE_ANIM_MS.
       });
