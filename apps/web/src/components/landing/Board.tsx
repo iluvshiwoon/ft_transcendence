@@ -199,16 +199,24 @@ export function Board({ pieces, className, variant = "default" }: BoardProps) {
           >
             <div className="grid grid-cols-7 gap-2 sm:gap-3 md:gap-4">
               {renderedPieces.map((row, rowIdx) =>
-                row.map((cell, colIdx) => (
-                  <div
-                    key={`under-${rowIdx}-${colIdx}`}
-                    className={cn(
-                      "size-9 rounded-full sm:size-10 md:size-12",
-                      cell === "red" && "bg-pawn-red",
-                      cell === "yellow" && "bg-pawn-yellow",
-                    )}
-                  />
-                )),
+                row.map((cell, colIdx) => {
+                  const isFilled = cell !== "empty";
+                  return (
+                    <div
+                      key={`under-${rowIdx}-${colIdx}`}
+                      className={cn(
+                        "size-9 rounded-full sm:size-10 md:size-12",
+                        cell === "red" && "bg-pawn-red piece-drop",
+                        cell === "yellow" && "bg-pawn-yellow piece-drop",
+                      )}
+                      style={
+                        isFilled
+                          ? ({ ["--drop-start" as never]: `-${(rowIdx + 1) * 100}%` } as React.CSSProperties)
+                          : undefined
+                      }
+                    />
+                  );
+                }),
               )}
             </div>
           </div>
@@ -220,6 +228,7 @@ export function Board({ pieces, className, variant = "default" }: BoardProps) {
               {renderedPieces.map((row, rowIdx) =>
                 row.map((cell, colIdx) => {
                   const isHoveredCol = hoveredCol === colIdx;
+                  const isFilled = cell !== "empty";
                   return (
                     <div
                       key={`${rowIdx}-${colIdx}`}
@@ -234,9 +243,14 @@ export function Board({ pieces, className, variant = "default" }: BoardProps) {
                           (isHoveredCol
                             ? "board-liquid-glass-cell-hover"
                             : emptyCellClasses(variant)),
-                        cell === "red" && "pawn-red",
-                        cell === "yellow" && "pawn-yellow",
+                        cell === "red" && "pawn-red piece-drop",
+                        cell === "yellow" && "pawn-yellow piece-drop",
                       )}
+                      style={
+                        isFilled
+                          ? ({ ["--drop-start" as never]: `-${(rowIdx + 1) * 100}%` } as React.CSSProperties)
+                          : undefined
+                      }
                     />
                   );
                 }),
@@ -284,22 +298,30 @@ export function Board({ pieces, className, variant = "default" }: BoardProps) {
     >
       <div className="grid grid-cols-7 gap-2 sm:gap-3 md:gap-4">
         {renderedPieces.map((row, rowIdx) =>
-          row.map((cell, colIdx) => (
-            <div
-              key={`${rowIdx}-${colIdx}`}
-              role="gridcell"
-              aria-rowindex={rowIdx + 1}
-              aria-colindex={colIdx + 1}
-              aria-label={cellLabel(cell, rowIdx, colIdx)}
-              data-cell={cell}
-              className={cn(
-                "size-9 sm:size-10 md:size-12 rounded-full",
-                cell === "empty" && emptyCellClasses(variant),
-                cell === "red" && "pawn-red",
-                cell === "yellow" && "pawn-yellow",
-              )}
-            />
-          )),
+          row.map((cell, colIdx) => {
+            const isFilled = cell !== "empty";
+            return (
+              <div
+                key={`${rowIdx}-${colIdx}`}
+                role="gridcell"
+                aria-rowindex={rowIdx + 1}
+                aria-colindex={colIdx + 1}
+                aria-label={cellLabel(cell, rowIdx, colIdx)}
+                data-cell={cell}
+                className={cn(
+                  "size-9 sm:size-10 md:size-12 rounded-full",
+                  cell === "empty" && emptyCellClasses(variant),
+                  cell === "red" && "pawn-red piece-drop",
+                  cell === "yellow" && "pawn-yellow piece-drop",
+                )}
+                style={
+                  isFilled
+                    ? ({ ["--drop-start" as never]: `-${(rowIdx + 1) * 100}%` } as React.CSSProperties)
+                    : undefined
+                }
+              />
+            );
+          }),
         )}
       </div>
     </div>

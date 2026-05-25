@@ -867,3 +867,45 @@ html.hero-seen .page-reveal {
   opacity: 1;
   transform: none;
 }
+
+
+/* Piece-drop — gravity-style fall for newly-placed Connect 4 pieces.
+   Each filled cell on the Board renders a div with .piece-drop and an
+   inline `--drop-start` CSS variable carrying the starting translateY
+   (in % of cell height, scaled to the piece's landing row so a piece
+   landing at row 0 starts ~1 cell above its cell, and a piece landing
+   at row 5 starts ~6 cells above — visually all pieces appear to fall
+   from above the board area, with longer falls naturally accelerating
+   more under the cubic-bezier easing).
+
+   Per-keyframe animation-timing-function lets each segment have its
+   own ease:
+     0%  → 85%: gravity-style fall (slow start, fast end)
+     85% → 92%: small overshoot (3px above resting position)
+     92% → 100%: settle back down
+*/
+@keyframes piece-drop {
+  0% {
+    transform: translateY(var(--drop-start, -300%));
+    animation-timing-function: cubic-bezier(0.6, 0.04, 0.7, 0.4);
+  }
+  85% {
+    transform: translateY(0);
+    animation-timing-function: ease-out;
+  }
+  92% {
+    transform: translateY(-3px);
+    animation-timing-function: ease-in;
+  }
+  100% {
+    transform: translateY(0);
+  }
+}
+.piece-drop {
+  animation: piece-drop 0.45s forwards;
+}
+@media (prefers-reduced-motion: reduce) {
+  .piece-drop {
+    animation: none;
+  }
+}

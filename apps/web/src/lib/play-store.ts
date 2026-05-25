@@ -16,13 +16,46 @@
 import {
   startGame,
   makeMove,
+  getState,
   type PublicGameView,
   type AiTelemetry,
-  type AiMove,
   PlayApiError,
 } from "./play-api";
 
 type Listener = () => void;
+
+/**
+ * Apply the player's move to the local view immediately for optimistic UI.
+ * Returns null when the move is locally invalid (column full, game over,
+ * not your turn) so we can skip the round-trip.
+ *
+ * The dropped piece is placed at the lowest empty row of the chosen column,
+ * mirroring the server's gravity logic. Server response is still
+ * authoritative — when it arrives we replace this view with the real one.
+ */
+function applyPlayerMoveLocally(view: PublicGameView, col: number): PublicGameView | null {
+  if (col < 0 || col > 6) return null;
+  if (view.status !== "in_progress") return null;
+  if (view.currentPlayer !== 1) return null;
+
+  let row = -1;
+  for (let r = view.board.length - 1; r >= 0; r--) {
+    if (view.board[r][col] === 0) {
+      row = r;
+      break;
+    }
+  }
+  if (row === -1) return null; // column full
+
+  const newBoard = view.board.map((r) => [...r]);
+  newBoard[row][col] = 1;
+
+  return {
+    ...view,
+    board: newBoard,
+    currentPlayer: 2, // AI's turn after player drops
+  };
+}
 
 export interface PlayStoreState {
   /** Latest server snapshot, or null before the first /start round-trip. */
@@ -112,7 +145,26 @@ class PlayStore {
       if (!this.state.view) return;
     }
 
-    this.set({ thinking: true, error: null });
+    // Optimistic update: apply the player's piece locally so the yellow
+    // pawn renders + animates IMMEDIATELY on click. The /move request
+    // fires in parallel; while it's in flight (~200-500ms for AI compute)
+    // the player's drop animation is already running, making the AI's
+    // computation overlap with visible motion. Server response then adds
+    // the AI's piece on top.
+    const optimistic = applyPlayerMoveLocally(this.state.view, col);
+    if (!optimistic) {
+      // Column full or other client-detectable invalidity — skip the
+      // round-trip entirely.
+      return;
+    }
+
+    this.set({
+      view: optimistic,
+      thinking: true,
+      error: null,
+      hasPlayed: true,
+    });
+
     try {
       const res = await makeMove(col);
       this.set({
@@ -120,17 +172,27 @@ class PlayStore {
         telemetry: res.aiMove?.telemetry ?? null,
         lastAiMove: res.aiMove ? { col: res.aiMove.col, row: res.aiMove.row } : null,
         thinking: false,
-        hasPlayed: true,
       });
     } catch (e) {
       this.set({ thinking: false });
       if (e instanceof PlayApiError) {
         this.set({ error: e });
-        // GAME_OVER or NO_SESSION → kick a fresh start so next click works.
+        // Revert the optimistic update by re-fetching the authoritative
+        // server state. If that also fails, fall back to a fresh /start
+        // so the next click still works.
         if (e.code === "GAME_OVER" || e.code === "NO_SESSION") {
           this.startPromise = null;
           this.set({ view: null });
           await this.ensureStarted();
+        } else {
+          try {
+            const { state } = await getState();
+            this.set({ view: state });
+          } catch {
+            this.startPromise = null;
+            this.set({ view: null });
+            await this.ensureStarted();
+          }
         }
       }
     }
