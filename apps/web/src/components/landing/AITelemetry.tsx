@@ -169,8 +169,8 @@ export function AITelemetry({
   // Derive live values from the store. Each derived value is only used if
   // the explicit prop wasn't passed AND the store has data for it. This
   // preserves the styleguide's overridable contract.
-  const liveLandingRows: number[] | null = snap.view
-    ? landingRowsFromBoard(snap.view.board)
+  const liveLandingRows: number[] | null = snap.telemetryBoard
+    ? landingRowsFromBoard(snap.telemetryBoard as PublicGameView["board"])
     : null;
 
   // When the AI has played, the live landing rows reflect the board

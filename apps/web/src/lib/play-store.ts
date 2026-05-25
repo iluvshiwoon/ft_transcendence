@@ -60,12 +60,17 @@ function applyPlayerMoveLocally(view: PublicGameView, col: number): PublicGameVi
 export interface PlayStoreState {
   /** Latest server snapshot, or null before the first /start round-trip. */
   view: PublicGameView | null;
-  /** Latest AI telemetry from the most recent move. Cleared on the
-   *  player's optimistic update so the matrix goes empty between moves. */
+  /** Latest AI telemetry from the most recent move. Persists across the
+   *  player's optimistic update so the matrix stays anchored to the
+   *  previous AI evaluation until a new one arrives. */
   telemetry: AiTelemetry | null;
-  /** Last AI move (col + row). null before the AI has played any move.
-   *  Cleared on the player's optimistic update along with telemetry. */
+  /** Last AI move (col + row). Persists across the player's optimistic
+   *  update for the same reason as telemetry. */
   lastAiMove: { col: number; row: number } | null;
+  /** Board state at the time of the last AI response. Used by the matrix
+   *  to compute landing rows so they don't shift when the player drops
+   *  a piece (which would otherwise change snap.view's landing rows). */
+  telemetryBoard: number[][] | null;
   /** Last known AI bestScore — used by the position slider. Unlike
    *  `telemetry`, this is NOT cleared on the player's optimistic update,
    *  so the slider keeps showing the previous evaluation until the new
@@ -83,6 +88,7 @@ const initialState: PlayStoreState = {
   view: null,
   telemetry: null,
   lastAiMove: null,
+  telemetryBoard: null,
   positionScore: null,
   thinking: false,
   hasPlayed: false,
@@ -137,7 +143,13 @@ class PlayStore {
 
     // Game over → restart, then apply this click on the fresh game.
     if (this.state.view && this.state.view.status !== "in_progress") {
-      this.set({ telemetry: null, lastAiMove: null, positionScore: null, hasPlayed: false });
+      this.set({
+        telemetry: null,
+        lastAiMove: null,
+        telemetryBoard: null,
+        positionScore: null,
+        hasPlayed: false,
+      });
       try {
         const { state } = await startGame();
         this.set({ view: state });
@@ -168,12 +180,11 @@ class PlayStore {
 
     this.set({
       view: optimistic,
-      // Clear telemetry + lastAiMove so the matrix empties out during AI
-      // compute. Without this, the matrix stays anchored to the previous
-      // AI move (now stale) and re-renders twice per turn — once from the
-      // player's optimistic update, again when the new AI move arrives.
-      telemetry: null,
-      lastAiMove: null,
+      // Don't clear telemetry / lastAiMove / telemetryBoard / positionScore
+      // here — they're pinned to the AI's last response so the matrix and
+      // slider keep showing it until the new AI response arrives. The
+      // matrix's landing rows are computed from telemetryBoard, not
+      // snap.view, so the player's optimistic piece doesn't shift them.
       thinking: true,
       error: null,
       hasPlayed: true,
@@ -196,6 +207,10 @@ class PlayStore {
         view: res.state,
         telemetry: res.aiMove?.telemetry ?? null,
         lastAiMove: res.aiMove ? { col: res.aiMove.col, row: res.aiMove.row } : null,
+        // Snapshot the board at AI response time. Used by the matrix to
+        // compute landing rows independently of snap.view (which changes
+        // when the player drops their next piece optimistically).
+        telemetryBoard: res.aiMove ? res.state.board : this.state.telemetryBoard,
         // positionScore tracks the latest AI bestScore. If the player's
         // move ended the game (no aiMove), keep the previous positionScore
         // — the slider will continue to show whatever it last had.
