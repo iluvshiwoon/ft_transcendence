@@ -126,35 +126,28 @@ function formatNodesPerSec(n: number): string {
 }
 
 /**
- * AI confidence: how decisive was the chosen move? Computed as the gap
- * between the best raw score and the second-best, normalized to a 0..1
- * ratio. Bar full = clear best move; empty = many equally-good options.
- */
-function aiConfidence(rawScores: Array<number | null>): number {
-  const present = rawScores.filter((s): s is number => s !== null);
-  if (present.length <= 1) return 1; // only one move available = full confidence
-  const sorted = [...present].sort((a, b) => b - a);
-  const best = sorted[0];
-  const second = sorted[1];
-  const gap = best - second;
-  // Score scale: heuristic moves are ~ ±100, so gap of 25+ feels decisive.
-  // Forced wins/losses (large gaps) saturate naturally.
-  return Math.min(1, Math.max(0, gap / 25));
-}
-
-/**
- * Position strength as a 0..1 ratio for the eval bar.
+ * Position strength as a 0..1 ratio for the slider.
  *   0   = player has a forced/heavy advantage
  *   0.5 = even
  *   1   = AI has a forced/heavy advantage
- * Sigmoid mapping smooths the heuristic-score range; terminal scores
- * saturate at 0 / 1.
+ *
+ * Robustness measures (vs the naive sigmoid):
+ *   - Wide scale (150) so small heuristic scores read as near-even.
+ *     A solo +50 score (e.g. center bonus + one open-3) shouldn't slam
+ *     the bar to "AI winning" — that's more like "slightly developed".
+ *   - Deadband: |score| < DEADBAND treated as exactly 0.5. Avoids the
+ *     bar twitching on every move when the position is tactically even.
+ *   - Terminal scores still saturate at 0 / 1 immediately.
  */
 function positionStrength(bestScore: number): number {
   if (bestScore >= 1_000_000) return 1;
   if (bestScore <= -1_000_000) return 0;
-  const scale = 50; // tune: heuristic ±100 → roughly 12% / 88%
-  return 1 / (1 + Math.exp(-bestScore / scale));
+  const DEADBAND = 30;
+  if (Math.abs(bestScore) <= DEADBAND) return 0.5;
+  // Subtract the deadband so the curve starts at 0.5 right outside it.
+  const adjusted = bestScore - Math.sign(bestScore) * DEADBAND;
+  const scale = 150;
+  return 1 / (1 + Math.exp(-adjusted / scale));
 }
 
 export function AITelemetry({
@@ -205,15 +198,11 @@ export function AITelemetry({
       }
     : null;
 
-  const liveEvalRatio: number | null = snap.telemetry
-    ? aiConfidence(snap.telemetry.columnScores)
-    : null;
-
   const liveEvalScore: number | null = snap.telemetry
     ? Math.round(Math.max(-999, Math.min(999, snap.telemetry.bestScore)))
     : null;
 
-  // Position strength for the bottom slider — AI's perspective. 0.5 = even,
+  // Position strength for the slider — AI's perspective. 0.5 = even,
   // > 0.5 means AI is winning, < 0.5 means YOU are winning.
   const livePositionRatio: number | null = snap.telemetry
     ? positionStrength(snap.telemetry.bestScore)
@@ -227,7 +216,6 @@ export function AITelemetry({
     columnLandingRows ??
     (snap.telemetry ? decisionLandingRows : null) ??
     (snap.view ? new Array(COLS).fill(-1) : DEFAULT_LANDING_ROWS);
-  const finalEvalRatio = evalRatio ?? liveEvalRatio ?? 1 / 3;
   const finalStats =
     stats ?? liveStats ?? { depth: 8, nodesPerSec: "142k", evalTimeMs: 42 };
   const finalEvalScore = evalScore ?? liveEvalScore ?? 132;
@@ -295,22 +283,6 @@ export function AITelemetry({
         </div>
       </div>
 
-      {/* Evaluation bar — fills the section width (220px) to match the
-          matrix above and the slider below. */}
-      <div
-        className="relative h-2 w-full rounded-full border border-muted-foreground opacity-70"
-        role="meter"
-        aria-label="Search progress"
-        aria-valuenow={Math.round(finalEvalRatio * 100)}
-        aria-valuemin={0}
-        aria-valuemax={100}
-      >
-        <div
-          className="absolute left-0 top-0 h-full rounded-l-full bg-muted-foreground"
-          style={{ width: `${Math.max(0, Math.min(1, finalEvalRatio)) * 100}%` }}
-        />
-      </div>
-
       {/* Stats */}
       <ul className="flex w-full flex-col gap-1 uppercase opacity-70">
         <li>Depth: {finalStats.depth}</li>
@@ -318,34 +290,27 @@ export function AITelemetry({
         <li>Eval Time: {finalStats.evalTimeMs}ms</li>
       </ul>
 
-      {/* Position strength — chess-engine-style eval bar.
-          Center mark divides the bar; the foreground fill extends from
-          the center toward whoever is winning. > 50% = AI advantage,
-          < 50% = YOU advantage. Driven by the AI's bestScore mapped
-          through a sigmoid so heuristic ±100 read as decisive. */}
-      <div className="flex w-full flex-col gap-1.5 pt-2 opacity-70" aria-hidden="true">
-        <div className="flex justify-between text-mono-xs uppercase">
-          <span>AI</span>
-          <span>You</span>
+      {/* Position strength — same look as the previous decorative slider,
+          but the fill width and thumb position are now driven by the AI's
+          projected score. Bar full + thumb on right = AI dominant. Bar
+          empty + thumb on left = YOU dominant. Center = even.
+          Calculation deliberately conservative: ±30-pt deadband + scale=150
+          so the bar barely moves on small heuristic flutters and only
+          travels meaningfully when the AI projects a real advantage. */}
+      <div className="flex w-full items-center gap-1 pt-2 opacity-70" aria-hidden="true">
+        <div className="relative flex h-2 flex-1 items-center bg-muted-foreground/30">
+          {/* Filled portion */}
+          <div
+            className="absolute left-0 top-0 h-full bg-muted-foreground transition-[width] duration-500"
+            style={{ width: `${(livePositionRatio ?? 0.5) * 100}%` }}
+          />
+          {/* Thumb (vertical line at end of fill) */}
+          <div
+            className="absolute h-5 w-0.5 -translate-x-1/2 bg-foreground transition-[left] duration-500"
+            style={{ left: `${(livePositionRatio ?? 0.5) * 100}%` }}
+          />
         </div>
-        <div className="relative h-2 w-full overflow-hidden rounded-full border border-muted-foreground bg-background">
-          {(() => {
-            const ratio = livePositionRatio ?? 0.5;
-            const aiSide = ratio > 0.5;
-            const magnitude = Math.abs(ratio - 0.5) * 2; // 0..1
-            return (
-              <div
-                className="absolute top-0 h-full bg-foreground transition-[width,left,right] duration-500"
-                style={{
-                  width: `${magnitude * 50}%`,
-                  ...(aiSide ? { left: "50%" } : { right: "50%" }),
-                }}
-              />
-            );
-          })()}
-          {/* Center mark */}
-          <div className="absolute left-1/2 top-0 h-full w-px -translate-x-px bg-muted-foreground" />
-        </div>
+        <div className="h-px w-2 border-t border-dashed border-muted-foreground" />
       </div>
     </section>
   );
