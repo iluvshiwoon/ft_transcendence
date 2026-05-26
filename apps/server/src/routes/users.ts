@@ -1,13 +1,14 @@
 // Routes utilisateurs : profils publics, recherche, lecture/édition de son propre profil.
 //
-// GET  /api/users/:id           — profil public d'un user (n'importe qui peut le voir)
-// GET  /api/users/search        — recherche par username (auth requise)
-// GET  /api/profile             — son propre profil (avec email, infos privées)
-// PUT  /api/profile             — édite son propre profil (username, bio, skins)
-// PUT  /api/profile/email       — change l'email (re-auth : current password requis)
-// PUT  /api/profile/password    — change le password (re-auth : current password requis)
-// POST /api/profile/avatar      — upload un avatar (JPG/PNG/WebP, max 2 MB, resize 500x500)
-// DELETE /api/profile           — anonymise le compte (is_deleted = true, garde l'historique)
+// GET  /api/users/:id              — profil public d'un user (n'importe qui peut le voir)
+// GET  /api/users/check-username   — vérifie si un username est dispo (UNAUTH, pour le signup)
+// GET  /api/users/search           — recherche par username (auth requise)
+// GET  /api/profile                — son propre profil (avec email, infos privées)
+// PUT  /api/profile                — édite son propre profil (username, bio, skins)
+// PUT  /api/profile/email          — change l'email (re-auth : current password requis)
+// PUT  /api/profile/password       — change le password (re-auth : current password requis)
+// POST /api/profile/avatar         — upload un avatar (JPG/PNG/WebP, max 2 MB, resize 500x500)
+// DELETE /api/profile              — anonymise le compte (is_deleted = true, garde l'historique)
 
 import { join } from "node:path";
 import { writeFile } from "node:fs/promises";
@@ -22,6 +23,13 @@ import { hashPassword, verifyPassword } from "../auth/password.js";
 // Dossier de destination des avatars (créé au démarrage par server.ts).
 const AVATARS_DIR = join(import.meta.dirname, "..", "..", "uploads", "avatars");
 const ALLOWED_MIMETYPES = ["image/jpeg", "image/png", "image/webp"];
+
+// Validation constants for PUT /api/profile. Kept in sync with the frontend
+// equivalents in apps/web/src/components/signup/Step3Profile.tsx — if you add
+// a new pawn or grid skin there, add it here too.
+const BIO_MAX_LEN = 160;
+const ALLOWED_PAWN_SKINS = ["default", "wine", "coral", "brick"] as const;
+const ALLOWED_GRID_SKINS = ["default", "ink", "slate"] as const;
 
 interface UpdateProfileBody {
   username?: string;
@@ -67,6 +75,33 @@ export async function userRoutes(app: FastifyInstance) {
       gamesDrawn: user.gamesDrawn,
     });
   });
+
+  app.get<{ Querystring: { q?: string } }>(
+    "/users/check-username",
+    async (request, reply) => {
+      // Public endpoint used by the signup form to live-check username availability.
+      // Returns just { available: boolean } — no other user data leaked.
+      //
+      // TODO(rate-limit): once @fastify/rate-limit is wired into the server, gate this
+      // (and signup/login) at something like 10 req/min/IP to mitigate enumeration.
+      const q = request.query.q?.trim() ?? "";
+
+      // Same constraints as signup: 3-30 chars, [a-zA-Z0-9_].
+      // Invalid input → unavailable (don't tell the caller why; just block the form).
+      const USERNAME_RE = /^[a-zA-Z0-9_]{3,30}$/;
+      if (!USERNAME_RE.test(q)) {
+        return reply.send({ available: false });
+      }
+
+      const existing = await db
+        .select({ id: users.id })
+        .from(users)
+        .where(eq(users.username, q))
+        .limit(1);
+
+      return reply.send({ available: existing.length === 0 });
+    },
+  );
 
   app.get<{ Querystring: { q?: string } }>(
     "/users/search",
@@ -121,6 +156,12 @@ export async function userRoutes(app: FastifyInstance) {
       const updates: Partial<typeof users.$inferInsert> = { updatedAt: new Date() };
 
       if (username !== undefined) {
+        // Same regex as the signup endpoint to keep usernames consistent.
+        if (!/^[a-zA-Z0-9_]{3,30}$/.test(username)) {
+          return reply.code(400).send({
+            error: "Username must be 3-30 chars (letters, numbers, underscore)",
+          });
+        }
         // Vérifie l'unicité du nouveau username.
         const existing = await db.select().from(users).where(eq(users.username, username));
         if (existing.length > 0 && existing[0].id !== request.userId) {
@@ -128,9 +169,28 @@ export async function userRoutes(app: FastifyInstance) {
         }
         updates.username = username;
       }
-      if (bio !== undefined) updates.bio = bio;
-      if (pawnSkin !== undefined) updates.pawnSkin = pawnSkin;
-      if (gridSkin !== undefined) updates.gridSkin = gridSkin;
+      if (bio !== undefined) {
+        if (typeof bio !== "string" || bio.length > BIO_MAX_LEN) {
+          return reply.code(400).send({ error: `Bio must be ≤ ${BIO_MAX_LEN} chars` });
+        }
+        updates.bio = bio;
+      }
+      if (pawnSkin !== undefined) {
+        if (!ALLOWED_PAWN_SKINS.includes(pawnSkin as (typeof ALLOWED_PAWN_SKINS)[number])) {
+          return reply.code(400).send({
+            error: `Invalid pawnSkin. Allowed: ${ALLOWED_PAWN_SKINS.join(", ")}`,
+          });
+        }
+        updates.pawnSkin = pawnSkin;
+      }
+      if (gridSkin !== undefined) {
+        if (!ALLOWED_GRID_SKINS.includes(gridSkin as (typeof ALLOWED_GRID_SKINS)[number])) {
+          return reply.code(400).send({
+            error: `Invalid gridSkin. Allowed: ${ALLOWED_GRID_SKINS.join(", ")}`,
+          });
+        }
+        updates.gridSkin = gridSkin;
+      }
 
       const [updated] = await db
         .update(users)
@@ -239,10 +299,18 @@ export async function userRoutes(app: FastifyInstance) {
       }
 
       // Redimensionne en 500x500 max (sans agrandir si plus petit) et convertit en webp.
-      const processed = await sharp(buffer)
-        .resize(500, 500, { fit: "cover", withoutEnlargement: true })
-        .webp({ quality: 80 })
-        .toBuffer();
+      // Si l'image est corrompue / pas réellement un format supporté (extension
+      // mensongère), sharp throw — on intercepte pour renvoyer 400 plutôt que 500.
+      let processed: Buffer;
+      try {
+        processed = await sharp(buffer)
+          .resize(500, 500, { fit: "cover", withoutEnlargement: true })
+          .webp({ quality: 80 })
+          .toBuffer();
+      } catch (err) {
+        request.log.warn({ err }, "avatar: sharp processing failed");
+        return reply.code(400).send({ error: "Invalid or corrupt image data" });
+      }
 
       // Sauvegarde sur disque. Nom de fichier = userId pour éviter les collisions.
       const filename = `${request.userId}.webp`;
