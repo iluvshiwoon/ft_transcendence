@@ -1,0 +1,685 @@
+---
+/**
+ * Profile page — /profile.
+ *
+ * Chess.com-inspired layout, built strictly on the 4thewin token system:
+ *   - Surfaces: bg-surface / border-border / bg-muted (no raw hex)
+ *   - Typography: font-display italic for emotional headers, font-mono uppercase
+ *     for HUD labels, font-sans for body, font-mono tabular-nums for numbers
+ *   - Game palette: pawn-yellow for wins, pawn-red for losses (thematically the
+ *     player's vs. opponent's piece in Connect 4)
+ *   - Spacing: px-margin-mobile / px-margin-desktop + gap-gutter
+ *
+ * Composition (one file by design — no new components introduced):
+ *   1. Profile header  (avatar, username, rank, rating, actions)
+ *   2. Tab bar         (Overview / Stats / Friends)
+ *   3. Tab panels      (toggled by inline script — zero JS framework cost)
+ *
+ * Mock data only. Wire to the backend once /api/users/:username lands.
+ */
+import RootLayout from "~/layouts/RootLayout.astro";
+import { Button, buttonVariants } from "~/components/ui/button";
+import { cn } from "~/lib/utils";
+
+// ---------- Mock data ----------
+const player = {
+  username: "TestUser",
+  initial: "Q",
+  rank: 47,
+  rating: 2854,
+  title: "Grandmaster",
+  joined: "Joined March 2025",
+  bio: "Placeholder bio about the player",
+};
+
+const stats = {
+  played: 412,
+  won: 312,
+  lost: 89,
+  drawn: 11,
+};
+const winRate = ((stats.won / stats.played) * 100).toFixed(1);
+const lossRate = ((stats.lost / stats.played) * 100).toFixed(1);
+const drawRate = ((stats.drawn / stats.played) * 100).toFixed(1);
+
+const dailyGames = [
+  { opponent: "Sarah_w",      yourTurn: true,  moves: 14, clock: "3:42:11" },
+  { opponent: "GridLock_",    yourTurn: false, moves: 22, clock: "5:18:00" },
+  { opponent: "BotSlayer99",  yourTurn: true,  moves:  6, clock: "0:11:02" },
+];
+
+type GameResult = "win" | "loss" | "draw";
+interface HistoryRow {
+  result: GameResult;
+  opponent: string;
+  opponentRating: number;
+  detail: string;
+  mode: "Connect 4" | "Connect 5";
+  date: string;
+}
+
+const history: HistoryRow[] = [
+  { result: "win",  opponent: "Sarah_w",     opponentRating: 2710, detail: "4 in a row · column 4", mode: "Connect 4", date: "2026-05-20" },
+  { result: "loss", opponent: "BotSlayer99", opponentRating: 2699, detail: "4 in a row · diagonal", mode: "Connect 4", date: "2026-05-19" },
+  { result: "win",  opponent: "A_connect",   opponentRating: 2349, detail: "4 in a row · row 3",    mode: "Connect 4", date: "2026-05-19" },
+  { result: "win",  opponent: "GridLock_",   opponentRating: 2569, detail: "5 in a row · diagonal", mode: "Connect 5", date: "2026-05-18" },
+  { result: "draw", opponent: "Sarah_w",     opponentRating: 2710, detail: "Board filled",          mode: "Connect 4", date: "2026-05-17" },
+  { result: "loss", opponent: "QuantumAI",   opponentRating: 2950, detail: "4 in a row · diagonal", mode: "Connect 4", date: "2026-05-16" },
+  { result: "win",  opponent: "Pivot_",      opponentRating: 2210, detail: "4 in a row · column 2", mode: "Connect 4", date: "2026-05-15" },
+  { result: "win",  opponent: "FourFingers", opponentRating: 2080, detail: "Opponent resigned",     mode: "Connect 4", date: "2026-05-14" },
+];
+
+type FriendStatus = "online" | "in_game" | "offline";
+interface Friend {
+  username: string;
+  initial: string;
+  status: FriendStatus;
+  rating: number;
+}
+
+const friends: Friend[] = [
+  { username: "Sarah_w",      initial: "S", status: "online",  rating: 2710 },
+  { username: "BotSlayer99",  initial: "B", status: "in_game", rating: 2699 },
+  { username: "GridLock_",    initial: "G", status: "online",  rating: 2569 },
+  { username: "A_connect",    initial: "A", status: "offline", rating: 2349 },
+  { username: "Pivot_",       initial: "P", status: "offline", rating: 2210 },
+  { username: "FourFingers",  initial: "F", status: "online",  rating: 2080 },
+  { username: "DiagonalDan",  initial: "D", status: "in_game", rating: 1980 },
+  { username: "RookieRed",    initial: "R", status: "offline", rating: 1654 },
+];
+
+// Result → token mapping (yellow = your pawn = win, red = opp pawn = loss)
+const resultTokens: Record<GameResult, { dot: string; label: string }> = {
+  win:  { dot: "bg-pawn-yellow", label: "WIN"  },
+  loss: { dot: "bg-pawn-red",    label: "LOSS" },
+  draw: { dot: "bg-muted-foreground", label: "DRAW" },
+};
+
+const statusTokens: Record<FriendStatus, { dot: string; label: string }> = {
+  online:  { dot: "bg-pawn-yellow",      label: "Online"  },
+  in_game: { dot: "bg-accent",           label: "In game" },
+  offline: { dot: "bg-muted-foreground", label: "Offline" },
+};
+
+// Shared card style — mirrors the dashboard surfaces used elsewhere in app.
+const cardCls = "rounded-xl border border-border bg-surface text-surface-foreground";
+---
+
+<RootLayout
+  title={`${player.username} — 4thewin`}
+  description={`Profile, stats and match history for ${player.username}.`}
+>
+  <main
+    id="main"
+    class="mx-auto w-full max-w-7xl px-margin-mobile pt-28 pb-16 md:px-margin-desktop md:pt-32"
+  >
+    {/* =========================================================
+        1. PROFILE HEADER
+        ========================================================= */}
+    <section
+      aria-label="Player profile"
+      class={cn(cardCls, "p-6 md:p-8")}
+    >
+      <div class="flex flex-col gap-8 md:flex-row md:items-center md:gap-10">
+        {/* Avatar — token-built (no image asset yet). Squircle to echo the board cells. */}
+        <div class="flex shrink-0 items-center justify-center">
+          <div
+            aria-hidden="true"
+            class="flex size-24 items-center justify-center rounded-2xl border border-border bg-foreground text-background font-display italic text-5xl md:size-32 md:text-6xl"
+          >
+            {player.initial}
+          </div>
+        </div>
+
+        {/* Identity block */}
+        <div class="flex min-w-0 flex-1 flex-col gap-3">
+          <div class="flex flex-wrap items-center gap-3">
+            <span class="font-mono text-mono-sm uppercase text-muted-foreground">
+              {player.title}
+            </span>
+            <span aria-hidden="true" class="text-muted-foreground">·</span>
+            <span class="font-mono text-mono-sm uppercase text-muted-foreground">
+              Rank #{player.rank}
+            </span>
+          </div>
+
+          <h1 class="font-display italic text-4xl tracking-tight md:text-5xl">
+            {player.username}
+          </h1>
+
+          <p class="max-w-prose text-base text-muted-foreground">
+            {player.bio}
+          </p>
+
+          {/* Rating + metadata strip */}
+          <dl class="mt-2 flex flex-wrap items-end gap-x-8 gap-y-3">
+            <div class="flex flex-col">
+              <dt class="font-mono text-mono-sm uppercase text-muted-foreground">Rating</dt>
+              <dd class="font-mono text-metric">{player.rating}</dd>
+            </div>
+            <div class="flex flex-col">
+              <dt class="font-mono text-mono-sm uppercase text-muted-foreground">Win rate</dt>
+              <dd class="font-mono text-metric">{winRate}%</dd>
+            </div>
+            <div class="flex flex-col">
+              <dt class="font-mono text-mono-sm uppercase text-muted-foreground">Games</dt>
+              <dd class="font-mono text-metric tabular-nums">{stats.played}</dd>
+            </div>
+            <div class="flex flex-col">
+              <dt class="font-mono text-mono-sm uppercase text-muted-foreground">Joined</dt>
+              <dd class="font-sans text-sm text-foreground">{player.joined}</dd>
+            </div>
+          </dl>
+        </div>
+
+        {/* Action column — stacks on mobile, column on desktop */}
+        <div class="flex shrink-0 flex-col gap-2 md:items-end">
+          <a
+            href="/play"
+            class={cn(buttonVariants({ variant: "brand-filled", size: "pill" }), "gap-1.5")}
+          >
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="size-3.5" aria-hidden="true">
+              <path d="M5 3l14 9-14 9V3z" />
+            </svg>
+            Challenge
+          </a>
+          <a
+            href="#"
+            class={cn(buttonVariants({ variant: "brand-outline", size: "pill" }))}
+          >
+            Add friend
+          </a>
+          <a
+            href="#"
+            class={cn(buttonVariants({ variant: "ghost", size: "pill" }), "text-muted-foreground")}
+          >
+            Message
+          </a>
+        </div>
+      </div>
+    </section>
+
+    {/* =========================================================
+        2. TAB BAR
+        ========================================================= */}
+    <nav
+      aria-label="Profile sections"
+      class="mt-10 border-b border-border"
+      data-profile-tabs
+    >
+      <ul role="tablist" class="-mb-px flex flex-wrap gap-2">
+        {[
+          { id: "overview", label: "Overview" },
+          { id: "stats",    label: "Stats" },
+          { id: "friends",  label: "Friends" },
+        ].map((t, i) => (
+          <li role="presentation">
+            <button
+              role="tab"
+              type="button"
+              id={`tab-${t.id}`}
+              aria-controls={`panel-${t.id}`}
+              aria-selected={i === 0 ? "true" : "false"}
+              data-tab={t.id}
+              class:list={[
+                "px-4 py-3 font-mono text-mono-md uppercase",
+                "border-b-2 transition-colors",
+                "text-muted-foreground border-transparent",
+                "hover:text-foreground",
+                "aria-selected:text-foreground aria-selected:border-accent",
+                "focus-visible:outline-none",
+              ]}
+            >
+              {t.label}
+            </button>
+          </li>
+        ))}
+      </ul>
+    </nav>
+
+    {/* =========================================================
+        3. TAB PANELS
+        ========================================================= */}
+
+    {/* ---------- OVERVIEW ---------- */}
+    <section
+      role="tabpanel"
+      id="panel-overview"
+      aria-labelledby="tab-overview"
+      data-panel="overview"
+      class="mt-8 grid grid-cols-1 gap-gutter lg:grid-cols-3"
+    >
+      {/* Daily games — left column on desktop */}
+      <div class={cn(cardCls, "lg:col-span-1 p-6")}>
+        <header class="mb-5 flex items-center justify-between">
+          <h2 class="font-mono text-mono-sm uppercase text-muted-foreground">
+            Daily games
+          </h2>
+          <span class="font-mono text-mono-sm uppercase text-muted-foreground">
+            {dailyGames.length} active
+          </span>
+        </header>
+
+        <ul class="flex flex-col gap-3">
+          {dailyGames.map((g) => (
+            <li class="rounded-lg border border-border bg-muted p-4">
+              <div class="flex items-center justify-between">
+                <div class="flex items-center gap-3">
+                  <span
+                    aria-hidden="true"
+                    class="flex size-9 items-center justify-center rounded-md border border-border bg-surface font-display italic text-lg text-foreground"
+                  >
+                    {g.opponent.charAt(0)}
+                  </span>
+                  <div class="flex flex-col">
+                    <span class="font-sans text-sm font-semibold text-foreground">
+                      vs {g.opponent}
+                    </span>
+                    <span class="font-mono text-mono-sm uppercase text-muted-foreground">
+                      Move {g.moves}
+                    </span>
+                  </div>
+                </div>
+                <div class="flex flex-col items-end">
+                  <span
+                    class:list={[
+                      "font-mono text-mono-sm uppercase",
+                      g.yourTurn ? "text-accent" : "text-muted-foreground",
+                    ]}
+                  >
+                    {g.yourTurn ? "Your turn" : "Waiting"}
+                  </span>
+                  <span class="font-mono text-mono-md tabular-nums text-foreground">
+                    {g.clock}
+                  </span>
+                </div>
+              </div>
+            </li>
+          ))}
+        </ul>
+
+        <a
+          href="/play"
+          class={cn(
+            buttonVariants({ variant: "brand-outline", size: "pill" }),
+            "mt-5 w-full justify-center",
+          )}
+        >
+          New daily game
+        </a>
+      </div>
+
+      {/* Game history — right two columns on desktop */}
+      <div class={cn(cardCls, "lg:col-span-2 p-6")}>
+        <header class="mb-5 flex items-center justify-between">
+          <h2 class="font-mono text-mono-sm uppercase text-muted-foreground">
+            Recent games
+          </h2>
+          <a
+            href="#"
+            class="font-mono text-mono-sm uppercase text-muted-foreground hover:text-foreground"
+          >
+            View all →
+          </a>
+        </header>
+
+        {/* Mobile: card list */}
+        <ul class="flex flex-col divide-y divide-border md:hidden">
+          {history.map((row) => (
+            <li class="flex items-center justify-between gap-3 py-3">
+              <div class="flex min-w-0 items-center gap-3">
+                <span aria-hidden="true" class:list={["size-2.5 rounded-full", resultTokens[row.result].dot]} />
+                <div class="flex min-w-0 flex-col">
+                  <span class="truncate font-sans text-sm font-semibold text-foreground">
+                    vs {row.opponent}
+                  </span>
+                  <span class="truncate font-mono text-mono-sm uppercase text-muted-foreground">
+                    {row.detail}
+                  </span>
+                </div>
+              </div>
+              <div class="flex shrink-0 flex-col items-end">
+                <span class="font-mono text-mono-sm uppercase text-foreground">
+                  {resultTokens[row.result].label}
+                </span>
+                <span class="font-mono text-mono-sm tabular-nums text-muted-foreground">
+                  {row.date}
+                </span>
+              </div>
+            </li>
+          ))}
+        </ul>
+
+        {/* Desktop: table */}
+        <div class="hidden md:block">
+          <table class="w-full border-collapse">
+            <thead>
+              <tr class="border-b border-border text-left">
+                <th class="pb-3 font-mono text-mono-sm uppercase font-medium text-muted-foreground">Result</th>
+                <th class="pb-3 font-mono text-mono-sm uppercase font-medium text-muted-foreground">Opponent</th>
+                <th class="pb-3 font-mono text-mono-sm uppercase font-medium text-muted-foreground">Mode</th>
+                <th class="pb-3 font-mono text-mono-sm uppercase font-medium text-muted-foreground">Detail</th>
+                <th class="pb-3 text-right font-mono text-mono-sm uppercase font-medium text-muted-foreground">Date</th>
+              </tr>
+            </thead>
+            <tbody>
+              {history.map((row) => (
+                <tr class="border-b border-border transition-colors hover:bg-muted">
+                  <td class="py-3">
+                    <span class="inline-flex items-center gap-2">
+                      <span aria-hidden="true" class:list={["size-2.5 rounded-full", resultTokens[row.result].dot]} />
+                      <span class="font-mono text-mono-md uppercase text-foreground">
+                        {resultTokens[row.result].label}
+                      </span>
+                    </span>
+                  </td>
+                  <td class="py-3">
+                    <div class="flex items-center gap-2">
+                      <span
+                        aria-hidden="true"
+                        class="flex size-7 items-center justify-center rounded-md border border-border bg-muted font-display italic text-sm text-foreground"
+                      >
+                        {row.opponent.charAt(0)}
+                      </span>
+                      <span class="font-sans text-sm font-semibold text-foreground">
+                        {row.opponent}
+                      </span>
+                      <span class="font-mono text-mono-sm tabular-nums text-muted-foreground">
+                        ({row.opponentRating})
+                      </span>
+                    </div>
+                  </td>
+                  <td class="py-3 font-mono text-mono-md uppercase text-muted-foreground">
+                    {row.mode}
+                  </td>
+                  <td class="py-3 font-sans text-sm text-muted-foreground">
+                    {row.detail}
+                  </td>
+                  <td class="py-3 text-right font-mono text-mono-md tabular-nums text-muted-foreground">
+                    {row.date}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+    {/* ---------- STATS ---------- */}
+    <section
+      role="tabpanel"
+      id="panel-stats"
+      aria-labelledby="tab-stats"
+      data-panel="stats"
+      hidden
+      class="mt-8 grid grid-cols-1 gap-gutter md:grid-cols-3"
+    >
+      {/* Total games */}
+      <div class={cn(cardCls, "p-6")}>
+        <p class="font-mono text-mono-sm uppercase text-muted-foreground">
+          Total games
+        </p>
+        <p class="mt-3 font-display italic text-5xl tracking-tight text-foreground">
+          {stats.played}
+        </p>
+        <p class="mt-3 font-sans text-sm text-muted-foreground">
+          Across Connect 4 and Connect 5 modes.
+        </p>
+      </div>
+
+      {/* Win rate metric */}
+      <div class={cn(cardCls, "p-6")}>
+        <p class="font-mono text-mono-sm uppercase text-muted-foreground">
+          Win rate
+        </p>
+        <p class="mt-3 font-display italic text-5xl tracking-tight text-foreground">
+          {winRate}<span class="text-3xl text-muted-foreground">%</span>
+        </p>
+        <p class="mt-3 font-mono text-mono-sm uppercase text-muted-foreground tabular-nums">
+          {stats.won} W · {stats.lost} L · {stats.drawn} D
+        </p>
+      </div>
+
+      {/* Current rating */}
+      <div class={cn(cardCls, "p-6")}>
+        <p class="font-mono text-mono-sm uppercase text-muted-foreground">
+          Current rating
+        </p>
+        <p class="mt-3 font-display italic text-5xl tracking-tight text-foreground">
+          {player.rating}
+        </p>
+        <p class="mt-3 font-mono text-mono-sm uppercase text-accent">
+          ↑ +24 this week
+        </p>
+      </div>
+
+      {/* W/L/D visual bar — full row */}
+      <div class={cn(cardCls, "p-6 md:col-span-3")}>
+        <header class="mb-5 flex items-center justify-between">
+          <h2 class="font-mono text-mono-sm uppercase text-muted-foreground">
+            Win / Loss / Draw breakdown
+          </h2>
+          <span class="font-mono text-mono-sm uppercase text-muted-foreground tabular-nums">
+            {stats.played} total
+          </span>
+        </header>
+
+        {/* Stacked bar */}
+        <div
+          class="flex h-4 w-full overflow-hidden rounded-full border border-border bg-muted"
+          role="img"
+          aria-label={`${winRate}% wins, ${lossRate}% losses, ${drawRate}% draws`}
+        >
+          <div class="pawn-yellow h-full" style={`width: ${winRate}%`}></div>
+          <div class="pawn-red h-full"    style={`width: ${lossRate}%`}></div>
+          <div class="h-full bg-muted-foreground" style={`width: ${drawRate}%`}></div>
+        </div>
+
+        {/* Legend */}
+        <ul class="mt-5 grid grid-cols-1 gap-3 sm:grid-cols-3">
+          <li class="flex items-center justify-between gap-3 rounded-lg border border-border bg-muted px-4 py-3">
+            <div class="flex items-center gap-3">
+              <span aria-hidden="true" class="size-3 rounded-full bg-pawn-yellow" />
+              <span class="font-mono text-mono-sm uppercase text-muted-foreground">Won</span>
+            </div>
+            <div class="flex items-baseline gap-2">
+              <span class="font-mono text-metric tabular-nums text-foreground">{stats.won}</span>
+              <span class="font-mono text-mono-sm tabular-nums text-muted-foreground">{winRate}%</span>
+            </div>
+          </li>
+          <li class="flex items-center justify-between gap-3 rounded-lg border border-border bg-muted px-4 py-3">
+            <div class="flex items-center gap-3">
+              <span aria-hidden="true" class="size-3 rounded-full bg-pawn-red" />
+              <span class="font-mono text-mono-sm uppercase text-muted-foreground">Lost</span>
+            </div>
+            <div class="flex items-baseline gap-2">
+              <span class="font-mono text-metric tabular-nums text-foreground">{stats.lost}</span>
+              <span class="font-mono text-mono-sm tabular-nums text-muted-foreground">{lossRate}%</span>
+            </div>
+          </li>
+          <li class="flex items-center justify-between gap-3 rounded-lg border border-border bg-muted px-4 py-3">
+            <div class="flex items-center gap-3">
+              <span aria-hidden="true" class="size-3 rounded-full bg-muted-foreground" />
+              <span class="font-mono text-mono-sm uppercase text-muted-foreground">Drawn</span>
+            </div>
+            <div class="flex items-baseline gap-2">
+              <span class="font-mono text-metric tabular-nums text-foreground">{stats.drawn}</span>
+              <span class="font-mono text-mono-sm tabular-nums text-muted-foreground">{drawRate}%</span>
+            </div>
+          </li>
+        </ul>
+      </div>
+    </section>
+
+    {/* ---------- FRIENDS ---------- */}
+    <section
+      role="tabpanel"
+      id="panel-friends"
+      aria-labelledby="tab-friends"
+      data-panel="friends"
+      hidden
+      class="mt-8"
+    >
+      <div class={cn(cardCls, "p-6")}>
+        <header class="mb-5 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+          <div>
+            <h2 class="font-mono text-mono-sm uppercase text-muted-foreground">
+              Friends
+            </h2>
+            <p class="mt-1 font-sans text-sm text-muted-foreground">
+              <span data-friend-count>{friends.length}</span> total ·
+              <span class="ml-1 text-foreground">
+                {friends.filter((f) => f.status === "online" || f.status === "in_game").length} active
+              </span>
+            </p>
+          </div>
+
+          {/* Search bar */}
+          <label class="relative w-full sm:max-w-xs">
+            <span class="sr-only">Search friends</span>
+            <svg
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="2"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              class="pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2 text-muted-foreground"
+              aria-hidden="true"
+            >
+              <circle cx="11" cy="11" r="7" />
+              <path d="m21 21-4.3-4.3" />
+            </svg>
+            <input
+              type="search"
+              placeholder="Find a friend…"
+              autocomplete="off"
+              data-friend-search
+              class:list={[
+                "w-full rounded-full bg-input pl-9 pr-4 py-2",
+                "font-sans text-sm text-foreground",
+                "border border-border",
+                "placeholder:text-muted-foreground",
+                "focus:outline-none focus:ring-2 focus:ring-ring",
+              ]}
+            />
+          </label>
+        </header>
+
+        <ul class="grid grid-cols-1 gap-3 sm:grid-cols-2" data-friend-list>
+          {friends.map((f) => (
+            <li
+              data-friend-username={f.username.toLowerCase()}
+              class="flex items-center justify-between gap-3 rounded-lg border border-border bg-muted px-4 py-3 transition-colors hover:border-foreground"
+            >
+              <div class="flex min-w-0 items-center gap-3">
+                {/* Avatar with status dot */}
+                <div class="relative">
+                  <span
+                    aria-hidden="true"
+                    class="flex size-10 items-center justify-center rounded-xl border border-border bg-surface font-display italic text-lg text-foreground"
+                  >
+                    {f.initial}
+                  </span>
+                  <span
+                    aria-hidden="true"
+                    class:list={[
+                      "absolute -bottom-0.5 -right-0.5 size-3 rounded-full ring-2 ring-muted",
+                      statusTokens[f.status].dot,
+                    ]}
+                  />
+                </div>
+                <div class="flex min-w-0 flex-col">
+                  <span class="truncate font-sans text-sm font-semibold text-foreground">
+                    {f.username}
+                  </span>
+                  <span class="font-mono text-mono-sm uppercase text-muted-foreground">
+                    {statusTokens[f.status].label} · {f.rating}
+                  </span>
+                </div>
+              </div>
+
+              <a
+                href="#"
+                class={cn(
+                  buttonVariants({ variant: "brand-outline", size: "pill" }),
+                  "shrink-0",
+                )}
+              >
+                {f.status === "in_game" ? "Watch" : "Play"}
+              </a>
+            </li>
+          ))}
+        </ul>
+
+        {/* Empty state — toggled by the search script */}
+        <p
+          data-friend-empty
+          hidden
+          class="mt-6 text-center font-display italic text-muted-foreground"
+        >
+          no friends match that search.
+        </p>
+      </div>
+    </section>
+  </main>
+
+  {/* =========================================================
+      Inline behaviors — tabs + friend search.
+      Tiny vanilla JS, no React island needed.
+      ========================================================= */}
+  <script>
+    // ---- Tabs ----
+    const tabRoot = document.querySelector<HTMLElement>("[data-profile-tabs]");
+    if (tabRoot) {
+      const tabs = Array.from(tabRoot.querySelectorAll<HTMLButtonElement>("[data-tab]"));
+      const panels = Array.from(document.querySelectorAll<HTMLElement>("[data-panel]"));
+
+      const activate = (id: string) => {
+        tabs.forEach((t) => t.setAttribute("aria-selected", t.dataset.tab === id ? "true" : "false"));
+        panels.forEach((p) => {
+          if (p.dataset.panel === id) p.removeAttribute("hidden");
+          else p.setAttribute("hidden", "");
+        });
+      };
+
+      tabs.forEach((t) => {
+        t.addEventListener("click", () => activate(t.dataset.tab!));
+      });
+
+      // Roving keyboard support: ← / → between tabs.
+      tabRoot.addEventListener("keydown", (e: KeyboardEvent) => {
+        const idx = tabs.findIndex((t) => t === document.activeElement);
+        if (idx === -1) return;
+        if (e.key === "ArrowRight" || e.key === "ArrowLeft") {
+          e.preventDefault();
+          const next = (idx + (e.key === "ArrowRight" ? 1 : -1) + tabs.length) % tabs.length;
+          tabs[next].focus();
+          activate(tabs[next].dataset.tab!);
+        }
+      });
+    }
+
+    // ---- Friend search ----
+    const input = document.querySelector<HTMLInputElement>("[data-friend-search]");
+    const list = document.querySelector<HTMLElement>("[data-friend-list]");
+    const empty = document.querySelector<HTMLElement>("[data-friend-empty]");
+
+    if (input && list) {
+      input.addEventListener("input", () => {
+        const q = input.value.trim().toLowerCase();
+        let visible = 0;
+        list.querySelectorAll<HTMLElement>("[data-friend-username]").forEach((li) => {
+          const match = !q || li.dataset.friendUsername!.includes(q);
+          li.style.display = match ? "" : "none";
+          if (match) visible++;
+        });
+        if (empty) {
+          if (visible === 0) empty.removeAttribute("hidden");
+          else empty.setAttribute("hidden", "");
+        }
+      });
+    }
+  </script>
+</RootLayout>
