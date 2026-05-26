@@ -80,6 +80,13 @@ export interface PlayStoreState {
   thinking: boolean;
   /** True after the user has dropped their first piece (drives "Pick a column" prompt). */
   hasPlayed: boolean;
+  /** Set when the current game finishes. null while the game is in progress. */
+  gameEndState: "won" | "lost" | "draw" | null;
+  /** Computed user score for the just-finished game (null while in progress). */
+  gameScore: number | null;
+  /** Maximum AI search depth seen across all AI moves this game.
+   *  Used in the score formula. */
+  maxAiDepth: number;
   /** Last error from the API, or null. */
   error: PlayApiError | null;
 }
@@ -92,8 +99,37 @@ const initialState: PlayStoreState = {
   positionScore: null,
   thinking: false,
   hasPlayed: false,
+  gameEndState: null,
+  gameScore: null,
+  maxAiDepth: 0,
   error: null,
 };
+
+/**
+ * Compute the user's score for a finished game.
+ * Formula: 1000 + maxAiDepth*50 - moveCount*20 + outcomeBonus
+ * - maxAiDepth: how deep the AI searched (harder AI -> bigger bonus)
+ * - moveCount: total pieces on the board (faster wins -> higher score)
+ * - outcomeBonus: 500 for win, 100 for draw, 0 for loss
+ */
+function computeScore(
+  view: PublicGameView,
+  maxAiDepth: number,
+  outcome: "won" | "lost" | "draw",
+): number {
+  let moveCount = 0;
+  for (const row of view.board) for (const cell of row) if (cell !== 0) moveCount++;
+  const outcomeBonus = outcome === "won" ? 500 : outcome === "draw" ? 100 : 0;
+  return Math.max(0, 1000 + maxAiDepth * 50 - moveCount * 20 + outcomeBonus);
+}
+
+/** Map server's view.status + winner to our local gameEndState. */
+function deriveEndState(view: PublicGameView): "won" | "lost" | "draw" | null {
+  if (view.status !== "finished") return null;
+  if (view.winner === 1) return "won";
+  if (view.winner === 2) return "lost";
+  return "draw";
+}
 
 class PlayStore {
   private state: PlayStoreState = initialState;
@@ -148,6 +184,9 @@ class PlayStore {
         lastAiMove: null,
         telemetryBoard: null,
         positionScore: null,
+        gameEndState: null,
+        gameScore: null,
+        maxAiDepth: 0,
         hasPlayed: false,
       });
       try {
@@ -203,18 +242,22 @@ class PlayStore {
 
     try {
       const [res] = await Promise.all([makeMove(col), animationFinished]);
+      const newMaxDepth = res.aiMove
+        ? Math.max(this.state.maxAiDepth, res.aiMove.telemetry.depth)
+        : this.state.maxAiDepth;
+      const endState = deriveEndState(res.state);
+      const score = endState
+        ? computeScore(res.state, newMaxDepth, endState)
+        : null;
       this.set({
         view: res.state,
         telemetry: res.aiMove?.telemetry ?? null,
         lastAiMove: res.aiMove ? { col: res.aiMove.col, row: res.aiMove.row } : null,
-        // Snapshot the board at AI response time. Used by the matrix to
-        // compute landing rows independently of snap.view (which changes
-        // when the player drops their next piece optimistically).
         telemetryBoard: res.aiMove ? res.state.board : this.state.telemetryBoard,
-        // positionScore tracks the latest AI bestScore. If the player's
-        // move ended the game (no aiMove), keep the previous positionScore
-        // — the slider will continue to show whatever it last had.
         positionScore: res.aiMove?.telemetry.bestScore ?? this.state.positionScore,
+        maxAiDepth: newMaxDepth,
+        gameEndState: endState,
+        gameScore: score,
         // thinking stays true while red drops — prevents clicks during
         // the AI's piece animation. Cleared after another PIECE_ANIM_MS.
       });

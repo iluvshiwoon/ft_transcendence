@@ -24,6 +24,9 @@ export interface PublicGameView {
   status: "in_progress" | "finished" | "abandoned";
   winner: 1 | 2 | null;
   isDraw: boolean;
+  /** When game is finished with a winner, the [row, col] coords of the
+   *  four winning cells. null while in progress or on a draw. */
+  winningLine: Array<[number, number]> | null;
 }
 
 export interface AiTelemetry {

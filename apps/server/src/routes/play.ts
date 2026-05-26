@@ -23,6 +23,7 @@ import type { FastifyInstance, FastifyReply, FastifyRequest } from "fastify";
 import { randomBytes } from "node:crypto";
 import { GameState } from "../game/gameState.js";
 import { findBestMove, type MoveTelemetry } from "../game/ai.js";
+import { findWinningLine } from "../game/check_board.js";
 
 const COOKIE_NAME = "play_session";
 const COOKIE_MAX_AGE_S = 60 * 60 * 24; // 24h browser-side
@@ -77,6 +78,10 @@ interface PublicGameView {
   winner: 1 | 2 | null;
   /** True when the board is full and no winner. */
   isDraw: boolean;
+  /** When the game is finished with a winner, the four [row, col] cells
+   *  forming the 4-in-a-row. Used by the frontend to highlight the
+   *  winning line. null when the game is in progress or ended in a draw. */
+  winningLine: Array<[number, number]> | null;
 }
 
 function publicView(state: GameState): PublicGameView {
@@ -87,6 +92,10 @@ function publicView(state: GameState): PublicGameView {
     status: snap.status,
     winner: snap.winner,
     isDraw: snap.status === "finished" && snap.winner === null,
+    winningLine:
+      snap.status === "finished" && snap.winner !== null
+        ? findWinningLine(snap.board)
+        : null,
   };
 }
 
