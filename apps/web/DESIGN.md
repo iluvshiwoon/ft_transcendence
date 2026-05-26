@@ -289,9 +289,17 @@ Mobile: panels stack via `order-N md:order-N` classes.
 | Component | Role |
 |---|---|
 | `Headline.astro` | game-state kicker above the board |
-| `Board.tsx` | mini Connect-4 preview (anonymous demo) |
-| `AITelemetry.tsx` | left panel — eval bar + 7×6 matrix + sonar ping |
-| `Leaderboard.tsx` | right panel — 5 mock rows + "your spot" slot |
+| `Board.tsx` | live Connect-4 board, subscribes to `playStore`. Renders the optimistic player piece + AI's reply, applies winning-line glow |
+| `AITelemetry.tsx` | left panel — 7×6 matrix anchored to the AI's last decision, depth/nodes/eval-time stats, and the AI-vs-YOU position slider (sigmoid-mapped from `bestScore`) |
+| `Leaderboard.tsx` | right panel — 5 mock rows + the user's row injected at its computed rank when the end-game card shows. Subtle 2 px left-edge accent on the user row |
+| `EndGameOverlay.tsx` | post-game phase orchestration: glow → card. Card spans the board area on desktop, overflows on mobile. Hides the signup CTA when the user is already authenticated |
+
+Supporting libs in `apps/web/src/lib/`:
+
+| File | Role |
+|---|---|
+| `play-api.ts` | typed fetch client for `/api/play/*` (start, move, state, reset). HttpOnly cookie session — `credentials: "include"` |
+| `play-store.ts` | external store (`useSyncExternalStore`) for game state. Owns the optimistic player update, `endGamePhase` timing, score formula, and the "no auto-restart" rule |
 
 ### 5.2 Signup — `components/signup/`
 
@@ -323,14 +331,17 @@ See §1.5 for the keyframe + token list.
 
 ### Active animations
 
-- **Landing telemetry**: `matrix-pulse` (column-staggered wave) + `sonar-ping` (best-move cell, 5 s).
+- **Hero intro**: per-word slide-and-blur reveal (`hero-word-reveal`, `--i` stagger), then `hero-exit` fades+drifts the headline up at 2.3 s. Plays once per visitor — gated by `localStorage["hero-seen"]`. Reduced-motion: skipped entirely.
+- **Page reveal**: `page-reveal` (opacity 0.001 → 0.999 + translateY 20 → 0) on board + side panels, staggered via `--reveal-delay`. Anti-flicker rationale in the keyframe comment.
+- **Landing telemetry**: `matrix-pulse` (column-staggered scale wave, opacity-free) + `sonar-ping` (best-move cell, 5 s). Per-cell opacity is driven by a registered `--matrix-base-opacity` `@property` so it crossfades smoothly between AI evaluations (700 ms ease-in-out, 60 ms per-column transition delay).
 - **Signup progress**: `signup-token-drop` on the active step's token; at step 4, `signup-line-draw` (the connect-4 beam) → `signup-token-flash` (all four pulse).
+- **Game piece drop** (`Board.tsx`): `piece-drop` is a 3-segment cubic-bezier translateY fall + small overshoot+settle, driven by an inline `--drop-start` matching each piece's landing row. Liquid-glass variant uses `piece-drop` on the under-glass color blob and `piece-fade-in` on the on-top sharp circle (so during the fall you see only the refracted tint, the crisp circle materializes at landing).
+- **Winning line**: `winning-pulse` is a subtle scale (1 → 1.05) + drop-shadow pulse (oklch pawn color at /0.55 alpha, 5 px blur, 1.6 s). Per-pawn-variant `--winning-glow` color; dark-mode overrides match the existing pawn-glow tokens.
+- **End-game overlay**: `endgame-card` (fade + scale 0.94 → 1 over 500 ms) + `endgame-blur` (3 px filter on the board behind the card, 500 ms transition). Phases scheduled by `playStore`: `glow` → `card` at 1100 ms.
 
 ### Roadmap (intent — not yet built)
 
 - AI "thinking" state intensifies the telemetry wave (faster, bigger eval-bar fluctuation).
-- Game-piece drop animation (real game, not signup tracker).
-- Win-line trace across the four connecting cells when a player wins.
 
 ### Animations explicitly avoided
 
@@ -356,11 +367,15 @@ The frontend talks to the backend through `/api/*` (proxied to Fastify by ModSec
 | `PUT  /api/profile` | ✅ Step 3 |
 | `POST /api/profile/avatar` | ✅ Step 3 |
 | `GET  /uploads/avatars/{id}.webp` | ✅ avatar serving via WAF |
+| `POST /api/play/start` | ✅ Board mount + `EndGameOverlay` Play again |
+| `POST /api/play/move` | ✅ Board click; returns `aiMove` + telemetry + `winningLine` on game-end |
+| `GET  /api/play/state` | ✅ used after a server error to revert optimistic update |
+| `POST /api/play/reset` | ✅ alias for `/start`, kept for clarity |
 
 ### Pending (Chunk B)
 
 - `GET /api/anon/session/me` — server-authoritative anon stats for the carry-over story on Step 1. Until built, Step 1 renders generic copy.
-- Anon session play loop: `POST /api/anon/session/move` etc.
+- `GET /api/leaderboard` — real leaderboard data. Currently `Leaderboard.tsx` uses `MOCK_ENTRIES`; the user's row IS injected at its rank, but the surrounding rows are hardcoded.
 
 ### Future (game / lobbies / friends)
 
@@ -384,6 +399,12 @@ These are settled — change requires explicit re-discussion.
 | Footer position | Above the fold, slim | Single-screen interactive product, not marketing |
 | Mobile Login button | Hidden | Sign-up filled CTA only on small viewports |
 | Anonymous play state | Server-authoritative | Cookie-keyed session. Client never reports its own score. |
+| Hero plays once per visitor | `localStorage["hero-seen"]` | Inline bootstrap script reads pre-paint, adds `html.hero-seen` to skip animations on return visits |
+| End-game flow | glow (1.1 s) → card | No status text overlay (was redundant). Card spans the board area on desktop, overflows on mobile so CTA isn't clipped. |
+| Post-game click | Ignored, no auto-restart | User must click `Play again` on the card to start a new round. Clicking a column after game-end returns silently (auto-restart was confusing — the click also dropped a piece into the new game). |
+| Anon score formula | `1000 + maxAiDepth*50 - moves*20 + outcomeBonus` | Outcome: 500 win, 100 draw, 0 loss. Computed client-side from accumulated telemetry. |
+| Position slider | AI's bestScore via sigmoid | scale=150 + ±30 deadband around 0. Small heuristic flutters don't move the bar; only meaningful evaluations do. Slider crosses into the small bar at `MAIN_FRACTION = 0.96`. |
+| Authed-state end-game card | Signup CTA hidden | When `isAuthenticated(Astro)` is true, the pitch + Sign up button are not rendered — only Play again remains. |
 | Signup is one-shot | `signup_completed_at` on user | After step 4, `/signup` redirects to `/`. Edits go through future `/settings`. |
 | Email enumeration | Vague 409 on signup | "Account creation failed" + form-level "Sign in instead?" link. Username conflicts stay specific. |
 | Caching | `Cache-Control: no-store` everywhere | App is fully auth-aware; bfcache must be opted out. |
@@ -405,7 +426,12 @@ What didn't work, captured so we don't relitigate.
 | Text-content swap on submit (`"Sign in →"` → `"Signing in…"`) | Flickers visibly. Constant text + disabled fade is enough |
 | `Cache-Control: no-store` alone | Some browsers' bfcache requires Cache-Control + Pragma + Expires together |
 | Specific "Email already in use" error on signup | Account enumeration. Now vague "Account creation failed" with sign-in suggestion |
-| Stats-synced animation on landing right now | Premature optimization; wait for AI module to land |
+| Stats-synced animation on landing right now | Premature optimization — done now via the live `playStore` (matrix scores, depth, position slider all bound to real AI telemetry) |
+| Auto-restart on column click after game over | Clicked column also dropped a piece into the new game — confusing. Replaced with explicit `Play again` button on the card. |
+| Status-text overlay before the end-game card ("You win" / "You lose" / "Draw") | Redundant — the card already shows the result. Dropped, going straight from glow → card. |
+| Matrix-pulse animating opacity *and* scale | The continuous opacity overrides made the AI-evaluation transition invisible (browser kept resetting opacity per pulse cycle). Pulse now scales only; opacity is driven by the registered `--matrix-base-opacity` variable + transition. |
+| `currentColor` on the winning-line glow | Inherited the foreground gray instead of the pawn color — looked muddy. Replaced with explicit `oklch` pawn-color tokens (light + dark variants), `drop-shadow` (not `box-shadow`) so it follows the rounded silhouette. |
+| Card content snaps mid-game (matrix + slider) | Confusing, looked like data was changing during AI compute. Now the matrix + slider freeze at the *previous* AI evaluation until the new response arrives, then transition smoothly. |
 
 ---
 
@@ -447,6 +473,36 @@ Otherwise the first frame of the animation is a visible jump from default styles
 ### 10.6 Astro layouts don't propagate response headers reliably
 
 `Astro.response.headers.set()` from inside a `*.astro` layout doesn't always reach the page's final response. Use **Astro middleware** (`apps/web/src/middleware.ts`) for global headers — it runs at the request boundary and modifies the actual outgoing response.
+
+### 10.7 Optimistic UI: apply locally first, reconcile on server response
+
+Pattern used in `playStore.play(col)` for the demo board: apply the player's piece to the local view immediately, fire `/api/play/move` in parallel, replace the view with the server's authoritative response when it arrives. Failures revert via `getState()` (or a fresh `/start` if the session is gone).
+
+Trick to avoid: `Promise.all([request, animationFinished])` — gates the AI's reply on BOTH the network response AND a minimum animation duration (450 ms matching `piece-drop`). If the AI computes faster than the player's piece falls, the AI piece doesn't appear mid-animation; it waits for the visible drop to finish.
+
+The optimistic update intentionally leaves `telemetry` / `lastAiMove` / `positionScore` / `telemetryBoard` UNTOUCHED — those reflect the previous AI evaluation, and clearing them caused the matrix + slider to flash empty during the compute window. Now they only update when the new AI response replaces them.
+
+### 10.8 CSS custom properties are only animatable via `@property`
+
+`.matrix-cell` opacity is bound to `--matrix-base-opacity` (set inline based on the AI's per-column score). Without registration, CSS custom properties are typed as `<unrecognised>` and assignments are instant — transitions on the variable do nothing. Register with:
+
+```css
+@property --matrix-base-opacity {
+  syntax: '<number>';
+  initial-value: 0.35;
+  inherits: false;
+}
+```
+
+Now `transition: --matrix-base-opacity 700ms ease-in-out` interpolates correctly when the inline value changes. Browser support is recent (Chromium good, Firefox 128+, Safari 16.4+); older browsers fall back to instant.
+
+Caveat: animations override transitions for the same property. Don't mix — if you want a value to transition smoothly, keep the keyframe animation off that property entirely. We learned this the hard way when `matrix-pulse` animated opacity AND we tried to transition it: the pulse continuously reset the value every frame, masking the transition. Fix was to scale-pulse only and let opacity transition unmolested.
+
+### 10.9 Keep the board's hit zone hover state in sync after layout changes
+
+The end-game card overlays the column hit zones (z-30 vs z-20). When the user clicks `Play again` and the card unmounts, native mouseenter doesn't fire on the now-uncovered hit zones because the cursor hasn't moved — so the column the user is hovering over stays unhighlighted until they wiggle the mouse.
+
+Fix in `Board.tsx`: a window-level `mousemove` listener stores the last cursor position; when `endGamePhase` transitions back to `idle`, we use `document.elementFromPoint(lastMousePos)` on the next animation frame to detect the column under the cursor and apply the hover highlight. Same trick is useful any time an absolute overlay unmounts and exposes interactive elements underneath.
 
 ---
 
@@ -522,4 +578,4 @@ When any of these land, update §2 and `/styleguide`.
 
 ### 13.4 Animation roadmap
 
-See §6 — the AI-thinking telemetry intensification, real game-piece drop, and win-line trace are queued. Each new animation is a new entry in §1.5.
+The piece-drop, win-line glow, and end-game card transitions all shipped (see §6). The remaining queued items: AI-thinking telemetry intensification, multiplayer connect/disconnect indicators on the leaderboard, and any future game-mode introduction animations. Each new animation is a new entry in §1.5.
