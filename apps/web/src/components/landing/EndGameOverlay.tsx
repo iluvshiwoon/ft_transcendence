@@ -24,19 +24,6 @@ import { cn } from "~/lib/utils";
 import { playStore } from "~/lib/play-store";
 import { MOCK_ENTRIES } from "./Leaderboard";
 
-function statusText(state: "won" | "lost" | "draw" | null): string {
-  switch (state) {
-    case "won":
-      return "You win";
-    case "lost":
-      return "You lose";
-    case "draw":
-      return "Draw";
-    default:
-      return "";
-  }
-}
-
 /**
  * Compute the user's rank against MOCK_ENTRIES given their score.
  * Returns 1..6 (1 = top, 6 = below all 5 mock entries).
@@ -99,13 +86,13 @@ function EndGameCard({ outcome, score, rank, onSignup, onReplay }: EndGameCardPr
       )}
     >
       <div className="flex flex-col gap-3">
-        <h3 className="font-display text-4xl font-light italic leading-none text-foreground">
+        <h3 className="font-display text-5xl font-light italic leading-none text-foreground">
           {heading}
         </h3>
-        <div className="flex flex-col gap-1 font-mono text-mono-md text-muted-foreground">
+        <div className="flex flex-col gap-1 font-mono text-mono-lg text-muted-foreground">
           <p className="leading-relaxed">
             You scored{" "}
-            <span className="text-2xl font-semibold tabular-nums text-foreground">
+            <span className="text-3xl font-semibold tabular-nums text-foreground">
               {score}
             </span>
           </p>
@@ -117,11 +104,14 @@ function EndGameCard({ outcome, score, rank, onSignup, onReplay }: EndGameCardPr
         </div>
       </div>
 
-      <p className="font-mono text-mono-sm leading-relaxed text-muted-foreground">
+      <p className="font-mono text-mono-md leading-relaxed text-muted-foreground">
         {pitch}
       </p>
 
-      <div className="flex flex-col gap-2.5">
+      {/* Buttons — kept narrower than the card so the primary CTA reads as
+          a focused action rather than a full-width slab. mx-auto centers
+          the column. */}
+      <div className="mx-auto flex w-full max-w-[260px] flex-col gap-2.5">
         <button
           type="button"
           onClick={onSignup}
@@ -182,11 +172,6 @@ export function EndGameOverlay() {
         snap.endGamePhase === "card" ? "pointer-events-auto" : "pointer-events-none",
       )}
     >
-      {snap.endGamePhase === "status" && (
-        <div className="endgame-status font-display text-5xl font-light italic text-foreground sm:text-6xl">
-          {statusText(snap.gameEndState)}
-        </div>
-      )}
       {snap.endGamePhase === "card" && (
         <EndGameCard
           outcome={snap.gameEndState}

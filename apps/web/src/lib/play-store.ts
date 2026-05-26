@@ -146,20 +146,15 @@ class PlayStore {
    *  to avoid stale phase advancements firing on the next game. */
   private endGameTimers: ReturnType<typeof setTimeout>[] = [];
 
-  /** Schedule the post-game phase advancements: glow → status → card.
+  /** Schedule the post-game phase advancement: glow → card.
    *  Called once per game-end event. Timings:
-   *    t=0      : 'glow'   (winning line already glowing in CSS;
-   *                         this just records the phase)
-   *    t=1300ms : 'status' (brief result text)
-   *    t=3000ms : 'card'   (board blurs, signup card slides in) */
+   *    t=0      : 'glow'   (winning line glowing in CSS; this just records the phase)
+   *    t=2200ms : 'card'   (board blurs, signup card slides in) */
   private scheduleEndGamePhases() {
     this.clearEndGameTimers();
     this.set({ endGamePhase: "glow" });
     this.endGameTimers.push(
-      setTimeout(() => this.set({ endGamePhase: "status" }), 1300),
-    );
-    this.endGameTimers.push(
-      setTimeout(() => this.set({ endGamePhase: "card" }), 3000),
+      setTimeout(() => this.set({ endGamePhase: "card" }), 2200),
     );
   }
   private clearEndGameTimers() {
