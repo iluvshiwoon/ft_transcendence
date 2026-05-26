@@ -58,12 +58,13 @@ interface DisplayRow extends LeaderboardEntry {
 function withUserRow(
   entries: LeaderboardEntry[],
   userScore: number,
+  userWinRate: number,
 ): DisplayRow[] {
   const userRow: DisplayRow = {
     rank: 0,
     username: "you",
     rating: userScore,
-    winRate: 0,
+    winRate: userWinRate,
     isUser: true,
   };
 
@@ -93,8 +94,13 @@ export function Leaderboard({ entries = MOCK_ENTRIES }: LeaderboardProps) {
   // inject their row at the correct rank position. Hide before then so
   // the leaderboard stays neutral during play.
   const showUser = snap.endGamePhase === "card" && snap.gameScore !== null;
+  // Single-game win rate stand-in: 100 for win, 0 for loss, 50 for draw.
+  // It's a one-game sample but matches the wireframe column shape and
+  // gives the user something to "improve" once they sign up.
+  const userWinRate =
+    snap.gameEndState === "won" ? 100 : snap.gameEndState === "draw" ? 50 : 0;
   const rows: DisplayRow[] = showUser
-    ? withUserRow(entries, snap.gameScore!)
+    ? withUserRow(entries, snap.gameScore!, userWinRate)
     : entries.map((e) => ({ ...e, isUser: false }));
 
   return (
@@ -107,27 +113,25 @@ export function Leaderboard({ entries = MOCK_ENTRIES }: LeaderboardProps) {
       </h2>
 
       <ol className="flex flex-col gap-3 font-mono text-mono-md">
-        {rows.map((entry, i) => {
+        {rows.map((entry) => {
           // Static rows preserve the wireframe's progressive fade. The
-          // user's row keeps full opacity + an accent border so it
-          // stands out regardless of where it lands in the list.
+          // user's row keeps full opacity + a left accent stripe so it
+          // stands out without breaking the row alignment.
           const opacityClass = entry.isUser
             ? "opacity-100"
             : ROW_OPACITY[
-                // Skip the user's row when looking up opacity for static rows
-                // so the original 5 keep their progressive 100→40 fade
-                // regardless of where the user lands.
                 rows.filter((r) => !r.isUser).indexOf(entry)
               ] ?? "opacity-40";
           return (
             <li
               key={`${entry.rank}-${entry.username}`}
               className={cn(
-                "flex items-center justify-between gap-3 border-b pb-2 text-foreground",
+                "flex items-center justify-between gap-3 border-b border-border pb-2 text-foreground",
                 opacityClass,
-                entry.isUser
-                  ? "border-foreground bg-foreground/5 px-2 transition-[background-color]"
-                  : "border-border",
+                // Subtle left stripe + tiny indent for the user's row.
+                // Same row footprint as the others, just a 2px accent on
+                // the left edge to mark it as 'this is you'.
+                entry.isUser && "border-l-2 border-l-foreground pl-2",
               )}
             >
               <div className="flex min-w-0 gap-3">
@@ -143,7 +147,7 @@ export function Leaderboard({ entries = MOCK_ENTRIES }: LeaderboardProps) {
               </div>
               <div className="flex shrink-0 gap-3 font-semibold tabular-nums">
                 <span>{entry.rating}</span>
-                {!entry.isUser && <span>{entry.winRate.toFixed(1)}%</span>}
+                <span>{entry.winRate.toFixed(1)}%</span>
               </div>
             </li>
           );

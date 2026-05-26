@@ -62,36 +62,71 @@ function EndGameCard({ outcome, score, rank, onSignup, onReplay }: EndGameCardPr
   const heading =
     outcome === "won" ? "You won!" : outcome === "lost" ? "AI won" : "Even game";
 
+  // Pitch line varies by outcome — wins emphasize "save it", losses
+  // emphasize "rematch", draws are neutral. Each version accents
+  // (text-foreground + font-semibold) the words that matter most so
+  // they pop against the surrounding muted body text.
+  const pitch =
+    outcome === "won" ? (
+      <>
+        Sign up to{" "}
+        <span className="font-semibold text-foreground">save your score</span>, climb the{" "}
+        <span className="font-semibold text-foreground">leaderboard</span>, and play{" "}
+        <span className="font-semibold text-foreground">multiplayer</span>.
+      </>
+    ) : outcome === "lost" ? (
+      <>
+        Sign up to{" "}
+        <span className="font-semibold text-foreground">save your score</span> and climb back —{" "}
+        <span className="font-semibold text-foreground">multiplayer</span>, friends, full ranking.
+      </>
+    ) : (
+      <>
+        Sign up to{" "}
+        <span className="font-semibold text-foreground">save your score</span>,{" "}
+        <span className="font-semibold text-foreground">climb the leaderboard</span>, and play{" "}
+        <span className="font-semibold text-foreground">multiplayer</span>.
+      </>
+    );
+
   return (
     <div
       className={cn(
         "endgame-card",
-        "flex w-full max-w-[320px] flex-col gap-4",
-        "rounded-xl border border-border bg-surface px-6 py-6 shadow-2xl",
+        // Span the full board area instead of floating as a tight card
+        "flex h-full w-full flex-col justify-between gap-6",
+        "rounded-xl border border-border bg-surface px-7 py-7 shadow-2xl",
       )}
     >
-      <div className="flex flex-col gap-1">
-        <h3 className="font-display text-3xl font-light italic leading-none text-foreground">
+      <div className="flex flex-col gap-3">
+        <h3 className="font-display text-4xl font-light italic leading-none text-foreground">
           {heading}
         </h3>
-        <p className="font-mono text-mono-md text-muted-foreground">
-          You scored <span className="font-semibold text-foreground tabular-nums">{score}</span>
-        </p>
-        <p className="font-mono text-mono-sm text-muted-foreground">
-          Rank #<span className="text-foreground tabular-nums">{rank}</span> on the leaderboard
-        </p>
+        <div className="flex flex-col gap-1 font-mono text-mono-md text-muted-foreground">
+          <p className="leading-relaxed">
+            You scored{" "}
+            <span className="text-2xl font-semibold tabular-nums text-foreground">
+              {score}
+            </span>
+          </p>
+          <p className="leading-relaxed">
+            Rank{" "}
+            <span className="font-semibold tabular-nums text-foreground">#{rank}</span>{" "}
+            on the leaderboard
+          </p>
+        </div>
       </div>
 
-      <p className="font-mono text-mono-sm text-muted-foreground">
-        Sign up to save your score, climb the leaderboard, play multiplayer + chat with friends.
+      <p className="font-mono text-mono-sm leading-relaxed text-muted-foreground">
+        {pitch}
       </p>
 
-      <div className="flex flex-col gap-2">
+      <div className="flex flex-col gap-2.5">
         <button
           type="button"
           onClick={onSignup}
           className={cn(
-            "inline-flex items-center justify-center rounded-full bg-foreground px-5 py-2.5",
+            "inline-flex items-center justify-center rounded-full bg-foreground px-5 py-3",
             "font-mono text-mono-sm uppercase text-background",
             "transition-opacity hover:opacity-90 active:opacity-80",
           )}
