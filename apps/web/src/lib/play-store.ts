@@ -87,6 +87,12 @@ export interface PlayStoreState {
   /** Maximum AI search depth seen across all AI moves this game.
    *  Used in the score formula. */
   maxAiDepth: number;
+  /** End-game UI phase. Advances on a timer after gameEndState is set:
+   *  - 'idle'   : game in progress (or just finished, animations still running)
+   *  - 'glow'   : winning line glow visible, no overlay yet
+   *  - 'status' : brief 'You win' / 'You lose' / 'Draw' text overlay
+   *  - 'card'   : board blurs, signup-prompt card visible */
+  endGamePhase: "idle" | "glow" | "status" | "card";
   /** Last error from the API, or null. */
   error: PlayApiError | null;
 }
@@ -102,6 +108,7 @@ const initialState: PlayStoreState = {
   gameEndState: null,
   gameScore: null,
   maxAiDepth: 0,
+  endGamePhase: "idle",
   error: null,
 };
 
@@ -135,6 +142,30 @@ class PlayStore {
   private state: PlayStoreState = initialState;
   private listeners = new Set<Listener>();
   private startPromise: Promise<void> | null = null;
+  /** Timers scheduled by scheduleEndGamePhases — cleared on game restart
+   *  to avoid stale phase advancements firing on the next game. */
+  private endGameTimers: ReturnType<typeof setTimeout>[] = [];
+
+  /** Schedule the post-game phase advancements: glow → status → card.
+   *  Called once per game-end event. Timings:
+   *    t=0      : 'glow'   (winning line already glowing in CSS;
+   *                         this just records the phase)
+   *    t=1300ms : 'status' (brief result text)
+   *    t=3000ms : 'card'   (board blurs, signup card slides in) */
+  private scheduleEndGamePhases() {
+    this.clearEndGameTimers();
+    this.set({ endGamePhase: "glow" });
+    this.endGameTimers.push(
+      setTimeout(() => this.set({ endGamePhase: "status" }), 1300),
+    );
+    this.endGameTimers.push(
+      setTimeout(() => this.set({ endGamePhase: "card" }), 3000),
+    );
+  }
+  private clearEndGameTimers() {
+    for (const t of this.endGameTimers) clearTimeout(t);
+    this.endGameTimers = [];
+  }
 
   getSnapshot = (): PlayStoreState => this.state;
 
@@ -168,6 +199,33 @@ class PlayStore {
   };
 
   /**
+   * Force a fresh game. Used by the end-game card's "Play again" button.
+   * Clears all per-game state (telemetry, last AI move, position score,
+   * end-game data) and calls /start. Subsequent clicks resume normal play.
+   */
+  restart = async (): Promise<void> => {
+    this.clearEndGameTimers();
+    this.set({
+      telemetry: null,
+      lastAiMove: null,
+      telemetryBoard: null,
+      positionScore: null,
+      gameEndState: null,
+      gameScore: null,
+      maxAiDepth: 0,
+      endGamePhase: "idle",
+      hasPlayed: false,
+      error: null,
+    });
+    try {
+      const { state } = await startGame();
+      this.set({ view: state });
+    } catch (e) {
+      if (e instanceof PlayApiError) this.set({ error: e });
+    }
+  };
+
+  /**
    * User clicked a column. Returns silently if:
    *   - AI is thinking (debounce double-click)
    *   - column is invalid (server will reject anyway, but skip the round-trip)
@@ -179,6 +237,7 @@ class PlayStore {
 
     // Game over → restart, then apply this click on the fresh game.
     if (this.state.view && this.state.view.status !== "in_progress") {
+      this.clearEndGameTimers();
       this.set({
         telemetry: null,
         lastAiMove: null,
@@ -187,6 +246,7 @@ class PlayStore {
         gameEndState: null,
         gameScore: null,
         maxAiDepth: 0,
+        endGamePhase: "idle",
         hasPlayed: false,
       });
       try {
@@ -267,6 +327,11 @@ class PlayStore {
         await new Promise<void>((resolve) => setTimeout(resolve, PIECE_ANIM_MS));
       }
       this.set({ thinking: false });
+      // Game just ended (either the player or the AI made the deciding
+      // move) — schedule the post-game UI phases.
+      if (this.state.gameEndState) {
+        this.scheduleEndGamePhases();
+      }
     } catch (e) {
       this.set({ thinking: false });
       if (e instanceof PlayApiError) {

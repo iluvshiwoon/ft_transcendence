@@ -1021,3 +1021,56 @@ html.hero-seen .page-reveal {
     filter: drop-shadow(0 0 6px var(--winning-glow, currentColor));
   }
 }
+
+
+/* End-game UI animations.
+   .endgame-status: brief "You win" / "You lose" / "Draw" text overlay.
+     Fades in with a slight upward drift over 400ms, stays visible for
+     ~1.7s (controlled by the parent's phase timing in EndGameOverlay),
+     then unmounts.
+   .endgame-card: signup-prompt card that replaces the board area.
+     Scales up slightly + fades in over 500ms.
+   The board's blur transition is on the cell container itself, driven
+   by the same .endgame-blur class. */
+@keyframes endgame-status-in {
+  0% {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+.endgame-status {
+  animation: endgame-status-in 400ms cubic-bezier(0.4, 0, 0.2, 1) both;
+}
+
+@keyframes endgame-card-in {
+  0% {
+    opacity: 0;
+    transform: scale(0.94);
+  }
+  100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+.endgame-card {
+  animation: endgame-card-in 500ms cubic-bezier(0.4, 0, 0.2, 1) both;
+}
+
+.endgame-blur {
+  filter: blur(3px);
+  transition: filter 500ms cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .endgame-status,
+  .endgame-card {
+    animation: none;
+  }
+  .endgame-blur {
+    transition: none;
+  }
+}

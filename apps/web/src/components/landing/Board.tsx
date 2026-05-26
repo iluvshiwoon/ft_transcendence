@@ -198,7 +198,12 @@ export function Board({ pieces, className, variant = "default" }: BoardProps) {
         {/* Glass plate — overflow-hidden + rounded for the glass surface;
             kept as an inner wrapper so the hit zones below can extend
             above/below the board without being clipped by it. */}
-        <div className="relative overflow-hidden rounded-xl shadow-2xl">
+        <div
+          className={cn(
+            "relative overflow-hidden rounded-xl shadow-2xl",
+            snap.endGamePhase === "card" && "endgame-blur",
+          )}
+        >
           {/* Under-glass color layer (z-0). Plain bg-pawn-* circles at the same
               grid positions as the on-top pieces. The lg-filter at z-0 (later
               in DOM, so painted on top) has backdrop-filter blur + filter:url
@@ -321,6 +326,7 @@ export function Board({ pieces, className, variant = "default" }: BoardProps) {
       className={cn(
         "inline-block rounded-xl p-4 sm:p-5 md:p-6",
         plateClasses(variant),
+        snap.endGamePhase === "card" && "endgame-blur",
         className,
       )}
     >
