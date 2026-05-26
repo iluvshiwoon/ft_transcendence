@@ -991,19 +991,19 @@ html.hero-seen .page-reveal {
 }
 .winning-cell.pawn-red,
 .winning-cell.bg-pawn-red {
-  --winning-glow: oklch(42% 0.19 25);
+  --winning-glow: oklch(42% 0.19 25 / 0.55);
 }
 .winning-cell.pawn-yellow,
 .winning-cell.bg-pawn-yellow {
-  --winning-glow: oklch(73% 0.16 72);
+  --winning-glow: oklch(73% 0.16 72 / 0.55);
 }
 .dark .winning-cell.pawn-red,
 .dark .winning-cell.bg-pawn-red {
-  --winning-glow: oklch(63% 0.21 25);
+  --winning-glow: oklch(63% 0.21 25 / 0.55);
 }
 .dark .winning-cell.pawn-yellow,
 .dark .winning-cell.bg-pawn-yellow {
-  --winning-glow: oklch(76% 0.16 85);
+  --winning-glow: oklch(76% 0.16 85 / 0.55);
 }
 @keyframes winning-pulse {
   0%, 100% {
@@ -1011,8 +1011,8 @@ html.hero-seen .page-reveal {
     filter: drop-shadow(0 0 0 transparent);
   }
   50% {
-    transform: scale(1.06);
-    filter: drop-shadow(0 0 8px var(--winning-glow, currentColor));
+    transform: scale(1.05);
+    filter: drop-shadow(0 0 5px var(--winning-glow, currentColor));
   }
 }
 @media (prefers-reduced-motion: reduce) {
