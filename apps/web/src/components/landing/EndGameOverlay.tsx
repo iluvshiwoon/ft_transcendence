@@ -84,13 +84,20 @@ function EndGameCard({ outcome, score, rank, authed, onSignup, onReplay }: EndGa
     <div
       className={cn(
         "endgame-card",
-        // Mobile: card is sized by content and capped at viewport-margins,
-        // so the buttons + score never get clipped by the small mobile
-        // board area. The card visually overflows the board on phones —
-        // intentional, the demo board is small but the CTA needs room.
-        // Desktop: card fills the full board area as before.
-        "flex flex-col items-center gap-7 max-w-[calc(100vw-2rem)]",
-        "md:h-full md:w-full md:max-w-none md:justify-between",
+        // Always at least covers the board area (min-h-full / min-w-full)
+        // so the board is fully hidden behind the card. Mobile content
+        // overflows naturally when the demo board is small. Capped at
+        // viewport-margins on mobile so it doesn't spill off-screen.
+        "flex min-h-full min-w-full flex-col items-center gap-7",
+        "max-w-[calc(100vw-2rem)] md:max-w-none",
+        // Desktop: center content vertically instead of pushing buttons
+        // to the bottom — looked like a slab of empty space between the
+        // pitch and the Play again button.
+        "md:justify-center",
+        // Small margin-block so the card on mobile keeps a visible gap
+        // to the AITelemetry / Leaderboard sections that stack above
+        // and below it. Desktop has the grid gutter for that.
+        "my-4 md:my-0",
         "rounded-xl border border-border bg-surface px-7 pb-10 pt-8 text-center shadow-2xl",
       )}
     >
