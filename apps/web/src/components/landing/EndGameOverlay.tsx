@@ -110,16 +110,20 @@ function EndGameCard({ outcome, score, rank, onSignup, onReplay }: EndGameCardPr
 
       {/* Buttons — primary 'Sign up' is the visual anchor, larger than
           the secondary 'Play again' below it. Arrow icon mirrors the
-          TopNav signup CTA so the call-to-action reads consistent. */}
+          TopNav signup CTA so the call-to-action reads consistent.
+          Hover: filled-to-outlined invert (same brand-filled effect as
+          the TopNav button), so the two CTAs feel like the same family. */}
       <div className="flex w-full flex-col items-center gap-3">
         <button
           type="button"
           onClick={onSignup}
           className={cn(
             "inline-flex w-full max-w-[280px] items-center justify-center gap-2 rounded-full",
-            "bg-foreground px-6 py-4",
+            "border border-foreground bg-foreground px-6 py-4",
             "font-mono text-base font-semibold uppercase tracking-wide text-background",
-            "transition-opacity hover:opacity-90 active:opacity-80",
+            "transition-colors transition-transform",
+            "hover:bg-transparent hover:text-foreground",
+            "active:scale-[0.98]",
           )}
         >
           <svg
@@ -141,8 +145,13 @@ function EndGameCard({ outcome, score, rank, onSignup, onReplay }: EndGameCardPr
           type="button"
           onClick={onReplay}
           className={cn(
+            "rounded-full px-4 py-1.5",
             "font-mono text-mono-sm uppercase text-muted-foreground",
-            "transition-colors hover:text-foreground",
+            // Visible hover in both modes: stronger color shift +
+            // subtle background tint + slight scale press.
+            "transition-colors transition-transform",
+            "hover:bg-foreground/10 hover:text-foreground",
+            "active:scale-[0.98]",
           )}
         >
           Play again

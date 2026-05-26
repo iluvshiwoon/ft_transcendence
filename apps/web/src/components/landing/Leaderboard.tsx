@@ -129,15 +129,20 @@ export function Leaderboard({ entries = MOCK_ENTRIES }: LeaderboardProps) {
                 // Bottom border only on non-last rows so the bottom of the
                 // list reads cleanly. Tailwind arbitrary variant
                 // [&:not(:last-child)] gates both border-b and border-color.
-                "flex items-center justify-between gap-3 pb-2 text-foreground",
+                "relative flex items-center justify-between gap-3 pb-2 text-foreground",
                 "[&:not(:last-child)]:border-b [&:not(:last-child)]:border-border",
                 opacityClass,
-                // Subtle left stripe + tiny indent for the user's row.
-                // Same row footprint as the others, just a 2px accent on
-                // the left edge to mark it as 'this is you'.
-                entry.isUser && "border-l-2 border-l-foreground pl-2",
               )}
             >
+              {/* User-row accent — absolute-positioned 2px stripe so it
+                  doesn't push content right (which would misalign the
+                  rank number with the rows above). */}
+              {entry.isUser && (
+                <span
+                  aria-hidden="true"
+                  className="absolute -left-2 top-0 bottom-2 w-[2px] bg-foreground"
+                />
+              )}
               <div className="flex min-w-0 gap-3">
                 <span className="font-semibold tabular-nums">{entry.rank}.</span>
                 <span
@@ -149,9 +154,12 @@ export function Leaderboard({ entries = MOCK_ENTRIES }: LeaderboardProps) {
                   {entry.username}
                 </span>
               </div>
+              {/* Numeric columns: explicit min-widths so the rating and
+                  winRate columns align across rows regardless of digit
+                  count (e.g. '100.0%' vs '94.8%'). */}
               <div className="flex shrink-0 gap-3 font-semibold tabular-nums">
-                <span>{entry.rating}</span>
-                <span>{entry.winRate.toFixed(1)}%</span>
+                <span className="min-w-[2.5em] text-right">{entry.rating}</span>
+                <span className="min-w-[3em] text-right">{entry.winRate.toFixed(1)}%</span>
               </div>
             </li>
           );
