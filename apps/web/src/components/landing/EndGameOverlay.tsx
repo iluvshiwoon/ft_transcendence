@@ -81,27 +81,27 @@ function EndGameCard({ outcome, score, rank, onSignup, onReplay }: EndGameCardPr
       className={cn(
         "endgame-card",
         "flex h-full w-full flex-col items-center justify-between gap-7",
-        "rounded-xl border border-border bg-surface px-7 py-8 text-center shadow-2xl",
+        "rounded-xl border border-border bg-surface px-7 pb-10 pt-8 text-center shadow-2xl",
       )}
     >
-      <div className="flex flex-col items-center gap-3">
+      <div className="flex flex-col items-center gap-2">
         <h3 className="font-display text-5xl font-light italic leading-none text-foreground">
           {heading}
         </h3>
-        <p className="font-mono text-mono-sm uppercase tracking-wide text-muted-foreground">
+        <p className="mt-3 font-mono text-mono-sm uppercase tracking-wide text-muted-foreground">
           You scored
         </p>
-        <p className="font-display text-6xl font-light leading-none tabular-nums text-foreground">
+        <p className="font-display text-5xl font-light leading-none tabular-nums text-foreground">
           {score}
         </p>
-        <p className="font-mono text-mono-md text-muted-foreground">
+        <p className="mt-1 font-mono text-mono-md text-muted-foreground">
           Rank{" "}
           <span className="font-semibold tabular-nums text-foreground">#{rank}</span>{" "}
           on the leaderboard
         </p>
       </div>
 
-      <p className="max-w-[280px] font-mono text-mono-md leading-relaxed text-muted-foreground">
+      <p className="max-w-[260px] font-mono text-mono-sm leading-relaxed text-muted-foreground">
         {pitch}
       </p>
 
