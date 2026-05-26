@@ -91,10 +91,10 @@ function EndGameCard({ outcome, score, rank, onSignup, onReplay }: EndGameCardPr
         <p className="mt-3 font-mono text-mono-sm uppercase tracking-wide text-muted-foreground">
           You scored
         </p>
-        <p className="font-display text-5xl font-light leading-none tabular-nums text-foreground">
+        <p className="font-display text-4xl font-light leading-none tabular-nums text-foreground">
           {score}
         </p>
-        <p className="mt-1 font-mono text-mono-md text-muted-foreground">
+        <p className="mt-1 font-mono text-mono-sm text-muted-foreground">
           Rank{" "}
           <span className="font-semibold tabular-nums text-foreground">#{rank}</span>{" "}
           on the leaderboard
@@ -106,18 +106,32 @@ function EndGameCard({ outcome, score, rank, onSignup, onReplay }: EndGameCardPr
       </p>
 
       {/* Buttons — primary 'Sign up' is the visual anchor, larger than
-          the secondary 'Play again' below it. */}
+          the secondary 'Play again' below it. Arrow icon mirrors the
+          TopNav signup CTA so the call-to-action reads consistent. */}
       <div className="flex w-full flex-col items-center gap-3">
         <button
           type="button"
           onClick={onSignup}
           className={cn(
-            "inline-flex w-full max-w-[280px] items-center justify-center rounded-full",
+            "inline-flex w-full max-w-[280px] items-center justify-center gap-2 rounded-full",
             "bg-foreground px-6 py-4",
-            "font-mono text-mono-md font-semibold uppercase tracking-wide text-background",
+            "font-mono text-base font-semibold uppercase tracking-wide text-background",
             "transition-opacity hover:opacity-90 active:opacity-80",
           )}
         >
+          <svg
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth={2}
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            className="size-4"
+            aria-hidden="true"
+          >
+            <path d="M5 12h14" />
+            <path d="m12 5 7 7-7 7" />
+          </svg>
           Sign up
         </button>
         <button
