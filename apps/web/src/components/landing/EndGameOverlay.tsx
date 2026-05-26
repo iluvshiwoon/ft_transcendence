@@ -41,11 +41,12 @@ interface EndGameCardProps {
   outcome: "won" | "lost" | "draw";
   score: number;
   rank: number;
+  authed: boolean;
   onSignup: () => void;
   onReplay: () => void;
 }
 
-function EndGameCard({ outcome, score, rank, onSignup, onReplay }: EndGameCardProps) {
+function EndGameCard({ outcome, score, rank, authed, onSignup, onReplay }: EndGameCardProps) {
   const heading =
     outcome === "won" ? "You won!" : outcome === "lost" ? "AI won" : "Even game";
 
@@ -83,7 +84,13 @@ function EndGameCard({ outcome, score, rank, onSignup, onReplay }: EndGameCardPr
     <div
       className={cn(
         "endgame-card",
-        "flex h-full w-full flex-col items-center justify-between gap-7",
+        // Mobile: card is sized by content and capped at viewport-margins,
+        // so the buttons + score never get clipped by the small mobile
+        // board area. The card visually overflows the board on phones —
+        // intentional, the demo board is small but the CTA needs room.
+        // Desktop: card fills the full board area as before.
+        "flex flex-col items-center gap-7 max-w-[calc(100vw-2rem)]",
+        "md:h-full md:w-full md:max-w-none md:justify-between",
         "rounded-xl border border-border bg-surface px-7 pb-10 pt-8 text-center shadow-2xl",
       )}
     >
@@ -104,43 +111,49 @@ function EndGameCard({ outcome, score, rank, onSignup, onReplay }: EndGameCardPr
         </p>
       </div>
 
-      <p className="max-w-[260px] font-mono text-mono-sm leading-relaxed text-muted-foreground">
-        {pitch}
-      </p>
+      {!authed && (
+        <p className="max-w-[260px] font-mono text-mono-sm leading-relaxed text-muted-foreground">
+          {pitch}
+        </p>
+      )}
 
       {/* Buttons — primary 'Sign up' is the visual anchor, larger than
           the secondary 'Play again' below it. Arrow icon mirrors the
           TopNav signup CTA so the call-to-action reads consistent.
           Hover: filled-to-outlined invert (same brand-filled effect as
-          the TopNav button), so the two CTAs feel like the same family. */}
+          the TopNav button), so the two CTAs feel like the same family.
+          When already authed, the signup CTA + pitch are hidden — only
+          the Play again button remains. */}
       <div className="flex w-full flex-col items-center gap-3">
-        <button
-          type="button"
-          onClick={onSignup}
-          className={cn(
-            "inline-flex w-full max-w-[280px] items-center justify-center gap-2 rounded-full",
-            "border border-foreground bg-foreground px-6 py-4",
-            "font-mono text-base font-semibold uppercase tracking-wide text-background",
-            "transition-colors transition-transform",
-            "hover:bg-transparent hover:text-foreground",
-            "active:scale-[0.98]",
-          )}
-        >
-          <svg
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth={2}
-            strokeLinecap="round"
-            strokeLinejoin="round"
-            className="size-4"
-            aria-hidden="true"
+        {!authed && (
+          <button
+            type="button"
+            onClick={onSignup}
+            className={cn(
+              "inline-flex w-full max-w-[280px] items-center justify-center gap-2 rounded-full",
+              "border border-foreground bg-foreground px-6 py-4",
+              "font-mono text-base font-semibold uppercase tracking-wide text-background",
+              "transition-colors transition-transform",
+              "hover:bg-transparent hover:text-foreground",
+              "active:scale-[0.98]",
+            )}
           >
-            <path d="M5 12h14" />
-            <path d="m12 5 7 7-7 7" />
-          </svg>
-          Sign up
-        </button>
+            <svg
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth={2}
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              className="size-4"
+              aria-hidden="true"
+            >
+              <path d="M5 12h14" />
+              <path d="m12 5 7 7-7 7" />
+            </svg>
+            Sign up
+          </button>
+        )}
         <button
           type="button"
           onClick={onReplay}
@@ -161,7 +174,13 @@ function EndGameCard({ outcome, score, rank, onSignup, onReplay }: EndGameCardPr
   );
 }
 
-export function EndGameOverlay() {
+interface EndGameOverlayProps {
+  /** Whether the request is authenticated. Drives whether the post-game
+   *  card shows the signup CTA — logged-in users only see Play again. */
+  authed?: boolean;
+}
+
+export function EndGameOverlay({ authed = false }: EndGameOverlayProps) {
   const snap = useSyncExternalStore(
     playStore.subscribe,
     playStore.getSnapshot,
@@ -199,6 +218,7 @@ export function EndGameOverlay() {
           outcome={snap.gameEndState}
           score={score}
           rank={rank}
+          authed={authed}
           onSignup={handleSignup}
           onReplay={handleReplay}
         />

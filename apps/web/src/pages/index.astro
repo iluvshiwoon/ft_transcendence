@@ -32,6 +32,9 @@ import { Board, type BoardVariant } from "~/components/landing/Board";
 import { EndGameOverlay } from "~/components/landing/EndGameOverlay";
 import { AITelemetry } from "~/components/landing/AITelemetry";
 import { Leaderboard } from "~/components/landing/Leaderboard";
+import { isAuthenticated } from "~/lib/auth";
+
+const authed = await isAuthenticated(Astro);
 
 // Board variant from ?board=X — liquid-glass is the chosen default. The
 // other variants are kept (Board.tsx + globals.css) so we can switch skins
@@ -173,7 +176,7 @@ const boardVariant: BoardVariant = VALID_VARIANTS.includes(requested as BoardVar
           style="--reveal-delay: 2.7s"
         >
           <Board variant={boardVariant} client:load />
-          <EndGameOverlay client:load />
+          <EndGameOverlay authed={authed} client:load />
         </div>
       </div>
 
