@@ -154,12 +154,14 @@ export function Leaderboard({ entries = MOCK_ENTRIES }: LeaderboardProps) {
                   {entry.username}
                 </span>
               </div>
-              {/* Numeric columns: explicit min-widths so the rating and
-                  winRate columns align across rows regardless of digit
-                  count (e.g. '100.0%' vs '94.8%'). */}
+              {/* Numeric columns: fixed widths (w- rather than min-w-)
+                  so the column boxes are identical across rows. With
+                  text-right + tabular-nums the digits land at the same
+                  pixel offset whether the number is 4 digits (2854) or
+                  the percent is 6 chars ('100.0%'). */}
               <div className="flex shrink-0 gap-3 font-semibold tabular-nums">
-                <span className="min-w-[2.5em] text-right">{entry.rating}</span>
-                <span className="min-w-[3em] text-right">{entry.winRate.toFixed(1)}%</span>
+                <span className="w-[3em] text-right">{entry.rating}</span>
+                <span className="w-[3.75em] text-right">{entry.winRate.toFixed(1)}%</span>
               </div>
             </li>
           );
