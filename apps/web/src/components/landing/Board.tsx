@@ -21,7 +21,7 @@
  *       final row using `translate-y` keyframes. CSS-only; no JS animation.
  */
 
-import { useEffect, useState, useSyncExternalStore } from "react";
+import { useEffect, useRef, useState, useSyncExternalStore } from "react";
 
 import { cn } from "~/lib/utils";
 import { playStore } from "~/lib/play-store";
@@ -157,6 +157,46 @@ export function Board({ pieces, className, variant = "default" }: BoardProps) {
   useEffect(() => {
     playStore.ensureStarted();
   }, []);
+
+  // Track the cursor's last-known position. Used to re-evaluate which
+  // column should be highlighted after the end-game card unmounts on
+  // 'Play again' — at that moment, no native mouseenter event fires
+  // (the cursor hasn't moved), so the hit zones don't naturally update
+  // hoveredCol. We use this stored position + elementFromPoint to do
+  // the check ourselves.
+  const lastMousePos = useRef<{ x: number; y: number } | null>(null);
+  useEffect(() => {
+    const onMove = (e: MouseEvent) => {
+      lastMousePos.current = { x: e.clientX, y: e.clientY };
+    };
+    window.addEventListener("mousemove", onMove);
+    return () => window.removeEventListener("mousemove", onMove);
+  }, []);
+
+  // When the card transitions from 'card' back to 'idle' (= Play again),
+  // re-detect which column the cursor is over so the hover highlight
+  // applies immediately even if the user hasn't moved the cursor.
+  // Wait one animation frame so the card has actually unmounted and
+  // the hit zones are the topmost element under the cursor again.
+  const prevPhase = useRef(snap.endGamePhase);
+  useEffect(() => {
+    if (prevPhase.current === "card" && snap.endGamePhase === "idle") {
+      requestAnimationFrame(() => {
+        const pos = lastMousePos.current;
+        if (!pos) return;
+        const el = document.elementFromPoint(pos.x, pos.y);
+        const btn = el?.closest('button[aria-label^="Drop in column"]');
+        if (!btn) {
+          setHoveredCol(null);
+          return;
+        }
+        const label = btn.getAttribute("aria-label") ?? "";
+        const m = label.match(/column (\d+)/);
+        if (m) setHoveredCol(parseInt(m[1], 10) - 1);
+      });
+    }
+    prevPhase.current = snap.endGamePhase;
+  }, [snap.endGamePhase]);
 
   const livePieces: BoardState | null = snap.view ? viewBoardFromServer(snap.view.board) : null;
   // Default to an empty board (not the wireframe) when neither live data

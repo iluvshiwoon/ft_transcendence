@@ -50,29 +50,32 @@ function EndGameCard({ outcome, score, rank, onSignup, onReplay }: EndGameCardPr
     outcome === "won" ? "You won!" : outcome === "lost" ? "AI won" : "Even game";
 
   // Pitch line varies by outcome — wins emphasize "save it", losses
+  // Pitch line varies by outcome — wins emphasize "save it", losses
   // emphasize "rematch", draws are neutral. Each version accents
-  // (text-foreground + font-semibold) the words that matter most so
-  // they pop against the surrounding muted body text.
+  // (text-foreground + font-bold) the words that matter most so
+  // they pop against the surrounding muted body text. Bold (not
+  // semibold) to keep contrast in dark mode where the foreground
+  // / muted-foreground tonal gap is narrower.
   const pitch =
     outcome === "won" ? (
       <>
         Sign up to{" "}
-        <span className="font-semibold text-foreground">save your score</span>, climb the{" "}
-        <span className="font-semibold text-foreground">leaderboard</span>, and play{" "}
-        <span className="font-semibold text-foreground">multiplayer</span>.
+        <span className="font-bold text-foreground">save your score</span>, climb the{" "}
+        <span className="font-bold text-foreground">leaderboard</span>, and play{" "}
+        <span className="font-bold text-foreground">multiplayer</span>.
       </>
     ) : outcome === "lost" ? (
       <>
         Sign up to{" "}
-        <span className="font-semibold text-foreground">save your score</span> and climb back —{" "}
-        <span className="font-semibold text-foreground">multiplayer</span>, friends, full ranking.
+        <span className="font-bold text-foreground">save your score</span> and climb back —{" "}
+        <span className="font-bold text-foreground">multiplayer</span>, friends, full ranking.
       </>
     ) : (
       <>
         Sign up to{" "}
-        <span className="font-semibold text-foreground">save your score</span>,{" "}
-        <span className="font-semibold text-foreground">climb the leaderboard</span>, and play{" "}
-        <span className="font-semibold text-foreground">multiplayer</span>.
+        <span className="font-bold text-foreground">save your score</span>,{" "}
+        <span className="font-bold text-foreground">climb the leaderboard</span>, and play{" "}
+        <span className="font-bold text-foreground">multiplayer</span>.
       </>
     );
 
