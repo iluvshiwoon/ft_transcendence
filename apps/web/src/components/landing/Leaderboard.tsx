@@ -126,7 +126,11 @@ export function Leaderboard({ entries = MOCK_ENTRIES }: LeaderboardProps) {
             <li
               key={`${entry.rank}-${entry.username}`}
               className={cn(
-                "flex items-center justify-between gap-3 border-b border-border pb-2 text-foreground",
+                // Bottom border only on non-last rows so the bottom of the
+                // list reads cleanly. Tailwind arbitrary variant
+                // [&:not(:last-child)] gates both border-b and border-color.
+                "flex items-center justify-between gap-3 pb-2 text-foreground",
+                "[&:not(:last-child)]:border-b [&:not(:last-child)]:border-border",
                 opacityClass,
                 // Subtle left stripe + tiny indent for the user's row.
                 // Same row footprint as the others, just a 2px accent on
