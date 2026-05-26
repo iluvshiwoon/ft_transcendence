@@ -165,6 +165,13 @@ export function Board({ pieces, className, variant = "default" }: BoardProps) {
   // page refresh.
   const renderedPieces: BoardState = livePieces ?? pieces ?? EMPTY_BOARD;
 
+  // Set of "r,c" keys for cells in the winning 4-in-a-row. Empty when
+  // game is in progress or ended in a draw. Cells in this set get the
+  // .winning-cell pulsing-glow animation.
+  const winningCellSet = new Set<string>(
+    snap.view?.winningLine?.map(([r, c]) => `${r},${c}`) ?? [],
+  );
+
   const handleColumnClick = (col: number) => {
     void playStore.play(col);
   };
@@ -268,6 +275,7 @@ export function Board({ pieces, className, variant = "default" }: BoardProps) {
                             "absolute inset-0 rounded-full piece-fade-in",
                             cell === "red" && "pawn-red",
                             cell === "yellow" && "pawn-yellow",
+                            winningCellSet.has(`${rowIdx},${colIdx}`) && "winning-cell",
                           )}
                         />
                       )}
@@ -342,6 +350,7 @@ export function Board({ pieces, className, variant = "default" }: BoardProps) {
                       "absolute inset-0 rounded-full piece-drop",
                       cell === "red" && "pawn-red",
                       cell === "yellow" && "pawn-yellow",
+                      winningCellSet.has(`${rowIdx},${colIdx}`) && "winning-cell",
                     )}
                     style={
                       { ["--drop-start" as never]: `-${(rowIdx + 1) * 100}%` } as React.CSSProperties

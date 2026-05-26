@@ -978,3 +978,29 @@ html.hero-seen .page-reveal {
     transition: none;
   }
 }
+
+
+/* Winning-line pulse — applied to the 4 cells of the 4-in-a-row at
+   game end. Pulses scale + box-shadow ring outward to draw the eye to
+   the winning line. Uses currentColor so it picks up the pawn color
+   (red for AI, yellow for user) automatically. */
+@keyframes winning-pulse {
+  0%, 100% {
+    box-shadow: 0 0 0 0 currentColor;
+    transform: scale(1);
+  }
+  50% {
+    box-shadow: 0 0 14px 6px currentColor;
+    transform: scale(1.1);
+  }
+}
+.winning-cell {
+  animation: winning-pulse 1.4s ease-in-out infinite;
+  z-index: 1;
+}
+@media (prefers-reduced-motion: reduce) {
+  .winning-cell {
+    animation: none;
+    box-shadow: 0 0 14px 4px currentColor;
+  }
+}
