@@ -197,10 +197,29 @@ class PlayStore {
    * Force a fresh game. Used by the end-game card's "Play again" button.
    * Clears all per-game state (telemetry, last AI move, position score,
    * end-game data) and calls /start. Subsequent clicks resume normal play.
+   *
+   * Resets the local view to an empty board SYNCHRONOUSLY (in the same
+   * set() call that clears endGamePhase). Without this, the card unmounts
+   * but the board behind it still shows the last game's state until the
+   * server's /start response arrives, producing a brief flash of stale
+   * pieces.
    */
   restart = async (): Promise<void> => {
     this.clearEndGameTimers();
+    const prev = this.state.view;
+    const emptyBoard: number[][] = Array.from({ length: 6 }, () => Array(7).fill(0));
     this.set({
+      view: prev
+        ? {
+            ...prev,
+            board: emptyBoard,
+            currentPlayer: 1,
+            status: "in_progress",
+            winner: null,
+            isDraw: false,
+            winningLine: null,
+          }
+        : null,
       telemetry: null,
       lastAiMove: null,
       telemetryBoard: null,
