@@ -981,26 +981,43 @@ html.hero-seen .page-reveal {
 
 
 /* Winning-line pulse — applied to the 4 cells of the 4-in-a-row at
-   game end. Pulses scale + box-shadow ring outward to draw the eye to
-   the winning line. Uses currentColor so it picks up the pawn color
-   (red for AI, yellow for user) automatically. */
+   game end. A subtle scale pulse + a soft color-matched drop-shadow
+   that follows the cell's rounded shape (drop-shadow > box-shadow for
+   round elements: respects the silhouette instead of painting a
+   rectangular halo behind it). The --winning-glow color is set per
+   pawn variant so red wins glow red, yellow wins glow yellow. */
+.winning-cell {
+  animation: winning-pulse 1.6s ease-in-out infinite;
+}
+.winning-cell.pawn-red,
+.winning-cell.bg-pawn-red {
+  --winning-glow: oklch(42% 0.19 25);
+}
+.winning-cell.pawn-yellow,
+.winning-cell.bg-pawn-yellow {
+  --winning-glow: oklch(73% 0.16 72);
+}
+.dark .winning-cell.pawn-red,
+.dark .winning-cell.bg-pawn-red {
+  --winning-glow: oklch(63% 0.21 25);
+}
+.dark .winning-cell.pawn-yellow,
+.dark .winning-cell.bg-pawn-yellow {
+  --winning-glow: oklch(76% 0.16 85);
+}
 @keyframes winning-pulse {
   0%, 100% {
-    box-shadow: 0 0 0 0 currentColor;
     transform: scale(1);
+    filter: drop-shadow(0 0 0 transparent);
   }
   50% {
-    box-shadow: 0 0 14px 6px currentColor;
-    transform: scale(1.1);
+    transform: scale(1.06);
+    filter: drop-shadow(0 0 8px var(--winning-glow, currentColor));
   }
-}
-.winning-cell {
-  animation: winning-pulse 1.4s ease-in-out infinite;
-  z-index: 1;
 }
 @media (prefers-reduced-motion: reduce) {
   .winning-cell {
     animation: none;
-    box-shadow: 0 0 14px 4px currentColor;
+    filter: drop-shadow(0 0 6px var(--winning-glow, currentColor));
   }
 }
