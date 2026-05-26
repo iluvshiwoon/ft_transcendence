@@ -149,12 +149,12 @@ class PlayStore {
   /** Schedule the post-game phase advancement: glow → card.
    *  Called once per game-end event. Timings:
    *    t=0      : 'glow'   (winning line glowing in CSS; this just records the phase)
-   *    t=2200ms : 'card'   (board blurs, signup card slides in) */
+   *    t=1100ms : 'card'   (board blurs, signup card slides in) */
   private scheduleEndGamePhases() {
     this.clearEndGameTimers();
     this.set({ endGamePhase: "glow" });
     this.endGameTimers.push(
-      setTimeout(() => this.set({ endGamePhase: "card" }), 2200),
+      setTimeout(() => this.set({ endGamePhase: "card" }), 1100),
     );
   }
   private clearEndGameTimers() {
@@ -230,27 +230,12 @@ class PlayStore {
     if (this.state.thinking) return;
     if (col < 0 || col > 6) return;
 
-    // Game over → restart, then apply this click on the fresh game.
+    // Game over → ignore the click. The user has to use the Play again
+    // button on the end-game card to start a new round; auto-restart on
+    // any board click was confusing because the click also dropped a
+    // piece into the new game before the user realized what happened.
     if (this.state.view && this.state.view.status !== "in_progress") {
-      this.clearEndGameTimers();
-      this.set({
-        telemetry: null,
-        lastAiMove: null,
-        telemetryBoard: null,
-        positionScore: null,
-        gameEndState: null,
-        gameScore: null,
-        maxAiDepth: 0,
-        endGamePhase: "idle",
-        hasPlayed: false,
-      });
-      try {
-        const { state } = await startGame();
-        this.set({ view: state });
-      } catch (e) {
-        if (e instanceof PlayApiError) this.set({ error: e });
-        return;
-      }
+      return;
     }
 
     if (!this.state.view) {
