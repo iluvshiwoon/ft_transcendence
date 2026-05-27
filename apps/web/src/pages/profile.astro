@@ -118,7 +118,8 @@ const cardCls = "rounded-xl border border-border bg-surface text-surface-foregro
         ========================================================= */}
     <section
       aria-label="Player profile"
-      class={cn(cardCls, "p-6 md:p-8")}
+      class={cn(cardCls, "page-reveal p-6 md:p-8")}
+      style="--reveal-delay: 0s"
     >
       <div class="flex flex-col gap-8 md:flex-row md:items-center md:gap-10">
         {/* Avatar — token-built (no image asset yet). Squircle to echo the board cells. */}
@@ -204,7 +205,8 @@ const cardCls = "rounded-xl border border-border bg-surface text-surface-foregro
         ========================================================= */}
     <nav
       aria-label="Profile sections"
-      class="mt-10 border-b border-border"
+      class="page-reveal mt-10 border-b border-border"
+      style="--reveal-delay: 0.1s"
       data-profile-tabs
     >
       <ul role="tablist" class="-mb-px flex flex-wrap gap-2">
@@ -226,8 +228,11 @@ const cardCls = "rounded-xl border border-border bg-surface text-surface-foregro
                 "border-b-2 transition-colors",
                 "text-muted-foreground border-transparent",
                 "hover:text-foreground",
-                "aria-selected:text-foreground aria-selected:border-accent",
-                "focus-visible:outline-none",
+                // Active state uses foreground (not accent crimson) to match
+                // the button language used across the app — accent reads as
+                // 'alert' / 'live' which doesn't fit primary navigation.
+                "aria-selected:text-foreground aria-selected:border-foreground",
+                "focus-visible:outline-none focus-visible:text-foreground",
               ]}
             >
               {t.label}
@@ -247,7 +252,8 @@ const cardCls = "rounded-xl border border-border bg-surface text-surface-foregro
       id="panel-overview"
       aria-labelledby="tab-overview"
       data-panel="overview"
-      class="mt-8 grid grid-cols-1 gap-gutter lg:grid-cols-3"
+      class="page-reveal mt-8 grid grid-cols-1 gap-gutter lg:grid-cols-3"
+      style="--reveal-delay: 0.2s"
     >
       {/* Daily games — left column on desktop */}
       <div class={cn(cardCls, "lg:col-span-1 p-6")}>
@@ -413,7 +419,8 @@ const cardCls = "rounded-xl border border-border bg-surface text-surface-foregro
       aria-labelledby="tab-stats"
       data-panel="stats"
       hidden
-      class="mt-8 grid grid-cols-1 gap-gutter md:grid-cols-3"
+      class="page-reveal mt-8 grid grid-cols-1 gap-gutter md:grid-cols-3"
+      style="--reveal-delay: 0.2s"
     >
       {/* Total games */}
       <div class={cn(cardCls, "p-6")}>
@@ -519,7 +526,8 @@ const cardCls = "rounded-xl border border-border bg-surface text-surface-foregro
       aria-labelledby="tab-friends"
       data-panel="friends"
       hidden
-      class="mt-8"
+      class="page-reveal mt-8"
+      style="--reveal-delay: 0.2s"
     >
       <div class={cn(cardCls, "p-6")}>
         <header class="mb-5 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
