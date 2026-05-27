@@ -54,7 +54,7 @@ interface HistoryRow {
   opponent: string;
   opponentRating: number;
   detail: string;
-  mode: "Connect 4" | "Connect 5";
+  mode: "Connect 4";
   date: string;
 }
 
@@ -62,7 +62,7 @@ const history: HistoryRow[] = [
   { result: "win",  opponent: "Sarah_w",     opponentRating: 2710, detail: "4 in a row · column 4", mode: "Connect 4", date: "2026-05-20" },
   { result: "loss", opponent: "BotSlayer99", opponentRating: 2699, detail: "4 in a row · diagonal", mode: "Connect 4", date: "2026-05-19" },
   { result: "win",  opponent: "A_connect",   opponentRating: 2349, detail: "4 in a row · row 3",    mode: "Connect 4", date: "2026-05-19" },
-  { result: "win",  opponent: "GridLock_",   opponentRating: 2569, detail: "5 in a row · diagonal", mode: "Connect 5", date: "2026-05-18" },
+  { result: "win",  opponent: "GridLock_",   opponentRating: 2569, detail: "4 in a row · diagonal", mode: "Connect 4", date: "2026-05-18" },
   { result: "draw", opponent: "Sarah_w",     opponentRating: 2710, detail: "Board filled",          mode: "Connect 4", date: "2026-05-17" },
   { result: "loss", opponent: "QuantumAI",   opponentRating: 2950, detail: "4 in a row · diagonal", mode: "Connect 4", date: "2026-05-16" },
   { result: "win",  opponent: "Pivot_",      opponentRating: 2210, detail: "4 in a row · column 2", mode: "Connect 4", date: "2026-05-15" },
@@ -456,7 +456,7 @@ const cardCls = "rounded-xl border border-border bg-surface text-surface-foregro
           {stats.played}
         </p>
         <p class="mt-3 font-sans text-sm text-muted-foreground">
-          Across Connect 4 and Connect 5 modes.
+          Across Connect 4 games.
         </p>
       </div>
 

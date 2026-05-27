@@ -130,7 +130,7 @@ version mobile une liste. Mockée aujourd'hui.
 GET /api/users/:id/games?limit=20&offset=0&status=finished     (public)
 → 200 [{
     id:           number,
-    mode:         "connect4" | "connect5",
+    mode:         "connect4",
     finishedAt:   string,                  # ISO 8601
     result:       "win" | "loss" | "draw", # POV de l'user demandé
     detail:       string,                  # ex. "4 in a row · column 4"
@@ -166,7 +166,7 @@ cours, dont c'est le tour, nb de coups, horloge.
 GET /api/users/me/games/active           (auth — propre user uniquement)
 → 200 [{
     id:                    number,
-    mode:                  "connect4" | "connect5",
+    mode:                  "connect4",
     yourTurn:              boolean,         # currentPlayer === me
     moves:                 number,          # count(moves) pour cette partie
     clockSeconds:          number,          # temps restant côté qui doit jouer
@@ -263,7 +263,7 @@ un challenge depuis une page profil, on veut un flux en 1 clic.
 ```
 POST /api/games/challenge                  (auth)
 body: { opponentUserId: number,
-        mode: "connect4" | "connect5",
+        mode: "connect4",
         timePerPlayerSeconds: 300 | 600 | 3600 }
 → 201 { gameId: number, lobbyId: number, lobbyCode: string }
 → 404 si opponent introuvable
