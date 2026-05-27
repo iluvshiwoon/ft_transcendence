@@ -15,7 +15,10 @@ import { db } from "../db/client.js";
 import { users, friendships } from "../db/schema.js";
 import { socketAuthMiddleware } from "./auth.js";
 import { registerChatHandlers } from "./chat.js";
+import { registerLobbyHandlers } from "./lobby.js";
+import { registerGameHandlers } from "./game.js";
 import { setNotificationIO } from "../services/notification.js";
+import { gameManager } from "../game/gameManager.js";
 
 // Rend `app.io` accessible (le plugin attache le serveur Socket.io à l'instance Fastify).
 declare module "fastify" {
@@ -39,6 +42,9 @@ export async function setupSocket(app: FastifyInstance) {
   // Injecte le serveur Socket.io dans le service de notifs (pour le push live).
   setNotificationIO(app.io);
 
+  // Injecte le serveur Socket.io dans le gameManager (broadcast game:state, game:over, etc.).
+  gameManager.setIO(app.io);
+
   // Handler principal : appelé pour chaque connexion authentifiée.
   app.io.on("connection", async (socket) => {
     const userId = socket.data.userId;
@@ -49,18 +55,26 @@ export async function setupSocket(app: FastifyInstance) {
     // Marque online en DB.
     await db.update(users).set({ status: "online" }).where(eq(users.id, userId));
 
+    // Annule un eventuel timer d'abandon si l'user revient dans la grace de 60 s.
+    gameManager.onReconnect(userId);
+
     // Notifie les amis qu'on est en ligne.
     const friendIds = await getFriendIds(userId);
     for (const fid of friendIds) {
       app.io.to(`user:${fid}`).emit("user:online", { userId });
     }
 
-    // Branche les handlers d'events spécifiques (chat pour l'instant).
+    // Branche les handlers d'events specifiques.
     registerChatHandlers(socket, app.io);
+    registerLobbyHandlers(socket, app.io);
+    registerGameHandlers(socket, app.io);
 
     socket.on("disconnect", async () => {
       // Marque offline en DB.
       await db.update(users).set({ status: "offline" }).where(eq(users.id, userId));
+
+      // Declenche le timer de grace 60 s sur toutes les parties actives du joueur.
+      gameManager.onDisconnect(userId);
 
       // Notifie les amis qu'on est offline.
       const friends = await getFriendIds(userId);
