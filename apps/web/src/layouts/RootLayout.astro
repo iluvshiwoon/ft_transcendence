@@ -177,5 +177,35 @@ const authed = await isAuthenticated(Astro);
         });
       })();
     </script>
+
+    {/*
+      TopNav scroll-hide.
+
+      The pill is fixed and we want it to slide up + fade out once the
+      user has scrolled past a small threshold, regardless of which
+      element is doing the scrolling:
+        - mobile: body min-h-svh, document/window scrolls
+        - desktop: body md:h-svh + md:overflow-hidden, slot wrapper scrolls
+
+      We attach a scroll listener to both window and the slot wrapper;
+      whichever fires drives the same body.is-scrolled toggle. CSS in
+      globals.css does the visual work.
+    */}
+    <script is:inline>
+      (function () {
+        var THRESHOLD = 32;
+        var slot = document.querySelector("body > div.flex.flex-1");
+        var body = document.body;
+
+        function onScroll() {
+          var y = (slot && slot.scrollTop) || window.scrollY || 0;
+          body.classList.toggle("is-scrolled", y > THRESHOLD);
+        }
+
+        window.addEventListener("scroll", onScroll, { passive: true });
+        if (slot) slot.addEventListener("scroll", onScroll, { passive: true });
+        onScroll();
+      })();
+    </script>
   </body>
 </html>
