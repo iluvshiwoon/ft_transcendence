@@ -432,64 +432,83 @@ const cardCls = "rounded-xl border border-border bg-surface text-surface-foregro
           ))}
         </ul>
 
-        {/* Desktop: table */}
+        {/* Desktop: tabular grid (div-based for full hover-pill control —
+            tr can't carry rounded corners reliably and pseudos on tr are
+            spec-iffy. role="table"/"row"/"cell" preserves screen-reader
+            semantics). The hover pill is an absolute pseudo behind the
+            content: full row width so it visually aligns with the dividers
+            above and below, inset-y-1 so it doesn't kiss them. */}
         <div class="hidden md:block">
-          <table class="w-full border-separate border-spacing-0">
-            <thead>
-              <tr class="text-left">
-                <th class="border-b border-border pl-4 pb-3 font-mono text-mono-sm uppercase font-medium text-muted-foreground">Result</th>
-                <th class="border-b border-border pb-3 font-mono text-mono-sm uppercase font-medium text-muted-foreground">Opponent</th>
-                <th class="border-b border-border pb-3 font-mono text-mono-sm uppercase font-medium text-muted-foreground">Mode</th>
-                <th class="border-b border-border pb-3 font-mono text-mono-sm uppercase font-medium text-muted-foreground">Detail</th>
-                <th class="border-b border-border pr-4 pb-3 text-right font-mono text-mono-sm uppercase font-medium text-muted-foreground">Date</th>
-              </tr>
-            </thead>
-            <tbody>
-              {/* Each row uses `group` so hover styles propagate to every cell.
-                  bg + corner radius live on the tds (tr can't carry rounded
-                  corners reliably in collapsed tables); first/last cells round
-                  out on hover to form the pill. The border-b dividers disappear
-                  on hover (group-hover:border-transparent) so the pill's bottom
-                  edge stays clean. */}
-              {history.map((row) => (
-                <tr class="group">
-                  <td class="border-b border-border py-3 pl-4 transition-colors group-hover:bg-muted group-hover:rounded-l-full group-hover:border-transparent">
-                    <span class="inline-flex items-center gap-2">
-                      <span aria-hidden="true" class:list={["size-2.5 rounded-full", resultTokens[row.result].dot]} />
-                      <span class="font-mono text-mono-md uppercase text-foreground">
-                        {resultTokens[row.result].label}
-                      </span>
+          <div role="table" aria-label="Recent games" class="flex flex-col">
+            {/* Column headers */}
+            <div
+              role="row"
+              class="grid grid-cols-[6rem_minmax(0,1.4fr)_6rem_minmax(0,1.6fr)_6.5rem] items-center gap-3 border-b border-border px-4 pb-3"
+            >
+              <div role="columnheader" class="font-mono text-mono-sm uppercase font-medium text-muted-foreground">Result</div>
+              <div role="columnheader" class="font-mono text-mono-sm uppercase font-medium text-muted-foreground">Opponent</div>
+              <div role="columnheader" class="font-mono text-mono-sm uppercase font-medium text-muted-foreground">Mode</div>
+              <div role="columnheader" class="font-mono text-mono-sm uppercase font-medium text-muted-foreground">Detail</div>
+              <div role="columnheader" class="text-right font-mono text-mono-sm uppercase font-medium text-muted-foreground">Date</div>
+            </div>
+
+            {/* Body rows */}
+            {history.map((row, i) => (
+              <div
+                role="row"
+                class:list={[
+                  "group relative isolate",
+                  "grid grid-cols-[6rem_minmax(0,1.4fr)_6rem_minmax(0,1.6fr)_6.5rem] items-center gap-3",
+                  "px-4 py-3",
+                  i < history.length - 1 && "border-b border-border",
+                ]}
+              >
+                {/* Hover pill — absolute, behind content */}
+                <span
+                  aria-hidden="true"
+                  class="absolute inset-x-0 inset-y-1 -z-10 rounded-full bg-transparent transition-colors group-hover:bg-muted"
+                />
+
+                <div role="cell">
+                  <span class="inline-flex items-center gap-2">
+                    <span aria-hidden="true" class:list={["size-2.5 rounded-full", resultTokens[row.result].dot]} />
+                    <span class="font-mono text-mono-md uppercase text-foreground">
+                      {resultTokens[row.result].label}
                     </span>
-                  </td>
-                  <td class="border-b border-border py-3 transition-colors group-hover:bg-muted group-hover:border-transparent">
-                    <div class="flex items-center gap-2">
-                      <span
-                        aria-hidden="true"
-                        class="flex size-7 items-center justify-center rounded-md border border-border bg-muted font-display italic text-sm text-foreground"
-                      >
-                        {row.opponent.charAt(0)}
-                      </span>
-                      <span class="font-sans text-sm font-semibold text-foreground">
-                        {row.opponent}
-                      </span>
-                      <span class="font-mono text-mono-sm tabular-nums text-muted-foreground">
-                        ({row.opponentRating})
-                      </span>
-                    </div>
-                  </td>
-                  <td class="border-b border-border py-3 font-mono text-mono-md uppercase text-muted-foreground transition-colors group-hover:bg-muted group-hover:border-transparent">
-                    {row.mode}
-                  </td>
-                  <td class="border-b border-border py-3 font-sans text-sm text-muted-foreground transition-colors group-hover:bg-muted group-hover:border-transparent">
-                    {row.detail}
-                  </td>
-                  <td class="border-b border-border py-3 pr-4 text-right font-mono text-mono-md tabular-nums text-muted-foreground transition-colors group-hover:bg-muted group-hover:rounded-r-full group-hover:border-transparent">
-                    {row.date}
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+                  </span>
+                </div>
+
+                <div role="cell">
+                  <div class="flex min-w-0 items-center gap-2">
+                    <span
+                      aria-hidden="true"
+                      class="flex size-7 shrink-0 items-center justify-center rounded-md border border-border bg-surface font-display italic text-sm text-foreground"
+                    >
+                      {row.opponent.charAt(0)}
+                    </span>
+                    <span class="truncate font-sans text-sm font-semibold text-foreground">
+                      {row.opponent}
+                    </span>
+                    <span class="font-mono text-mono-sm tabular-nums text-muted-foreground">
+                      ({row.opponentRating})
+                    </span>
+                  </div>
+                </div>
+
+                <div role="cell" class="font-mono text-mono-md uppercase text-muted-foreground">
+                  {row.mode}
+                </div>
+
+                <div role="cell" class="truncate font-sans text-sm text-muted-foreground">
+                  {row.detail}
+                </div>
+
+                <div role="cell" class="text-right font-mono text-mono-md tabular-nums text-muted-foreground">
+                  {row.date}
+                </div>
+              </div>
+            ))}
+          </div>
         </div>
       </div>
     </section>
