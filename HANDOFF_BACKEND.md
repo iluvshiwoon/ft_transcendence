@@ -1,7 +1,14 @@
 # Handoff backend — page `/profile`
 
-État au 2026-05-27, après merge de `kgriset_landing` dans `main` et import
-de `profile.astro` (Adam) dans `kgriset_profile_review`.
+État au 2026-05-27, après merge de `kgriset_landing` dans `main`, import
+de `profile.astro` (Adam) puis refonte UI sur `kgriset_profile_review` :
+
+- header inline-hero (avatar + identité + actions sur la même ligne, bio
+  et métriques en bas) ;
+- onglet `Stats` redessiné — plus de doublons avec le header. Quatre
+  blocs : **Streaks & form**, **By time control**, **By opponent
+  strength**, **Milestones** (cf. §3.9 plus bas) ;
+- Connect 5 retiré du périmètre.
 
 La page `/profile` est aujourd'hui rendue avec des **données mockées**. Ce
 document liste ce qui existe déjà côté serveur, ce qu'apporte la branche
@@ -74,8 +81,13 @@ Rien de tout ça n'existe en DB.
 **Schéma (migration nécessaire).**
 ```ts
 // apps/server/src/db/schema.ts — table users
-rating: integer("rating").notNull().default(1000),
+rating:      integer("rating").notNull().default(1000),
+peakRating:  integer("peak_rating").notNull().default(1000),
 ```
+
+`peakRating` est mis à jour à chaque fin de partie quand `rating > peakRating`.
+Sert exclusivement à la milestone « Highest rating » de §3.9 — évite de
+maintenir un historique complet du rating pour la v1.
 
 **Mise à jour dans `gameManager.finishGame()`** (branche `tim`) — même
 endroit qui incrémente `gamesWon` etc. :
@@ -88,7 +100,10 @@ const expected = 1 / (1 + Math.pow(10, (oppRating - myRating) / 400));
 const delta = Math.round(k * (score - expected));    // score: 1=win, 0.5=draw, 0=loss
 
 await db.update(users)
-  .set({ rating: sql`${users.rating} + ${delta}` })
+  .set({
+    rating:     sql`${users.rating} + ${delta}`,
+    peakRating: sql`GREATEST(${users.peakRating}, ${users.rating} + ${delta})`,
+  })
   .where(eq(users.id, userId));
 ```
 
@@ -129,12 +144,14 @@ version mobile une liste. Mockée aujourd'hui.
 ```
 GET /api/users/:id/games?limit=20&offset=0&status=finished     (public)
 → 200 [{
-    id:           number,
-    mode:         "connect4",
-    finishedAt:   string,                  # ISO 8601
-    result:       "win" | "loss" | "draw", # POV de l'user demandé
-    detail:       string,                  # ex. "4 in a row · column 4"
-                                           # ou "Opponent resigned"
+    id:                    number,
+    mode:                  "connect4",
+    finishedAt:            string,                  # ISO 8601
+    result:                "win" | "loss" | "draw", # POV de l'user demandé
+    detail:                string,                  # ex. "4 in a row · column 4"
+                                                    # ou "Opponent resigned"
+    moveCount:             number,                  # COUNT(moves) pour la partie
+    timePerPlayerSeconds:  300 | 600 | 3600,        # contrôle de temps utilisé
     opponent: {
       id:           number | null,         # null si IA
       username:     string,                # "AI (medium)" si IA
@@ -149,6 +166,11 @@ GET /api/users/:id/games?limit=20&offset=0&status=finished     (public)
 `detail` se calcule à partir de `moves` (ex. dernier coup gagnant) ou se
 déduit du statut (`abandoned` → "Opponent resigned"). On peut commencer
 simple : `${winnerMode} en ${moveCount} coups`.
+
+`moveCount` et `timePerPlayerSeconds` sont consommés par §3.9 (l'onglet
+Stats agrège l'historique côté serveur, mais c'est aussi utile pour
+afficher la vignette « 24 coups · Blitz » dans le tableau Recent games
+si on veut enrichir plus tard).
 
 **Effort estimé.** Une cinquantaine de lignes (jointure `games` ↔ `users`
 + agrégat `moves`). À mettre dans `users.ts` ou nouveau `games.ts` du
@@ -287,23 +309,136 @@ l'ouverture. À traiter côté front.
 
 ---
 
+### 3.9 — Stats agrégés (`GET /api/users/:id/stats`)
+
+**Pourquoi.** L'onglet **Stats** a été redessiné pour ne plus dupliquer
+les chiffres du header (rating, win rate, total games sont déjà visibles
+sur la card du haut). Il découpe maintenant les mêmes parties selon des
+dimensions que le header ne montre pas :
+
+1. **Streaks & form** — série en cours, plus longue série, 10 derniers
+   résultats sous forme de pastilles.
+2. **By time control** — Bullet (3 min) / Blitz (10 min) / Daily
+   (60 min) avec win rate et W/L/D par cadence.
+3. **By opponent strength** — % de victoires contre adversaires plus
+   faibles / égaux / plus forts.
+4. **Milestones** — victoire la plus rapide, partie la plus longue,
+   meilleur rating atteint, temps total joué.
+
+Aucun endpoint actuel ne retourne ces aggrégats. La page mock pour
+l'instant.
+
+**Spec.**
+```
+GET /api/users/:id/stats                         (public, GET)
+→ 200 {
+    streaks: {
+      current:  number,           # série de victoires en cours (0 si la
+                                  # dernière partie finie n'est pas une win)
+      longest:  number,           # plus longue série de victoires de l'historique
+    },
+
+    form: ("win" | "loss" | "draw")[],
+                                  # 10 derniers résultats, du plus ancien
+                                  # au plus récent (pour rendu gauche→droite)
+
+    byTimeControl: [{
+      timePerPlayerSeconds: 300 | 600 | 3600,
+      label:    "Bullet" | "Blitz" | "Daily",
+      duration: "3 min" | "10 min" | "60 min",
+      played:   number,
+      won:      number,
+      lost:     number,
+      drawn:    number,
+      winRate:  number,           # 0-100, arrondi à 1 décimale
+    }],
+
+    byOpponentStrength: [{
+      bucket:   "lower" | "equal" | "higher",
+      label:    "Lower-rated" | "Equal-rated" | "Higher-rated",
+      symbol:   "↓" | "=" | "↑",
+      played:   number,
+      won:      number,
+      winRate:  number,
+    }],
+
+    milestones: {
+      fastestWin:         { gameId: number, moveCount: number, finishedAt: string } | null,
+      longestGame:        { gameId: number, moveCount: number, finishedAt: string } | null,
+      highestRating:      { rating: number } | null,    # = users.peakRating
+      totalSecondsPlayed: number,                       # somme(finishedAt - startedAt)
+    },
+  }
+```
+
+**Calculs.**
+- `streaks.current` : parcourir l'historique fini par ordre desc ;
+  compter les wins consécutifs en partant du plus récent ; arrêter à la
+  première loss/draw.
+- `streaks.longest` : balayer tout l'historique en avant, retenir le max
+  d'une fenêtre de wins consécutifs.
+- `form` : `SELECT result FROM games WHERE user IN (...)
+  AND status = 'finished' ORDER BY finished_at DESC LIMIT 10`, puis
+  inverser côté serveur pour livrer ancien→récent.
+- `byTimeControl` : `GROUP BY time_per_player_seconds`. Le `label` /
+  `duration` peut être hardcodé selon la valeur (300 → Bullet, etc.).
+- `byOpponentStrength` : pour chaque partie finie, classer en buckets
+  selon `opponent.rating - me.rating` au moment de la partie. Frontières
+  proposées : `< -50` → lower, `±50` → equal, `> +50` → higher. Tolère
+  un seuil paramétrable côté env si besoin.
+  > **Note de précision** : si la requête utilise `users.rating` actuel
+  > (pas un snapshot stocké dans `games`), les buckets sont approximatifs
+  > pour les vieilles parties. Acceptable v1. Pour précision exacte plus
+  > tard, dénormaliser : ajouter `games.player1_rating_before` et
+  > `player2_rating_before` (snapshotés au démarrage de la partie).
+- `milestones.fastestWin` : `SELECT id, ...,
+  (SELECT count(*) FROM moves WHERE game_id = games.id) AS move_count
+  FROM games WHERE result = 'win' ORDER BY move_count ASC LIMIT 1`.
+  Idem pour `longestGame` (sans filtre `result`, ORDER DESC).
+- `milestones.highestRating` : `SELECT peak_rating FROM users WHERE id = ...`.
+  Donne `null` si l'utilisateur n'a pas encore joué (peak_rating == 1000
+  par défaut, on peut renvoyer `null` si gamesPlayed == 0).
+- `milestones.totalSecondsPlayed` : `SUM(EXTRACT(EPOCH FROM (finished_at - started_at)))`
+  sur les finished_at non-null. Approximation acceptable — n'enlève pas
+  le temps de pause entre les coups, mais reflète le temps « investi ».
+
+**Notes d'implémentation.**
+- Public (pas d'auth) — un user peut consulter les stats des autres.
+- Si `gamesPlayed == 0` : renvoyer un payload « vide » avec
+  `streaks: { current: 0, longest: 0 }`, `form: []`, les listes
+  by* à `[]`, et les milestones à `null` / `0`. Le frontend gère
+  déjà l'absence de chiffres.
+- Une seule route, pas un endpoint par section : la page Stats fetche
+  une fois au load et hydrate les 4 blocs.
+- Caching : si on en met (Redis ou inline LRU), invalider à chaque
+  fin de partie via `gameManager.finishGame()`.
+
+**Effort estimé.** ~120 lignes (5-6 requêtes Drizzle parallélisées via
+`Promise.all`, plus la logique de bucketing et le scan streaks). Plus
+gros morceau de la todo restante après §3.2.
+
+---
+
 ## 4. Ordre de priorité recommandé
 
-1. **Merger `tim` dans `main`.** Pré-requis pour 3.2, 3.3, 3.4, 3.5.
+1. **Merger `tim` dans `main`.** Pré-requis pour 3.2, 3.3, 3.4, 3.5, 3.9.
 2. **3.1 — `/users/by-username/:username` + `createdAt`.** Petit, débloque
    les URLs profil.
-3. **3.2 — Rating Elo + rang + titre.** Migration courte. Sans ça la page
-   est encore mockée pour le header principal.
+3. **3.2 — Rating Elo + `peak_rating` + rang + titre.** Migration courte.
+   Pré-requis pour 3.3, 3.5, 3.9.
 4. **3.3 — Historique parties (`/users/:id/games`).** Dépend de 3.2 pour
-   `opponent.rating`.
-5. **3.4 — Parties actives (`/users/me/games/active`).** Dépend de 3.2.
-6. **3.5 — `/friends` enrichi.** Petit, complète l'onglet Friends.
-7. **3.6 — Spectate.** Dépend de 3.4 pour le bouton Watch d'un ami.
-8. **3.7 — Challenge direct.** Dépend du système de notifications déjà en
+   `opponent.rating`. Sert l'onglet Overview (Recent games).
+5. **3.9 — Stats agrégés (`/users/:id/stats`).** Dépend de 3.2 + 3.3.
+   Sans ça l'onglet Stats reste mocké.
+6. **3.4 — Parties actives (`/users/me/games/active`).** Dépend de 3.2.
+   Sert le panneau Daily games de l'Overview.
+7. **3.5 — `/friends` enrichi.** Petit, complète l'onglet Friends.
+8. **3.6 — Spectate.** Dépend de 3.4 pour le bouton Watch d'un ami.
+9. **3.7 — Challenge direct.** Dépend du système de notifications déjà en
    place + lobby de Tim.
 
-Les points 3.1 → 3.5 forment l'essentiel du câblage de `/profile`. Les
-points 3.6 et 3.7 ne sont nécessaires que pour rendre les boutons
+Les points 3.1 → 3.5 + 3.9 forment l'essentiel du câblage de `/profile`.
+Les points 3.6 et 3.7 ne sont nécessaires que pour rendre les boutons
 fonctionnels — la page s'affiche déjà correctement sans eux (elle a juste
 des `href="#"`).
 
