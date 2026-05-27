@@ -173,8 +173,12 @@ const cardCls = "rounded-xl border border-border bg-surface text-surface-foregro
           </dl>
         </div>
 
-        {/* Action column — stacks on mobile, column on desktop */}
-        <div class="flex shrink-0 flex-col gap-2 md:items-end">
+        {/* Action column.
+            Challenge is the prominent CTA. Add friend / Message are
+            secondary actions, demoted to compact icon-only round
+            buttons so the column has a clear hierarchy instead of
+            three competing pill buttons. */}
+        <div class="flex shrink-0 flex-col gap-3 md:items-end">
           <a
             href="/play"
             class={cn(buttonVariants({ variant: "brand-filled", size: "pill" }), "gap-1.5")}
@@ -184,18 +188,34 @@ const cardCls = "rounded-xl border border-border bg-surface text-surface-foregro
             </svg>
             Challenge
           </a>
-          <a
-            href="#"
-            class={cn(buttonVariants({ variant: "brand-outline", size: "pill" }))}
-          >
-            Add friend
-          </a>
-          <a
-            href="#"
-            class={cn(buttonVariants({ variant: "ghost", size: "pill" }), "text-muted-foreground")}
-          >
-            Message
-          </a>
+
+          <div class="flex justify-end gap-2">
+            <a
+              href="#"
+              title="Add friend"
+              aria-label="Add friend"
+              class={cn(buttonVariants({ variant: "brand-outline", size: "icon" }))}
+            >
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="size-4" aria-hidden="true">
+                <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2" />
+                <circle cx="9" cy="7" r="4" />
+                <line x1="19" y1="8" x2="19" y2="14" />
+                <line x1="22" y1="11" x2="16" y2="11" />
+              </svg>
+              <span class="sr-only">Add friend</span>
+            </a>
+            <a
+              href="#"
+              title="Send message"
+              aria-label="Send message"
+              class={cn(buttonVariants({ variant: "ghost", size: "icon" }), "border border-border text-muted-foreground")}
+            >
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="size-4" aria-hidden="true">
+                <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
+              </svg>
+              <span class="sr-only">Send message</span>
+            </a>
+          </div>
         </div>
       </div>
     </section>
