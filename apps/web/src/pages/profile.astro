@@ -121,39 +121,89 @@ const cardCls = "rounded-xl border border-border bg-surface text-surface-foregro
       class={cn(cardCls, "page-reveal p-6 md:p-8")}
       style="--reveal-delay: 0s"
     >
-      <div class="flex flex-col gap-8 md:flex-row md:items-center md:gap-10">
+      <div class="flex flex-col gap-6 md:flex-row md:items-start md:gap-8">
         {/* Avatar — token-built (no image asset yet). Squircle to echo the board cells. */}
         <div class="flex shrink-0 items-center justify-center">
           <div
             aria-hidden="true"
-            class="flex size-24 items-center justify-center rounded-2xl border border-border bg-foreground text-background font-display italic text-5xl md:size-32 md:text-6xl"
+            class="flex size-24 items-center justify-center rounded-2xl border border-border bg-foreground text-background font-display italic text-5xl md:size-28 md:text-6xl"
           >
             {player.initial}
           </div>
         </div>
 
-        {/* Identity block */}
-        <div class="flex min-w-0 flex-1 flex-col gap-3">
-          <div class="flex flex-wrap items-center gap-3">
-            <span class="font-mono text-mono-sm uppercase text-muted-foreground">
-              {player.title}
-            </span>
-            <span aria-hidden="true" class="text-muted-foreground">·</span>
-            <span class="font-mono text-mono-sm uppercase text-muted-foreground">
-              Rank #{player.rank}
-            </span>
+        {/* Identity column — fills the remaining width.
+            Composed of two stacked rows so the actions can sit on the same
+            line as the username on desktop (inline-hero pattern), while bio
+            and metrics span the full width below. */}
+        <div class="flex min-w-0 flex-1 flex-col gap-5">
+          {/* Row 1: title/rank + username on the left, actions on the right */}
+          <div class="flex flex-col gap-4 md:flex-row md:items-start md:justify-between md:gap-6">
+            <div class="min-w-0">
+              <div class="flex flex-wrap items-center gap-3">
+                <span class="font-mono text-mono-sm uppercase text-muted-foreground">
+                  {player.title}
+                </span>
+                <span aria-hidden="true" class="text-muted-foreground">·</span>
+                <span class="font-mono text-mono-sm uppercase text-muted-foreground">
+                  Rank #{player.rank}
+                </span>
+              </div>
+
+              <h1 class="mt-2 font-display italic text-4xl tracking-tight md:text-5xl">
+                {player.username}
+              </h1>
+            </div>
+
+            {/* Actions — horizontal row sitting at the top of the card.
+                Challenge is the prominent CTA. Add friend / Message are
+                compact size-9 round icon buttons so the row reads as
+                primary + secondary, not three equal pills. */}
+            <div class="flex shrink-0 items-center gap-2 md:self-start">
+              <a
+                href="/play"
+                class={cn(buttonVariants({ variant: "brand-filled", size: "pill" }), "gap-1.5")}
+              >
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="size-3.5" aria-hidden="true">
+                  <path d="M5 3l14 9-14 9V3z" />
+                </svg>
+                Challenge
+              </a>
+              <a
+                href="#"
+                title="Add friend"
+                aria-label="Add friend"
+                class={cn(buttonVariants({ variant: "brand-outline", size: "icon" }))}
+              >
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="size-4" aria-hidden="true">
+                  <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2" />
+                  <circle cx="9" cy="7" r="4" />
+                  <line x1="19" y1="8" x2="19" y2="14" />
+                  <line x1="22" y1="11" x2="16" y2="11" />
+                </svg>
+                <span class="sr-only">Add friend</span>
+              </a>
+              <a
+                href="#"
+                title="Send message"
+                aria-label="Send message"
+                class={cn(buttonVariants({ variant: "ghost", size: "icon" }), "border border-border text-muted-foreground")}
+              >
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="size-4" aria-hidden="true">
+                  <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
+                </svg>
+                <span class="sr-only">Send message</span>
+              </a>
+            </div>
           </div>
 
-          <h1 class="font-display italic text-4xl tracking-tight md:text-5xl">
-            {player.username}
-          </h1>
-
+          {/* Row 2: bio */}
           <p class="max-w-prose text-base text-muted-foreground">
             {player.bio}
           </p>
 
-          {/* Rating + metadata strip */}
-          <dl class="mt-2 flex flex-wrap items-end gap-x-8 gap-y-3">
+          {/* Row 3: rating + metadata strip */}
+          <dl class="flex flex-wrap items-end gap-x-8 gap-y-3">
             <div class="flex flex-col">
               <dt class="font-mono text-mono-sm uppercase text-muted-foreground">Rating</dt>
               <dd class="font-mono text-metric">{player.rating}</dd>
@@ -171,51 +221,6 @@ const cardCls = "rounded-xl border border-border bg-surface text-surface-foregro
               <dd class="font-sans text-sm text-foreground">{player.joined}</dd>
             </div>
           </dl>
-        </div>
-
-        {/* Action column.
-            Challenge is the prominent CTA. Add friend / Message are
-            secondary actions, demoted to compact icon-only round
-            buttons so the column has a clear hierarchy instead of
-            three competing pill buttons. */}
-        <div class="flex shrink-0 flex-col gap-3 md:items-end">
-          <a
-            href="/play"
-            class={cn(buttonVariants({ variant: "brand-filled", size: "pill" }), "gap-1.5")}
-          >
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="size-3.5" aria-hidden="true">
-              <path d="M5 3l14 9-14 9V3z" />
-            </svg>
-            Challenge
-          </a>
-
-          <div class="flex justify-end gap-2">
-            <a
-              href="#"
-              title="Add friend"
-              aria-label="Add friend"
-              class={cn(buttonVariants({ variant: "brand-outline", size: "icon" }))}
-            >
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="size-4" aria-hidden="true">
-                <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2" />
-                <circle cx="9" cy="7" r="4" />
-                <line x1="19" y1="8" x2="19" y2="14" />
-                <line x1="22" y1="11" x2="16" y2="11" />
-              </svg>
-              <span class="sr-only">Add friend</span>
-            </a>
-            <a
-              href="#"
-              title="Send message"
-              aria-label="Send message"
-              class={cn(buttonVariants({ variant: "ghost", size: "icon" }), "border border-border text-muted-foreground")}
-            >
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="size-4" aria-hidden="true">
-                <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
-              </svg>
-              <span class="sr-only">Send message</span>
-            </a>
-          </div>
         </div>
       </div>
     </section>
