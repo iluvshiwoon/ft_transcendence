@@ -30,12 +30,19 @@ interface Props {
    * false; opt in from index.astro / login.astro / signup.astro.
    */
   showFooter?: boolean;
+  /**
+   * Render <TopNav />? Defaults to true. App-shell pages that own their
+   * own chrome (e.g. /profile while we figure out the authed-variant
+   * TopNav) can opt out.
+   */
+  showTopNav?: boolean;
 }
 
 const {
   title = "4thewin",
   description = "Connect 4, but smarter. Play the AI in your browser.",
   showFooter = false,
+  showTopNav = true,
 } = Astro.props;
 
 const canonicalUrl = new URL(Astro.url.pathname, Astro.site ?? "http://localhost:4321").toString();
@@ -127,7 +134,7 @@ const authed = await isAuthenticated(Astro);
     >
       Skip to content
     </a>
-    <TopNav authed={authed} />
+    {showTopNav && <TopNav authed={authed} />}
     <div class="flex flex-1 flex-col md:min-h-0 md:overflow-y-auto">
       <slot />
     </div>
