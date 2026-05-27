@@ -33,6 +33,11 @@ export const users = pgTable("users", {
   gamesWon: integer("games_won").notNull().default(0),
   gamesLost: integer("games_lost").notNull().default(0),
   gamesDrawn: integer("games_drawn").notNull().default(0),
+  // Set the first time the user reaches step 4 of /signup. Once set, the
+  // signup-page gate redirects /signup → / for this user — they can't
+  // re-enter the flow and accidentally overwrite their profile with the
+  // form's defaults. Future profile edits go through /settings (TBD).
+  signupCompletedAt: timestamp("signup_completed_at"),
   createdAt: timestamp("created_at").notNull().defaultNow(),
   updatedAt: timestamp("updated_at").notNull().defaultNow(),
 });

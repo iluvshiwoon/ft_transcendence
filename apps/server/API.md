@@ -52,7 +52,14 @@ Body :
 { "email": "x@42.fr", "username": "x", "password": "min8chars" }
 ```
 Réponse `201` : `{ id, email, username }` + cookie `auth_token` posé.
-Erreurs : `400` champs manquants ou password < 8 / `409` email ou username déjà pris.
+
+Erreurs :
+- `400` champs manquants ou password < 8.
+- `409` `Username already taken` : username déjà pris (info publique, OK d'être explicite).
+- `409` `Account creation failed` : message volontairement vague — typiquement email déjà
+  enregistré, mais on évite l'énumération de comptes en ne le confirmant pas. Le frontend
+  affiche un message générique + propose `Sign in instead?` pour pousser l'utilisateur
+  légitime vers `/login`.
 
 ### `POST /api/auth/login` — se connecter
 
@@ -75,14 +82,29 @@ Auth requise. Réponse `200` :
 ```
 Erreurs : `401` non connecté.
 
-### `GET /api/auth/42` — démarrer OAuth 42
+### `GET /api/auth/42?intent=signup|login` — démarrer OAuth 42
 
 Redirige vers la page d'autorisation de l'intra 42. Pas de réponse JSON, c'est un `302`.
 
+Le serveur génère un token `state` aléatoire (CSRF), le stocke dans un cookie HttpOnly
+`oauth42_state` (path: `/api/auth/42`, max-age 10 min), et l'inclut dans l'URL OAuth.
+Le cookie contient aussi l'`intent` reçu en query :
+- `intent=signup` (passé par la page `/signup`) → après callback, les nouveaux comptes
+  sont redirigés vers `/signup?step=3` (skip credentials, OAuth a fourni email + login).
+- `intent=login` (par défaut, passé par le bouton Login) → callback redirige vers `/`.
+
 ### `GET /api/auth/42/callback` — fin du flow OAuth 42
 
-Appelé par 42 avec un `?code=`. Crée/retrouve l'user, pose le cookie, redirige vers `FRONTEND_URL/`.
-Account linking : si déjà connecté, lie le compte 42 et redirige vers `/profile?linked=true`.
+Appelé par 42 avec `?code=` et `?state=`. Le serveur :
+1. Vérifie que `state` du query matche celui stocké dans le cookie `oauth42_state` (CSRF).
+   Sinon → `400 Invalid OAuth state`.
+2. Efface le cookie state (single-use).
+3. Échange `code` contre un access_token, récupère les infos du user.
+4. Account linking : si déjà connecté → lie l'OAuth ID, redirige `/profile?linked=true`.
+5. Sinon, cherche par OAuth ID puis par email. Crée un user si rien trouvé.
+6. Pose le cookie d'auth, redirige selon `intent` :
+   - `signup` + nouveau compte → `${FRONTEND_URL}/signup?step=3`
+   - `login` ou compte existant → `${FRONTEND_URL}/`
 
 ---
 
@@ -95,6 +117,17 @@ Pas d'auth. Réponse `200` :
 { "id", "username", "avatarUrl", "bio", "status", "gamesPlayed", "gamesWon", "gamesLost", "gamesDrawn" }
 ```
 Si user supprimé : `{ "id", "username": "Joueur supprimé", "avatarUrl": null }`.
+
+### `GET /api/users/check-username?q=...` — vérifier si un username est dispo
+
+**Pas d'auth** (utilisé par le formulaire de signup avant que l'user soit logged in).
+Renvoie uniquement `{ available: boolean }` — pas d'autre info pour limiter l'enumeration.
+
+Validation : 3–30 caractères, `[a-zA-Z0-9_]`. Si l'input ne match pas la regex,
+renvoie `{ available: false }` directement (sans donner la raison).
+
+> **TODO(rate-limit)** : ajouter `@fastify/rate-limit` au backend et gater cette route
+> à ~10 req/min/IP pour mitiger l'enumeration.
 
 ### `GET /api/users/search?q=...` — recherche par username
 
@@ -111,7 +144,13 @@ Auth requise. Body partiel :
 ```json
 { "username"?: "...", "bio"?: "...", "pawnSkin"?: "...", "gridSkin"?: "..." }
 ```
-Erreurs : `409` username déjà pris.
+Validations :
+- `username` : 3-30 caractères, `[a-zA-Z0-9_]` (mêmes contraintes que /signup).
+- `bio` : ≤ 160 caractères.
+- `pawnSkin` : `default` | `wine` | `coral` | `brick`.
+- `gridSkin` : `default` | `ink` | `slate`.
+
+Erreurs : `400` validation / `409` username déjà pris.
 
 ### `PUT /api/profile/email` — changer l'email
 
