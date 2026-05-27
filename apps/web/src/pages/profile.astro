@@ -101,6 +101,57 @@ const statusTokens: Record<FriendStatus, { dot: string; label: string }> = {
   offline: { dot: "bg-muted-foreground", label: "Offline" },
 };
 
+// ─── Stats-tab mock data ────────────────────────────────────────────────────
+// These slice the same `stats` numbers along dimensions the header card
+// can't show: streaks, time control, opponent strength, milestones.
+// Nothing here exists in the backend yet — see HANDOFF_BACKEND.md.
+
+const streaks = { current: 7, longest: 14 };
+
+// 10 most recent results, oldest → newest. Reuses GameResult / resultTokens.
+const recentForm: GameResult[] = [
+  "win", "win", "loss", "win", "win", "win", "win", "win", "draw", "win",
+];
+
+interface TimeControlRow {
+  label: string;          // "Bullet" / "Blitz" / "Daily"
+  duration: string;       // "3 min" etc.
+  played: number;
+  won: number;
+  lost: number;
+  drawn: number;
+  winRate: number;        // pre-computed for display, 0-100
+}
+const timeControls: TimeControlRow[] = [
+  { label: "Bullet", duration: "3 min",  played: 129, won:  92, lost: 29, drawn:  8, winRate: 71 },
+  { label: "Blitz",  duration: "10 min", played: 192, won: 148, lost: 32, drawn: 12, winRate: 77 },
+  { label: "Daily",  duration: "60 min", played:  91, won:  73, lost: 18, drawn:  0, winRate: 80 },
+];
+
+interface OpponentStrengthRow {
+  label: string;          // "Lower-rated" etc.
+  symbol: "↓" | "=" | "↑";
+  winRate: number;        // 0-100
+  played: number;
+}
+const opponentStrength: OpponentStrengthRow[] = [
+  { label: "Lower-rated",  symbol: "↓", winRate: 91, played: 162 },
+  { label: "Equal-rated",  symbol: "=", winRate: 58, played: 137 },
+  { label: "Higher-rated", symbol: "↑", winRate: 34, played: 113 },
+];
+
+interface Milestone {
+  label:  string;
+  value:  string;
+  detail: string;
+}
+const milestones: Milestone[] = [
+  { label: "Fastest win",       value: "7 moves",  detail: "3 days ago"        },
+  { label: "Longest game",      value: "38 moves", detail: "Last week"         },
+  { label: "Highest rating",    value: "2854",     detail: "Today"             },
+  { label: "Total time played", value: "18h 22m",  detail: "Across all games"  },
+];
+
 // Shared card style — mirrors the dashboard surfaces used elsewhere in app.
 const cardCls = "rounded-xl border border-border bg-surface text-surface-foreground";
 ---
@@ -277,8 +328,7 @@ const cardCls = "rounded-xl border border-border bg-surface text-surface-foregro
       id="panel-overview"
       aria-labelledby="tab-overview"
       data-panel="overview"
-      class="page-reveal mt-8 grid grid-cols-1 gap-gutter lg:grid-cols-3"
-      style="--reveal-delay: 0.2s"
+      class="mt-8 grid grid-cols-1 gap-gutter lg:grid-cols-3"
     >
       {/* Daily games — left column on desktop */}
       <div class={cn(cardCls, "lg:col-span-1 p-6")}>
@@ -444,103 +494,170 @@ const cardCls = "rounded-xl border border-border bg-surface text-surface-foregro
       aria-labelledby="tab-stats"
       data-panel="stats"
       hidden
-      class="page-reveal mt-8 grid grid-cols-1 gap-gutter md:grid-cols-3"
-      style="--reveal-delay: 0.2s"
+      class="mt-8 flex flex-col gap-gutter"
     >
-      {/* Total games */}
-      <div class={cn(cardCls, "p-6")}>
-        <p class="font-mono text-mono-sm uppercase text-muted-foreground">
-          Total games
-        </p>
-        <p class="mt-3 font-display italic text-5xl tracking-tight text-foreground">
-          {stats.played}
-        </p>
-        <p class="mt-3 font-sans text-sm text-muted-foreground">
-          Across Connect 4 games.
-        </p>
+      {/* ── Streaks & form (lead card) ───────────────────────── */}
+      <div class={cn(cardCls, "p-6 md:p-8")}>
+        <header class="mb-6 flex items-center justify-between">
+          <h2 class="font-mono text-mono-sm uppercase text-muted-foreground">
+            Streaks &amp; recent form
+          </h2>
+        </header>
+
+        <div class="grid grid-cols-1 gap-8 md:grid-cols-3">
+          {/* Current streak */}
+          <div>
+            <p class="font-mono text-mono-sm uppercase text-muted-foreground">
+              Current streak
+            </p>
+            <p class="mt-2 font-display italic text-foreground tabular-nums leading-none text-6xl md:text-7xl">
+              {streaks.current}
+              <span class="ml-2 align-middle font-mono text-mono-md uppercase text-muted-foreground">W</span>
+            </p>
+          </div>
+
+          {/* Longest streak */}
+          <div>
+            <p class="font-mono text-mono-sm uppercase text-muted-foreground">
+              Longest streak
+            </p>
+            <p class="mt-2 font-display italic text-foreground tabular-nums leading-none text-6xl md:text-7xl">
+              {streaks.longest}
+              <span class="ml-2 align-middle font-mono text-mono-md uppercase text-muted-foreground">W</span>
+            </p>
+          </div>
+
+          {/* Last 10 form */}
+          <div>
+            <p class="font-mono text-mono-sm uppercase text-muted-foreground">
+              Last 10 games
+            </p>
+            <ol class="mt-3 flex flex-wrap items-center gap-2" aria-label="Last 10 results, oldest to newest">
+              {recentForm.map((r) => (
+                <li
+                  aria-label={resultTokens[r].label}
+                  class:list={["size-4 rounded-full border border-border", resultTokens[r].dot]}
+                />
+              ))}
+            </ol>
+            <p class="mt-3 font-mono text-mono-sm uppercase text-muted-foreground tabular-nums">
+              {recentForm.filter((r) => r === "win").length} W ·
+              {" "}{recentForm.filter((r) => r === "loss").length} L ·
+              {" "}{recentForm.filter((r) => r === "draw").length} D
+            </p>
+          </div>
+        </div>
       </div>
 
-      {/* Win rate metric */}
-      <div class={cn(cardCls, "p-6")}>
-        <p class="font-mono text-mono-sm uppercase text-muted-foreground">
-          Win rate
-        </p>
-        <p class="mt-3 font-display italic text-5xl tracking-tight text-foreground">
-          {winRate}<span class="text-3xl text-muted-foreground">%</span>
-        </p>
-        <p class="mt-3 font-mono text-mono-sm uppercase text-muted-foreground tabular-nums">
-          {stats.won} W · {stats.lost} L · {stats.drawn} D
-        </p>
+      {/* ── By time control (3-up cards) ─────────────────────── */}
+      <div>
+        <h2 class="mb-4 font-mono text-mono-sm uppercase text-muted-foreground">
+          By time control
+        </h2>
+        <div class="grid grid-cols-1 gap-gutter md:grid-cols-3">
+          {timeControls.map((tc) => (
+            <article class={cn(cardCls, "p-6")}>
+              <header class="flex items-baseline justify-between gap-3">
+                <p class="font-mono text-mono-md uppercase text-foreground">
+                  {tc.label}
+                </p>
+                <p class="font-mono text-mono-sm uppercase text-muted-foreground tabular-nums">
+                  {tc.duration}
+                </p>
+              </header>
+
+              <p class="mt-4 font-display italic text-foreground tabular-nums leading-none text-4xl md:text-5xl">
+                {tc.winRate}
+                <span class="ml-1 align-middle font-mono text-mono-md text-muted-foreground">%</span>
+              </p>
+
+              {/* Compact W/L/D bar */}
+              <div
+                class="mt-4 flex h-2 w-full overflow-hidden rounded-full border border-border bg-muted"
+                role="img"
+                aria-label={`${tc.won} wins, ${tc.lost} losses, ${tc.drawn} draws`}
+              >
+                <div class="h-full bg-pawn-yellow"      style={`width: ${(tc.won  / tc.played) * 100}%`}></div>
+                <div class="h-full bg-pawn-red"         style={`width: ${(tc.lost / tc.played) * 100}%`}></div>
+                <div class="h-full bg-muted-foreground" style={`width: ${(tc.drawn / tc.played) * 100}%`}></div>
+              </div>
+
+              <p class="mt-3 font-mono text-mono-sm uppercase text-muted-foreground tabular-nums">
+                {tc.won} W · {tc.lost} L · {tc.drawn} D
+              </p>
+            </article>
+          ))}
+        </div>
       </div>
 
-      {/* Current rating */}
-      <div class={cn(cardCls, "p-6")}>
-        <p class="font-mono text-mono-sm uppercase text-muted-foreground">
-          Current rating
-        </p>
-        <p class="mt-3 font-display italic text-5xl tracking-tight text-foreground">
-          {player.rating}
-        </p>
-        <p class="mt-3 font-mono text-mono-sm uppercase text-accent">
-          ↑ +24 this week
-        </p>
-      </div>
-
-      {/* W/L/D visual bar — full row */}
-      <div class={cn(cardCls, "p-6 md:col-span-3")}>
+      {/* ── By opponent strength ─────────────────────────────── */}
+      <div class={cn(cardCls, "p-6 md:p-8")}>
         <header class="mb-5 flex items-center justify-between">
           <h2 class="font-mono text-mono-sm uppercase text-muted-foreground">
-            Win / Loss / Draw breakdown
+            By opponent strength
           </h2>
           <span class="font-mono text-mono-sm uppercase text-muted-foreground tabular-nums">
-            {stats.played} total
+            {opponentStrength.reduce((n, o) => n + o.played, 0)} games
           </span>
         </header>
 
-        {/* Stacked bar */}
-        <div
-          class="flex h-4 w-full overflow-hidden rounded-full border border-border bg-muted"
-          role="img"
-          aria-label={`${winRate}% wins, ${lossRate}% losses, ${drawRate}% draws`}
-        >
-          <div class="pawn-yellow h-full" style={`width: ${winRate}%`}></div>
-          <div class="pawn-red h-full"    style={`width: ${lossRate}%`}></div>
-          <div class="h-full bg-muted-foreground" style={`width: ${drawRate}%`}></div>
-        </div>
+        <ul class="grid grid-cols-1 gap-3 md:grid-cols-3">
+          {opponentStrength.map((o) => (
+            <li class="rounded-lg border border-border bg-muted px-4 py-3">
+              <div class="flex items-baseline justify-between gap-3">
+                <div class="flex items-center gap-3">
+                  <span aria-hidden="true" class="font-mono text-mono-md text-muted-foreground">
+                    {o.symbol}
+                  </span>
+                  <span class="font-mono text-mono-sm uppercase text-muted-foreground">
+                    {o.label}
+                  </span>
+                </div>
+                <p class="font-display italic text-foreground tabular-nums leading-none text-2xl">
+                  {o.winRate}
+                  <span class="ml-0.5 align-middle font-mono text-mono-sm text-muted-foreground">%</span>
+                </p>
+              </div>
 
-        {/* Legend */}
-        <ul class="mt-5 grid grid-cols-1 gap-3 sm:grid-cols-3">
-          <li class="flex items-center justify-between gap-3 rounded-lg border border-border bg-muted px-4 py-3">
-            <div class="flex items-center gap-3">
-              <span aria-hidden="true" class="size-3 rounded-full bg-pawn-yellow" />
-              <span class="font-mono text-mono-sm uppercase text-muted-foreground">Won</span>
-            </div>
-            <div class="flex items-baseline gap-2">
-              <span class="font-mono text-metric tabular-nums text-foreground">{stats.won}</span>
-              <span class="font-mono text-mono-sm tabular-nums text-muted-foreground">{winRate}%</span>
-            </div>
-          </li>
-          <li class="flex items-center justify-between gap-3 rounded-lg border border-border bg-muted px-4 py-3">
-            <div class="flex items-center gap-3">
-              <span aria-hidden="true" class="size-3 rounded-full bg-pawn-red" />
-              <span class="font-mono text-mono-sm uppercase text-muted-foreground">Lost</span>
-            </div>
-            <div class="flex items-baseline gap-2">
-              <span class="font-mono text-metric tabular-nums text-foreground">{stats.lost}</span>
-              <span class="font-mono text-mono-sm tabular-nums text-muted-foreground">{lossRate}%</span>
-            </div>
-          </li>
-          <li class="flex items-center justify-between gap-3 rounded-lg border border-border bg-muted px-4 py-3">
-            <div class="flex items-center gap-3">
-              <span aria-hidden="true" class="size-3 rounded-full bg-muted-foreground" />
-              <span class="font-mono text-mono-sm uppercase text-muted-foreground">Drawn</span>
-            </div>
-            <div class="flex items-baseline gap-2">
-              <span class="font-mono text-metric tabular-nums text-foreground">{stats.drawn}</span>
-              <span class="font-mono text-mono-sm tabular-nums text-muted-foreground">{drawRate}%</span>
-            </div>
-          </li>
+              {/* Win-rate bar (single colour, foreground accent) */}
+              <div
+                class="mt-3 h-1.5 w-full overflow-hidden rounded-full bg-muted-foreground/20"
+                role="presentation"
+              >
+                <div class="h-full bg-foreground" style={`width: ${o.winRate}%`}></div>
+              </div>
+
+              <p class="mt-2 font-mono text-mono-sm uppercase text-muted-foreground tabular-nums">
+                {o.played} games
+              </p>
+            </li>
+          ))}
         </ul>
+      </div>
+
+      {/* ── Milestones (4-up grid) ───────────────────────────── */}
+      <div class={cn(cardCls, "p-6 md:p-8")}>
+        <header class="mb-5 flex items-center justify-between">
+          <h2 class="font-mono text-mono-sm uppercase text-muted-foreground">
+            Milestones
+          </h2>
+        </header>
+
+        <dl class="grid grid-cols-2 gap-x-6 gap-y-6 md:grid-cols-4">
+          {milestones.map((m) => (
+            <div class="flex flex-col gap-1.5">
+              <dt class="font-mono text-mono-sm uppercase text-muted-foreground">
+                {m.label}
+              </dt>
+              <dd class="font-display italic text-foreground tabular-nums leading-none text-2xl md:text-3xl">
+                {m.value}
+              </dd>
+              <p class="font-mono text-mono-sm uppercase text-muted-foreground">
+                {m.detail}
+              </p>
+            </div>
+          ))}
+        </dl>
       </div>
     </section>
 
@@ -551,8 +668,7 @@ const cardCls = "rounded-xl border border-border bg-surface text-surface-foregro
       aria-labelledby="tab-friends"
       data-panel="friends"
       hidden
-      class="page-reveal mt-8"
-      style="--reveal-delay: 0.2s"
+      class="mt-8"
     >
       <div class={cn(cardCls, "p-6")}>
         <header class="mb-5 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
