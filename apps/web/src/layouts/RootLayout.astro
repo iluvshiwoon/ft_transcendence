@@ -7,11 +7,13 @@
  *     [skip-to-content link]
  *     <TopNav />            (floating pill, fixed)
  *     <slot />              (page content)
- *     <SiteFooter />
+ *     <SiteFooter />        (only when showFooter prop is true —
+ *                            marketing + onboarding pages only)
  *   </body>
  *
- * The body is flex column + min-h-svh so the footer stays at the bottom
- * even when a page's content is short.
+ * The body is flex column + min-h-svh so the footer (when shown) stays at
+ * the bottom even when a page's content is short. App-shell pages
+ * (/profile, /play, …) opt out of the footer entirely.
  */
 import "~/styles/globals.css";
 import TopNav from "~/components/TopNav.astro";
@@ -21,11 +23,19 @@ import { isAuthenticated } from "~/lib/auth";
 interface Props {
   title?: string;
   description?: string;
+  /**
+   * Render <SiteFooter />? Footer carries marketing-shell links
+   * (About / How to play / Privacy / Terms) that are only relevant on
+   * marketing + onboarding pages — not inside the app shell. Default
+   * false; opt in from index.astro / login.astro / signup.astro.
+   */
+  showFooter?: boolean;
 }
 
 const {
   title = "4thewin",
   description = "Connect 4, but smarter. Play the AI in your browser.",
+  showFooter = false,
 } = Astro.props;
 
 const canonicalUrl = new URL(Astro.url.pathname, Astro.site ?? "http://localhost:4321").toString();
@@ -121,7 +131,7 @@ const authed = await isAuthenticated(Astro);
     <div class="flex flex-1 flex-col md:min-h-0 md:overflow-y-auto">
       <slot />
     </div>
-    <SiteFooter />
+    {showFooter && <SiteFooter />}
 
     {/* DEV: 8-column grid overlay — toggle via the button below.
         Hidden by default; shown when <html> has the .grid-on class
