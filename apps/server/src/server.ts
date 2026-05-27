@@ -13,6 +13,8 @@ import { userRoutes } from "./routes/users.js";
 import { friendRoutes } from "./routes/friends.js";
 import { chatRoutes } from "./routes/chat.js";
 import { notificationRoutes } from "./routes/notifications.js";
+import { lobbyRoutes } from "./routes/lobbies.js";
+import { gameRoutes } from "./routes/games.js";
 import { setupSocket } from "./socket/index.js";
 
 // Dossier racine des uploads (avatars, etc.). Créé au démarrage si absent.
@@ -66,6 +68,12 @@ export async function buildServer() {
 
   // Routes notifications (REST only) : /api/notifications, /unread-count, /:id/read, /read-all
   await app.register(notificationRoutes, { prefix: "/api" });
+
+  // Routes lobbies : /api/lobbies, /:id/join, /:id/leave, /:id/start
+  await app.register(lobbyRoutes, { prefix: "/api" });
+
+  // Routes games : /api/games/ai, /api/games/:id
+  await app.register(gameRoutes, { prefix: "/api" });
 
   // Setup Socket.io (auth + online/offline tracking + futurs events chat/game/notif).
   await setupSocket(app);

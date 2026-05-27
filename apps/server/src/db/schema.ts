@@ -123,13 +123,14 @@ export const lobbyStatusEnum = pgEnum("lobby_status", [
   "closed",
 ]);
 
-// Format : id, code, creatorId, isPublic, mode, timePerPlayerSeconds, status, createdAt
+// Format : id, code, creatorId, player2Id, isPublic, mode, timePerPlayerSeconds, status, createdAt
 export const lobbies = pgTable("lobbies", {
   id: serial("id").primaryKey(),
   code: text("code").notNull().unique(), // 6 caractères, généré à la création
   creatorId: integer("creator_id")
     .notNull()
     .references(() => users.id, { onDelete: "cascade" }),
+  player2Id: integer("player2_id").references(() => users.id, { onDelete: "set null" }),
   isPublic: boolean("is_public").notNull().default(true),
   mode: gameModeEnum("mode").notNull().default("connect4"),
   timePerPlayerSeconds: integer("time_per_player_seconds").notNull().default(300),
