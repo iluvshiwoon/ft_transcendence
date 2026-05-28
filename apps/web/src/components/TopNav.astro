@@ -1,0 +1,126 @@
+---
+/**
+ * TopNav — floating pill bar.
+ *
+ * Static parts are pure Astro (zero JS shipped). The shadcn <Button> primitive
+ * is rendered server-side only — no client:* directive. ThemeToggle is the
+ * only React island.
+ *
+ * Implementation note: <Button asChild><a/></Button> doesn't work cleanly under
+ * Astro because Astro's <a> isn't a real React element when it reaches Radix
+ * Slot — props don't merge, the anchor renders with no className. So the
+ * Login / Sign up CTAs apply `buttonVariants()` to the <a> directly. Same
+ * visual contract, no Slot.
+ *
+ * Hamburger button is currently inert. It'll become a shadcn DropdownMenu in
+ * a future task once we have the menu items defined. See
+ * `apps/web/docs/authed-nav-roadmap.md` for the planned upgrade path.
+ *
+ * Authed vs anonymous: the right group changes based on the `authed` prop
+ * (driven by RootLayout's server-side isAuthenticated check):
+ *   - anon:   theme toggle + Login + Sign up
+ *   - authed: theme toggle + Play → (Login/Sign up hidden — they'd
+ *             redirect right back to / and feel broken)
+ */
+import { Button, buttonVariants } from "~/components/ui/button";
+import { cn } from "~/lib/utils";
+
+interface Props {
+  /** Whether the request is authenticated (set by RootLayout). */
+  authed?: boolean;
+}
+
+const { authed = false } = Astro.props;
+---
+
+<header
+  class:list={[
+    "fixed top-6 left-1/2 -translate-x-1/2 z-50",
+    "w-auto max-w-[calc(100%-2*var(--spacing-margin-mobile))] md:max-w-[760px]",
+    "flex items-center justify-between gap-5 md:gap-8",
+    "rounded-full border border-foreground bg-muted",
+    "px-5 py-2 md:px-7 md:py-2.5",
+    "shadow-sm",
+  ]}
+  aria-label="Site navigation"
+>
+  {/* Left group: brand mark + invisible spacer (keeps the pill's width
+      consistent with the previous design that had a hamburger here). */}
+  <div class="flex items-center gap-3 md:gap-4">
+    <a
+      href="/"
+      class="font-display italic text-3xl md:text-4xl tracking-tight leading-none text-foreground"
+      aria-label="4thewin — home"
+    >
+      4
+    </a>
+    <div class="size-9 shrink-0" aria-hidden="true"></div>
+  </div>
+
+  {/* Right group: theme toggle + auth CTAs */}
+  <div class="flex items-center gap-2.5 md:gap-3">
+    {/* Theme toggle — pure SSR. Both icons are in the DOM; CSS picks which
+        one shows based on `<html class="dark">`. The bootstrap script in
+        RootLayout sets that class synchronously before paint AND wires the
+        click handler. No React island, no hydration flicker. */}
+    <button
+      type="button"
+      data-theme-toggle
+      aria-label="Toggle theme"
+      title="Toggle theme"
+      class="grid size-9 shrink-0 place-items-center rounded-full text-foreground transition-all duration-75 ease-linear hover:bg-muted active:scale-[0.96]"
+    >
+      {/* Moon: visible in light mode (hidden in dark) */}
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="size-4 dark:hidden" aria-hidden="true">
+        <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path>
+      </svg>
+      {/* Sun: visible in dark mode (hidden in light) */}
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="hidden size-4 dark:block" aria-hidden="true">
+        <circle cx="12" cy="12" r="4"></circle>
+        <path d="M12 2v2"></path>
+        <path d="M12 20v2"></path>
+        <path d="m4.93 4.93 1.41 1.41"></path>
+        <path d="m17.66 17.66 1.41 1.41"></path>
+        <path d="M2 12h2"></path>
+        <path d="M20 12h2"></path>
+        <path d="m6.34 17.66-1.41 1.41"></path>
+        <path d="m19.07 4.93-1.41 1.41"></path>
+      </svg>
+    </button>
+
+    {!authed && (
+      <a
+        href="/login"
+        class={cn(buttonVariants({ variant: "brand-outline", size: "pill" }), "hidden sm:inline-flex")}
+        data-todo-integration="POST /api/auth/login — wire to apps/server"
+      >
+        Login
+      </a>
+    )}
+
+    {authed ? (
+      <a
+        href="/play"
+        class={cn(buttonVariants({ variant: "brand-filled", size: "pill" }), "gap-1.5")}
+      >
+        Play
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="size-3.5" aria-hidden="true">
+          <path d="M5 12h14"></path>
+          <path d="m12 5 7 7-7 7"></path>
+        </svg>
+      </a>
+    ) : (
+      <a
+        href="/signup"
+        class={cn(buttonVariants({ variant: "brand-filled", size: "pill" }), "gap-1.5")}
+        data-todo-integration="POST /api/auth/signup — wire to apps/server"
+      >
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="size-3.5" aria-hidden="true">
+          <path d="M5 12h14"></path>
+          <path d="m12 5 7 7-7 7"></path>
+        </svg>
+        Sign up
+      </a>
+    )}
+  </div>
+</header>

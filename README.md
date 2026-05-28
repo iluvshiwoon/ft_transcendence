@@ -1,45 +1,88 @@
-# Container Podman
+# ft_transcendance
 
-Pour lancer l'infrastructure, accordez les droits au script d'éxecution :
+A 4-player Connect-4-themed game with social features (chat, friends), tournament play, and AI opponents. Astro + React frontend, Fastify + Drizzle backend, PostgreSQL, Vault, ModSecurity WAF.
 
-```bash
-chmod +x deploy.sh
+## Quick start
+
+### Prerequisites
+
+- **Container runtime**: `podman` + `podman-compose` (Linux), or `docker` (macOS via OrbStack / Docker Desktop). The Makefile auto-detects which to use.
+- **`pnpm`** — for the local dev workflow (`make dev`). Install: `brew install pnpm` or `npm i -g pnpm`.
+- **`.env`** at repo root with `VAULT_TOKEN=dev_root_token` (the value isn't actually used at runtime; `deploy.sh` and the compose stack just check the variable exists).
+
+### First-time setup
+
+```sh
+cp .env.example .env             # then edit if your setup differs
+make build                       # builds images, brings up the full stack
 ```
 
-Puis lancez :
+`vault_init` runs once on first boot, generates a random DB password and JWT secret, and seeds Vault with `REPLACE_ME` placeholders for the 42 OAuth credentials. To wire OAuth, register an app at https://profile.intra.42.fr/oauth/applications (redirect URI: `http://localhost:8080/api/auth/42/callback`), then push the credentials into Vault:
 
-```bash
-bash deploy.sh
+```sh
+TOKEN=$(docker exec vault_server cat /vault/file/root.token)
+docker exec -e VAULT_ADDR=http://127.0.0.1:8200 -e VAULT_TOKEN="$TOKEN" \
+  vault_server vault kv put secret/transcendence/oauth42 \
+    client_id=<UID> client_secret=<SECRET>
+make rebuild-server
 ```
 
-Une fois les containers en route, utilisez le makefile pour effectuer toutes les commandes souhaitées.
-La règle `make help` afin de voir toutes les options possibles.
+## Dev modes
 
-Pour vérifier que les services sont bien connectés, vérifiez dans le navigateur :
-- **Astro** : http://localhost:4321
-- **Fastify** : http://localhost:3000
-- **Vault** : http://localhost:8200
+### Mode A — Full stack (production-like, with WAF)
 
-Pour arrêter proprement l'infrastructure et nettoyer les réseaux :
+Use this for integration testing and pre-PR verification.
 
-```bash
-make down
+```sh
+make build              # bring up everything; visit http://localhost:8080
+make rebuild-server     # after backend changes (~10s)
+make rebuild-web        # after frontend changes (~15s)
+make logs-server        # tail backend logs
+make down               # stop everything (state preserved)
 ```
 
-# Serveur
-pnpm dev                 # lance Fastify
+### Mode B — Hot reloading (HMR + fast loop)
 
-# Base de données
-pnpm db:generate         # génère un fichier SQL depuis schema.ts (après changement de schéma)
-pnpm db:migrate          # applique les migrations sur PG
-pnpm db:seed             # remplit avec données de test
-pnpm db:studio           # ouvre une UI web pour explorer la DB
+Use this for day-to-day frontend/backend iteration.
 
-# Container PG (à lancer une fois)
-podman start dev-pg      # redémarre PG si tu l'as stoppé
-podman stop dev-pg       # stoppe PG
-podman exec dev-pg psql -U postgres_transcendence -d postgres_transcendence  # shell SQL
+```sh
+make dev    # backend in compose, Astro dev server in foreground at :4321
+            # /api/* proxied to backend at :3000 via Vite
+            # Ctrl+C stops the dev server; backend stays up
+```
 
-# API Backend
+URLs:
+- Frontend (Mode A): http://localhost:8080
+- Frontend (Mode B): http://localhost:4321
+- Backend API (Mode B only): http://localhost:3000
+- Vault UI: http://localhost:8200/ui (root token in `vdata` volume at `/vault/file/root.token`)
 
-La référence complète de l'API (HTTP + Socket.io) est dans [`apps/server/API.md`](apps/server/API.md).
+`make help` lists every target.
+
+## Database
+
+```sh
+pnpm --filter server db:generate   # generate SQL migration after schema changes
+pnpm --filter server db:migrate    # apply migrations
+pnpm --filter server db:seed       # populate with test data
+pnpm --filter server db:studio     # open Drizzle Studio (web UI)
+
+make psql            # interactive psql REPL
+make db-tables       # \dt
+```
+
+## API
+
+The complete HTTP + Socket.io reference: [`apps/server/API.md`](apps/server/API.md).
+
+Frontend design system + locked decisions: [`apps/web/DESIGN.md`](apps/web/DESIGN.md).
+
+## macOS + OrbStack notes
+
+The default Docker credential helper on macOS prompts for the Login Keychain on every image pull, which is annoying. We replace `docker-credential-osxkeychain` with a no-op stub that returns empty credentials (public Docker Hub pulls don't need auth). The stub is installed at `~/.local/bin/no-keychain-stub` with a redeployer at `~/.local/bin/redeploy-no-keychain-stub.sh`.
+
+After any OrbStack upgrade the stub gets overwritten by the real binary. Re-apply with:
+
+```sh
+make redeploy-stub
+```
