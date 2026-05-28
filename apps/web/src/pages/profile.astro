@@ -525,22 +525,22 @@ const cardCls = "rounded-xl border border-border bg-surface text-surface-foregro
       style="--reveal-delay: 0.2s"
     >
       {/* ── Streaks & form (lead card) ───────────────────────── */}
-      <div class={cn(cardCls, "p-6 md:p-8")}>
-        <header class="mb-6 flex items-center justify-between">
+      <div class={cn(cardCls, "p-5 md:p-6")}>
+        <header class="mb-5 flex items-center justify-between">
           <h2 class="font-mono text-mono-sm uppercase text-muted-foreground">
             Streaks &amp; recent form
           </h2>
         </header>
 
-        <div class="grid grid-cols-1 gap-8 md:grid-cols-3">
+        <div class="grid grid-cols-1 gap-6 md:grid-cols-3">
           {/* Current streak */}
           <div>
             <p class="font-mono text-mono-sm uppercase text-muted-foreground">
               Current streak
             </p>
-            <p class="mt-2 font-display italic text-foreground tabular-nums leading-none text-6xl md:text-7xl">
+            <p class="mt-2 font-display italic text-foreground tabular-nums leading-none text-5xl md:text-6xl">
               {streaks.current}
-              <span class="ml-2 align-middle font-mono text-mono-md uppercase text-muted-foreground">W</span>
+              <span class="ml-2 align-middle font-mono uppercase text-muted-foreground text-2xl md:text-3xl">W</span>
             </p>
           </div>
 
@@ -549,9 +549,9 @@ const cardCls = "rounded-xl border border-border bg-surface text-surface-foregro
             <p class="font-mono text-mono-sm uppercase text-muted-foreground">
               Longest streak
             </p>
-            <p class="mt-2 font-display italic text-foreground tabular-nums leading-none text-6xl md:text-7xl">
+            <p class="mt-2 font-display italic text-foreground tabular-nums leading-none text-5xl md:text-6xl">
               {streaks.longest}
-              <span class="ml-2 align-middle font-mono text-mono-md uppercase text-muted-foreground">W</span>
+              <span class="ml-2 align-middle font-mono uppercase text-muted-foreground text-2xl md:text-3xl">W</span>
             </p>
           </div>
 
