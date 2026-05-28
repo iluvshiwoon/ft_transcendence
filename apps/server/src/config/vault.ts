@@ -54,15 +54,12 @@ export async function loadFromVault(): Promise<void> {
 
   const db = await readSecret(addr, token, "transcendence/database");
   if (db?.password) {
-    const dbUser = process.env.POSTGRES_USER || "postgres_transcendance";
-    const dbName = process.env.POSTGRES_DB || "postgres_transcendance";
+    const dbUser = process.env.POSTGRES_USER || "postgres_transcendence";
+    const dbName = process.env.POSTGRES_DB || "postgres_transcendence";
     const dbHost = process.env.POSTGRES_HOST || "postgres";
-
-    // URL-encode the password — vault_init generates it via openssl rand -base64,
-    // which can include `+` `/` `=` characters that break URL parsing in pg.
-    const dbPass = encodeURIComponent(db.password);
-
-    process.env.DATABASE_URL = `postgresql://${dbUser}:${dbPass}@${dbHost}:5432/${dbName}`;
+    
+  const dbPass = encodeURIComponent(db.password);
+  process.env.DATABASE_URL = `postgresql://${dbUser}:${dbPass}@${dbHost}:5432/${dbName}`;
   }
 
   console.log("[vault] Secrets loaded");

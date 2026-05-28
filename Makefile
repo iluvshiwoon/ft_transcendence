@@ -150,13 +150,13 @@ logs-vault-init:
 # ──────────────────────────────────────────
 
 psql:
-	$(COMPOSE) exec postgres psql -U postgres_transcendance -d postgres_transcendance
+	$(COMPOSE) exec postgres psql -U postgres_transcendence -d postgres_transcendence
 
 db-tables:
-	$(COMPOSE) exec postgres psql -U postgres_transcendance -d postgres_transcendance -c "\dt"
+	$(COMPOSE) exec postgres psql -U postgres_transcendence -d postgres_transcendence -c "\dt"
 
 db-list:
-	$(COMPOSE) exec postgres psql -U postgres_transcendance -c "\l"
+	$(COMPOSE) exec postgres psql -U postgres_transcendence -c "\l"
 
 # ──────────────────────────────────────────
 # VAULT

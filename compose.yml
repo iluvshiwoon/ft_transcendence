@@ -19,8 +19,8 @@
         retries: 15
         start_period: 15s
       environment:
-        POSTGRES_DB: postgres_transcendance
-        POSTGRES_USER: postgres_transcendance
+        POSTGRES_DB: postgres_transcendence
+        POSTGRES_USER: postgres_transcendence
       volumes:
         - pgdata:/var/lib/postgresql/data
         - vdata:/vault/file
@@ -95,8 +95,8 @@
           condition: service_healthy
       environment:
         DB_HOST: postgres
-        DB_NAME: postgres_transcendance
-        DB_USER: postgres_transcendance
+        DB_NAME: postgres_transcendence
+        DB_USER: postgres_transcendence
         VAULT_ADDR: http://vault_server:8200
         # OAuth 42 callback URI — must match exactly what's registered in the
         # 42 intra app config. ModSec at :8080 is the public entrypoint, so
@@ -141,7 +141,7 @@
       container_name: mod_security
       user: root
       command: >
-        sh -c "chown nginx:nginx /var/log/nginx/error.log && 
+        sh -c "chown nginx:nginx /var/log/nginx/error.log &&
         /docker-entrypoint.sh nginx -g 'daemon off;'"
       ports:
         - "8080:8080" # PORT_EXTERIEUR:PORT_INTERIEUR
@@ -155,6 +155,14 @@
         - ERRORLOG=/var/log/nginx/modsec_error.log
         - BACKEND=web:4321 
         - ALLOWED_METHODS=GET POST PUT HEAD
+        # The image already wires nginx.conf's resolver from /etc/resolv.conf
+        # at startup (see /docker-entrypoint.d/91-update-resolver.sh). That
+        # gives us a cross-runtime resolver — Docker (127.0.0.11) and Podman
+        # (aardvark gateway IP) — without hardcoding either. We just pass
+        # the cache settings here. valid=10s re-resolves at most every 10s
+        # so a recreated upstream container's new IP gets picked up quickly;
+        # ipv6=off avoids spurious AAAA lookups on networks that don't have v6.
+        - RESOLVER_CONFIG=valid=10s ipv6=off
       depends_on:
         - server
         - web
