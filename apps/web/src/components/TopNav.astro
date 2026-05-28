@@ -36,7 +36,7 @@ const { authed = false } = Astro.props;
 <header
   class:list={[
     "fixed top-6 left-1/2 z-50",
-    "w-auto max-w-[calc(100%-2*var(--spacing-margin-mobile))] md:max-w-[760px]",
+    "w-auto max-w-[calc(100%-2*var(--spacing-margin-mobile))]",
     "flex items-center justify-between gap-5 md:gap-8",
     "rounded-full border border-foreground bg-muted",
     "px-5 py-2 md:px-7 md:py-2.5",
@@ -45,18 +45,26 @@ const { authed = false } = Astro.props;
   ]}
   aria-label="Site navigation"
 >
-  {/* Left group: brand mark + invisible spacer (keeps the pill's width
-      consistent with the previous design that had a hamburger here). */}
-  <div class="flex items-center gap-3 md:gap-4">
-    <a
-      href="/"
-      class="font-display italic text-3xl md:text-4xl tracking-tight leading-none text-foreground"
-      aria-label="4thewin — home"
-    >
+  {/* Brand: tall "4" + stacked "the/win".
+      Sized so the stack's outer height matches the "4"'s exactly:
+        mobile: text-sm "the" (14) + text-3xl "win" (30) - mt-2 (8) = 36 = text-4xl
+        desktop: text-base "the" (16) + text-4xl "win" (36) - mt-1 (4) = 48 = text-5xl
+      The visual hierarchy "small the · big win" puts the emphasis on
+      "win" — fitting for a brand named 4thewin. items-center keeps
+      the stack and the "4" on the same vertical midline. */}
+  <a
+    href="/"
+    class="flex items-center gap-2 text-foreground"
+    aria-label="4thewin — home"
+  >
+    <span class="font-display italic text-4xl md:text-5xl tracking-tight leading-none">
       4
-    </a>
-    <div class="size-9 shrink-0" aria-hidden="true"></div>
-  </div>
+    </span>
+    <span class="flex flex-col font-display italic leading-none tracking-tight">
+      <span class="text-sm md:text-base">the</span>
+      <span class="-mt-2 md:-mt-1 text-3xl md:text-4xl">win</span>
+    </span>
+  </a>
 
   {/* Right group: theme toggle + auth CTAs */}
   <div class="flex items-center gap-2.5 md:gap-3">
