@@ -13,7 +13,7 @@
         rm -f /vault/file/.db_pass;
         docker-entrypoint.sh postgres;"
       healthcheck:
-        test: ["CMD-SHELL", "pg_isready -U postgres_transcendence"]
+        test: ["CMD-SHELL", "pg_isready -U postgres_transcendance"]
         interval: 5s
         timeout: 5s
         retries: 15
@@ -141,7 +141,7 @@
       container_name: mod_security
       user: root
       command: >
-        sh -c "chown nginx:nginx /var/log/nginx/error.log && 
+        sh -c "chown nginx:nginx /var/log/nginx/error.log &&
         /docker-entrypoint.sh nginx -g 'daemon off;'"
       ports:
         - "8080:8080" # PORT_EXTERIEUR:PORT_INTERIEUR
@@ -155,6 +155,14 @@
         - ERRORLOG=/var/log/nginx/modsec_error.log
         - BACKEND=web:4321 
         - ALLOWED_METHODS=GET POST PUT HEAD
+        # The image already wires nginx.conf's resolver from /etc/resolv.conf
+        # at startup (see /docker-entrypoint.d/91-update-resolver.sh). That
+        # gives us a cross-runtime resolver — Docker (127.0.0.11) and Podman
+        # (aardvark gateway IP) — without hardcoding either. We just pass
+        # the cache settings here. valid=10s re-resolves at most every 10s
+        # so a recreated upstream container's new IP gets picked up quickly;
+        # ipv6=off avoids spurious AAAA lookups on networks that don't have v6.
+        - RESOLVER_CONFIG=valid=10s ipv6=off
       depends_on:
         - server
         - web
