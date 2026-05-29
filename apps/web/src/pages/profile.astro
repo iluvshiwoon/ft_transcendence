@@ -201,9 +201,10 @@ const cardCls = "rounded-xl border border-border bg-surface text-surface-foregro
             </div>
 
             {/* Actions — horizontal row sitting at the top of the card.
-                Challenge is the prominent CTA. Add friend / Message are
-                compact size-9 round icon buttons so the row reads as
-                primary + secondary, not three equal pills. */}
+                Play is the prominent CTA. Add friend / Message are
+                compact size-9 round icon buttons (both brand-outline so
+                they share the same border + text-foreground brightness),
+                so the row reads as primary + matched secondaries. */}
             <div class="flex shrink-0 items-center gap-2 md:self-start">
               <a
                 href="/play"
@@ -212,7 +213,7 @@ const cardCls = "rounded-xl border border-border bg-surface text-surface-foregro
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="size-3.5" aria-hidden="true">
                   <path d="M5 3l14 9-14 9V3z" />
                 </svg>
-                Challenge
+                Play
               </a>
               <a
                 href="#"
@@ -232,7 +233,7 @@ const cardCls = "rounded-xl border border-border bg-surface text-surface-foregro
                 href="#"
                 title="Send message"
                 aria-label="Send message"
-                class={cn(buttonVariants({ variant: "ghost", size: "icon" }), "border border-border text-muted-foreground")}
+                class={cn(buttonVariants({ variant: "brand-outline", size: "icon" }))}
               >
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="size-4" aria-hidden="true">
                   <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
