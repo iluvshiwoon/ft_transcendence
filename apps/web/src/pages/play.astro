@@ -169,6 +169,37 @@ const cardCls = "rounded-xl border border-border bg-surface text-surface-foregro
           Send a private invite, or queue for a random opponent.
         </p>
 
+        {/* Time control — mirrors the AI card so both modes share parallel
+            structure. The chosen time control is sent with POST /api/lobbies
+            (when the Challenge a friend button is wired) or the future
+            POST /api/match/queue. */}
+        <div>
+          <p class="font-mono text-mono-sm uppercase text-muted-foreground">Time control</p>
+          <ul role="radiogroup" aria-label="Time control" data-pills="multi-time" class="mt-2 flex flex-wrap gap-2">
+            {TIME_CONTROLS.map((tc) => (
+              <li>
+                <button
+                  type="button"
+                  role="radio"
+                  aria-checked={tc.id === defaultTimeControl ? "true" : "false"}
+                  data-value={tc.id}
+                  data-seconds={tc.seconds}
+                  class:list={[
+                    "px-3 py-1 rounded-full font-mono text-mono-sm uppercase tabular-nums",
+                    "border border-border bg-muted text-muted-foreground",
+                    "transition-colors",
+                    "hover:border-foreground hover:text-foreground",
+                    "aria-checked:border-foreground aria-checked:bg-foreground aria-checked:text-background",
+                    "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-foreground",
+                  ]}
+                >
+                  {tc.duration}
+                </button>
+              </li>
+            ))}
+          </ul>
+        </div>
+
         {/* Two action rows — primary at the bottom (Challenge), secondary
             above (Find match, disabled v1 → HANDOFF §3.10). */}
         <div class="mt-auto flex flex-col gap-3">
