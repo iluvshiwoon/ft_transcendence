@@ -1097,16 +1097,20 @@ html.hero-seen .page-reveal {
 
 
 /* ─── TopNav scroll-hide ─────────────────────────────────────────────────────
- * The pill stays anchored at the top of the viewport. Once the user scrolls
- * past a small threshold (handled by JS in RootLayout — toggles
+ * The top navigation stays anchored at the top of the viewport. Once the user
+ * scrolls past a small threshold (handled by JS in RootLayout — toggles
  * `body.is-scrolled`), it slides up off-screen and fades out.
  *
- * Both states declare a full `translate(x, y)` so the transition has matching
- * syntax — interpolating between two `translate()` values gives a clean
- * vertical slide. Mixing this with Tailwind's composite transform (`-translate-x-1/2`)
- * would swap the resting transform for a different syntax and the browser
- * would interpolate diagonally; that's why -translate-x-1/2 was dropped from
- * TopNav.astro and the horizontal centering moved here.
+ * Two shapes share this behaviour:
+ *   .topnav-pill  — anon variant, floating pill centered horizontally
+ *                    (transform carries `translate(-50%, 0)` so the pill
+ *                    is itself a positioned element with `left: 50%`).
+ *   .topnav-bar   — authed variant, full-width header bar pinned to
+ *                    inset-x-0 (no horizontal translate; just a vertical
+ *                    slide on hide).
+ *
+ * Both declare a full `translate(x, y)` in resting + hidden states so the
+ * transition has matching syntax (browsers interpolate diagonally otherwise).
  */
 .topnav-pill {
   transform: translate(-50%, 0);
@@ -1119,8 +1123,21 @@ body.is-scrolled .topnav-pill {
   opacity: 0;
   pointer-events: none;
 }
+
+.topnav-bar {
+  transform: translate(0, 0);
+  transition:
+    transform 250ms cubic-bezier(0.4, 0, 0.2, 1),
+    opacity   250ms cubic-bezier(0.4, 0, 0.2, 1);
+}
+body.is-scrolled .topnav-bar {
+  transform: translate(0, -100%);
+  opacity: 0;
+  pointer-events: none;
+}
 @media (prefers-reduced-motion: reduce) {
-  .topnav-pill {
+  .topnav-pill,
+  .topnav-bar {
     transition: none;
   }
 }
