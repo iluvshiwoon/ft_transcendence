@@ -120,6 +120,26 @@
   --spacing-margin-mobile: 1.25rem;           /* 20px page padding small viewports */
   --spacing-margin-desktop: 4rem;             /* 64px page padding desktop */
 
+  /* Responsive breakpoints.
+
+     The `md:` breakpoint controls the page-level layout switch (mobile
+     stack -> desktop grid). It's been bumped from Tailwind's default
+     768px to 1024px because the landing page's 12-col grid + 6-col board
+     + margin-desktop (64px each side) needs ~960px before the board
+     stops squashing. 1024px is the clean round number above that
+     threshold.
+
+     `xs:` is a new, narrower breakpoint reserved for compact chrome —
+     the TopNav pill and SiteFooter — that comfortably fits at much
+     smaller viewports than the body layout. The pill's content
+     (brand SVG + theme toggle + Login + Sign up + paddings) totals
+     ~440px, so 480px gives breathing room.
+
+     Net effect: at viewports 480..1023 the body is in mobile layout but
+     the TopNav and footer are already in their desktop sizing. */
+  --breakpoint-xs: 480px;
+  --breakpoint-md: 1024px;
+
   /* Signup progress tracker — Connect-4-themed token drop + step-4 win sequence.
 
      Per-step: the token at the current step plays signup-token-drop on mount.
