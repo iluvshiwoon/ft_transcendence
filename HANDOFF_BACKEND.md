@@ -473,6 +473,58 @@ tooltip « bientôt » jusqu'à ce que cet endpoint soit livré.
 
 ---
 
+### 3.11 — Surfaces lobby-only (différées)
+
+**Pourquoi.** Le lobby v1 expose Quick Play CTAs + Resume strip et c'est
+tout. On a essayé d'y mettre « Friends online » et « Recent results »
+mais c'étaient des miroirs maigres de ce qui vit déjà dans `/profile`
+(onglet Friends, onglet Overview → Recent games). Pas de valeur ajoutée
+côté lobby. Pour que le lobby soit autre chose qu'« un raccourci vers
+play » dans v2, il faut des surfaces qui *n'existent que là* :
+
+#### a. Public lobbies — feed « Quick join »
+
+Liste des lobbies publics ouverts (mode + temps + créateur visibles),
+clic pour rejoindre. Existe déjà côté serveur via `GET /api/lobbies`
+(Tim) — il suffit de l'afficher.
+
+```
+GET /api/lobbies?status=waiting&isPublic=true     (public, déjà existant)
+→ [{
+    id, code, mode, timePerPlayerSeconds,
+    creator: { id, username, rating },           # rating dépend de §3.2
+    createdAt
+  }]
+```
+
+Pas de nouvel endpoint ; il faut juste consommer celui de Tim. **C'est
+le candidat n°1 pour remplacer ce qu'on a retiré.**
+
+#### b. Daily challenge / weekly missions
+
+Engagement gameplay :
+- Puzzle du jour (« mate-in-3 » dans une position de Connect-4 — ou un
+  format simple type « gagne en ≤ X coups vs IA hard »).
+- Missions hebdo (« win 3 blitz games », « beat someone +100 rating »).
+
+Schéma à concevoir : `daily_challenges`, `user_challenge_progress`,
+endpoints `GET /api/challenges/today`, `POST /api/challenges/:id/attempt`.
+Effort moyen ; à reporter post-MVP.
+
+#### c. Live activity ticker
+
+Stream socket `activity:*` qui pousse des événements `friend_finished`,
+`new_high_rating`, etc. pour afficher un fil temps-réel sur le lobby.
+Distinct de Recent games (qui est l'historique perso) : c'est de
+l'activité *des autres* qu'on connait. Pas critique ; nécessite que
+les sockets soient bien câblés d'abord.
+
+**Aucun de ces trois n'est nécessaire pour shipper le lobby v1.** Ils
+remplacent les cards Friends/Recent retirées au moment où le backend
+les justifie.
+
+---
+
 ## 4. Ordre de priorité recommandé
 
 1. **Merger `tim` dans `main`.** Pré-requis pour 3.2, 3.3, 3.4, 3.5, 3.9.
