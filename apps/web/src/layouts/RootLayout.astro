@@ -18,7 +18,7 @@
 import "~/styles/globals.css";
 import TopNav from "~/components/TopNav.astro";
 import SiteFooter from "~/components/SiteFooter.astro";
-import { isAuthenticated } from "~/lib/auth";
+import { getCurrentUser } from "~/lib/auth";
 
 interface Props {
   title?: string;
@@ -48,8 +48,10 @@ const {
 const canonicalUrl = new URL(Astro.url.pathname, Astro.site ?? "http://localhost:4321").toString();
 
 // One backend call per request to drive the TopNav's authed/anon variant.
+// We fetch the full user (not just a boolean) so the topnav can render the
+// avatar squircle + initial without an extra round-trip on the client.
 // Adds ~5ms compose-internal. See apps/web/docs/authed-nav-roadmap.md.
-const authed = await isAuthenticated(Astro);
+const user = await getCurrentUser(Astro);
 ---
 
 <!doctype html>
@@ -134,7 +136,7 @@ const authed = await isAuthenticated(Astro);
     >
       Skip to content
     </a>
-    {showTopNav && <TopNav authed={authed} />}
+    {showTopNav && <TopNav user={user} />}
     <div class="flex flex-1 flex-col md:min-h-0 md:overflow-y-auto">
       <slot />
     </div>

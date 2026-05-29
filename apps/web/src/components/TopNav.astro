@@ -3,34 +3,33 @@
  * TopNav — floating pill bar.
  *
  * Static parts are pure Astro (zero JS shipped). The shadcn <Button> primitive
- * is rendered server-side only — no client:* directive. ThemeToggle is the
- * only React island.
+ * is rendered server-side only — no client:* directive. The avatar dropdown
+ * is wired with a small inline script in this file (no React island).
  *
- * Implementation note: <Button asChild><a/></Button> doesn't work cleanly under
- * Astro because Astro's <a> isn't a real React element when it reaches Radix
- * Slot — props don't merge, the anchor renders with no className. So the
- * Login / Sign up CTAs apply `buttonVariants()` to the <a> directly. Same
- * visual contract, no Slot.
- *
- * Hamburger button is currently inert. It'll become a shadcn DropdownMenu in
- * a future task once we have the menu items defined. See
- * `apps/web/docs/authed-nav-roadmap.md` for the planned upgrade path.
- *
- * Authed vs anonymous: the right group changes based on the `authed` prop
- * (driven by RootLayout's server-side isAuthenticated check):
+ * Authed vs anonymous: the right group changes based on the `user` prop
+ * (driven by RootLayout's server-side getCurrentUser):
  *   - anon:   theme toggle + Login + Sign up
- *   - authed: theme toggle + Play → (Login/Sign up hidden — they'd
- *             redirect right back to / and feel broken)
+ *   - authed: Play + avatar (dropdown with Profile / Settings / theme / Logout)
+ *             theme toggle moves INTO the dropdown to keep the pill compact
+ *             when authed.
+ *
+ * Props:
+ *   user — CurrentUser | null. If null, anon flow renders. Otherwise the
+ *          authed flow uses `user.username` for the initial in the avatar
+ *          and the dropdown header.
  */
 import { Button, buttonVariants } from "~/components/ui/button";
 import { cn } from "~/lib/utils";
+import type { CurrentUser } from "~/lib/auth";
 
 interface Props {
-  /** Whether the request is authenticated (set by RootLayout). */
-  authed?: boolean;
+  /** Full user object (null when not signed in). Set by RootLayout. */
+  user?: CurrentUser | null;
 }
 
-const { authed = false } = Astro.props;
+const { user = null } = Astro.props;
+const authed = user !== null;
+const initial = user?.username?.[0]?.toUpperCase() ?? "?";
 ---
 
 <header
@@ -46,28 +45,8 @@ const { authed = false } = Astro.props;
   aria-label="Site navigation"
 >
   {/* Brand: inline-SVG logomark — pixel-perfect alignment.
-      Built as SVG because aligning HTML/CSS line-boxes with visible
-      glyph metrics is metric-fragile (line-box height ≠ visible glyph
-      height; cap-height + descender areas are font-specific empty
-      bands that you can't easily measure from CSS).
-
-      Coordinate plan (viewBox 0 0 88 48):
-        "4"   font-size 48, x=0,  baseline y=44
-              → cap-top at y ≈ 44 - 0.74*48 ≈ 8 (T)
-        "the" font-size 24, x=28, baseline y=26
-              → cap-top at y ≈ 26 - 0.74*24 ≈ 8 (= T, top-aligned with "4")
-        "win" font-size 36, x=28, baseline y=44
-              → x-height-top at y ≈ 44 - 0.5*36 = 26 (= "the" baseline,
-                so visible bottom of "the" touches visible top of "win"
-                with no whitespace strip)
-              → baseline at y=44 (= "4" baseline, bottom-aligned)
-      The viewBox right edge (88) is sized to match the actual right
-      edge of the "win" glyph — keeps the SVG's bounding box snug
-      around the visible mark instead of leaving phantom whitespace
-      that shifts the visual center.
-      currentColor lets it adapt to light/dark via the parent's
-      text-foreground. h-9 / xs:h-12 keep the mark scaled with the
-      rest of the pill chrome. */}
+      See coordinate plan in the prior commit history; viewBox 0 0 88 48
+      with "4" / "the" / "win" baselines wired to align glyph edges. */}
   <a
     href="/"
     class="block text-foreground"
@@ -85,74 +64,234 @@ const { authed = false } = Astro.props;
     </svg>
   </a>
 
-  {/* Right group: theme toggle then auth CTAs.
-      Order: [theme] [Login] [Sign up] (anon) / [theme] [Play] (authed). */}
+  {/* Right group — anon vs authed branches diverge here.
+      Anon : [theme] [Login] [Sign up]   theme stays on the pill.
+      Authed: [Play] [avatar w/ dropdown]   theme moves into dropdown
+              (Login + Sign up disappear — they'd just bounce to /). */}
   <div class="flex items-center gap-2.5 xs:gap-3">
-    {/* Theme toggle — pure SSR. Both icons are in the DOM; CSS picks which
-        one shows based on `<html class="dark">`. The bootstrap script in
-        RootLayout sets that class synchronously before paint AND wires the
-        click handler. No React island, no hydration flicker. */}
-    <button
-      type="button"
-      data-theme-toggle
-      aria-label="Toggle theme"
-      title="Toggle theme"
-      class="mr-2 grid size-9 shrink-0 place-items-center rounded-full text-foreground transition-all duration-150 ease-out hover:bg-foreground hover:text-background active:scale-[0.96] xs:mr-4"
-    >
-      {/* Moon: visible in light mode (hidden in dark).
-          No translate offset — both moon and sun render at the SVG's
-          geometric centre so toggling between them doesn't shift the
-          icon position inside the button. */}
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="size-4 dark:hidden" aria-hidden="true">
-        <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path>
-      </svg>
-      {/* Sun: visible in dark mode (hidden in light) */}
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="hidden size-4 dark:block" aria-hidden="true">
-        <circle cx="12" cy="12" r="4"></circle>
-        <path d="M12 2v2"></path>
-        <path d="M12 20v2"></path>
-        <path d="m4.93 4.93 1.41 1.41"></path>
-        <path d="m17.66 17.66 1.41 1.41"></path>
-        <path d="M2 12h2"></path>
-        <path d="M20 12h2"></path>
-        <path d="m6.34 17.66-1.41 1.41"></path>
-        <path d="m19.07 4.93-1.41 1.41"></path>
-      </svg>
-    </button>
 
     {!authed && (
-      <a
-        href="/login"
-        class={cn(buttonVariants({ variant: "brand-outline", size: "pill" }), "hidden sm:inline-flex")}
-        data-todo-integration="POST /api/auth/login — wire to apps/server"
-      >
-        Login
-      </a>
+      <>
+        {/* Theme toggle (anon only — for authed users it lives inside
+            the avatar dropdown to keep the pill compact). */}
+        <button
+          type="button"
+          data-theme-toggle
+          aria-label="Toggle theme"
+          title="Toggle theme"
+          class="mr-2 grid size-9 shrink-0 place-items-center rounded-full text-foreground transition-all duration-150 ease-out hover:bg-foreground hover:text-background active:scale-[0.96] xs:mr-4"
+        >
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="size-4 dark:hidden" aria-hidden="true">
+            <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path>
+          </svg>
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="hidden size-4 dark:block" aria-hidden="true">
+            <circle cx="12" cy="12" r="4"></circle>
+            <path d="M12 2v2"></path>
+            <path d="M12 20v2"></path>
+            <path d="m4.93 4.93 1.41 1.41"></path>
+            <path d="m17.66 17.66 1.41 1.41"></path>
+            <path d="M2 12h2"></path>
+            <path d="M20 12h2"></path>
+            <path d="m6.34 17.66-1.41 1.41"></path>
+            <path d="m19.07 4.93-1.41 1.41"></path>
+          </svg>
+        </button>
+
+        <a
+          href="/login"
+          class={cn(buttonVariants({ variant: "brand-outline", size: "pill" }), "hidden sm:inline-flex")}
+          data-todo-integration="POST /api/auth/login — wire to apps/server"
+        >
+          Login
+        </a>
+
+        <a
+          href="/signup"
+          class={cn(buttonVariants({ variant: "brand-filled", size: "pill" }), "gap-1.5")}
+          data-todo-integration="POST /api/auth/signup — wire to apps/server"
+        >
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="size-3.5" aria-hidden="true">
+            <path d="M5 12h14"></path>
+            <path d="m12 5 7 7-7 7"></path>
+          </svg>
+          Sign up
+        </a>
+      </>
     )}
 
-    {authed ? (
-      <a
-        href="/play"
-        class={cn(buttonVariants({ variant: "brand-filled", size: "pill" }), "gap-1.5")}
-      >
-        Play
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="size-3.5" aria-hidden="true">
-          <path d="M5 12h14"></path>
-          <path d="m12 5 7 7-7 7"></path>
-        </svg>
-      </a>
-    ) : (
-      <a
-        href="/signup"
-        class={cn(buttonVariants({ variant: "brand-filled", size: "pill" }), "gap-1.5")}
-        data-todo-integration="POST /api/auth/signup — wire to apps/server"
-      >
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="size-3.5" aria-hidden="true">
-          <path d="M5 12h14"></path>
-          <path d="m12 5 7 7-7 7"></path>
-        </svg>
-        Sign up
-      </a>
+    {authed && (
+      <>
+        {/* Play — primary action, always one click from any authed page */}
+        <a
+          href="/play"
+          class={cn(buttonVariants({ variant: "brand-filled", size: "pill" }), "gap-1.5")}
+        >
+          Play
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="size-3.5" aria-hidden="true">
+            <path d="M5 12h14"></path>
+            <path d="m12 5 7 7-7 7"></path>
+          </svg>
+        </a>
+
+        {/* Avatar dropdown — squircle button with the user's initial,
+            opens a card-style menu below it. Inline JS at the end of
+            this file handles open/close + click-outside.
+
+            Menu structure:
+              header — username (rating placeholder until §3.2 lands)
+              ─
+              Profile, Settings
+              ─
+              Theme toggle (uses the same data-theme-toggle hook so the
+                            RootLayout bootstrap script picks it up too)
+              ─
+              Logout (POST form so it works without JS) */}
+        <div class="relative" data-user-menu>
+          <button
+            type="button"
+            aria-haspopup="menu"
+            aria-expanded="false"
+            aria-label="Account menu"
+            data-user-menu-trigger
+            class="flex size-9 shrink-0 items-center justify-center rounded-md border border-border bg-foreground font-display italic text-base text-background transition-all duration-150 ease-out hover:scale-[1.04] active:scale-[0.96] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-foreground"
+          >
+            {initial}
+          </button>
+
+          <div
+            role="menu"
+            data-user-menu-list
+            hidden
+            class="absolute right-0 top-full mt-2 w-56 rounded-xl border border-border bg-surface p-1 shadow-lg"
+          >
+            {/* Header — username + rating placeholder.
+                Rating field will populate once HANDOFF §3.2 (Elo + peak_rating)
+                ships. Until then a discreet '— rating' placeholder so the
+                slot exists. */}
+            <div class="border-b border-border px-3 py-2">
+              <p class="truncate font-sans text-sm font-semibold text-foreground">
+                {user!.username}
+              </p>
+              <p class="font-mono text-mono-sm uppercase text-muted-foreground">
+                Rating · soon
+              </p>
+            </div>
+
+            {/* Navigation items */}
+            <a
+              href="/profile"
+              role="menuitem"
+              class="flex items-center gap-2 rounded-lg px-3 py-2 font-sans text-sm text-foreground transition-colors hover:bg-muted focus-visible:outline-none focus-visible:bg-muted"
+            >
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="size-4 shrink-0 text-muted-foreground" aria-hidden="true">
+                <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" />
+                <circle cx="12" cy="7" r="4" />
+              </svg>
+              Profile
+            </a>
+            <a
+              href="/settings"
+              role="menuitem"
+              data-todo-integration="frontend route — settings page not yet built"
+              class="flex items-center gap-2 rounded-lg px-3 py-2 font-sans text-sm text-foreground transition-colors hover:bg-muted focus-visible:outline-none focus-visible:bg-muted"
+            >
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="size-4 shrink-0 text-muted-foreground" aria-hidden="true">
+                <circle cx="12" cy="12" r="3" />
+                <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z" />
+              </svg>
+              Settings
+            </a>
+
+            <hr class="my-1 border-border" />
+
+            {/* Theme toggle — uses the same data-theme-toggle hook as
+                the anon pill button. RootLayout's bootstrap script
+                listens at document level so this works automatically. */}
+            <button
+              type="button"
+              data-theme-toggle
+              role="menuitem"
+              class="flex w-full items-center gap-2 rounded-lg px-3 py-2 font-sans text-sm text-foreground transition-colors hover:bg-muted focus-visible:outline-none focus-visible:bg-muted"
+            >
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="size-4 shrink-0 text-muted-foreground dark:hidden" aria-hidden="true">
+                <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path>
+              </svg>
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="hidden size-4 shrink-0 text-muted-foreground dark:block" aria-hidden="true">
+                <circle cx="12" cy="12" r="4"></circle>
+                <path d="M12 2v2"></path>
+                <path d="M12 20v2"></path>
+                <path d="m4.93 4.93 1.41 1.41"></path>
+                <path d="m17.66 17.66 1.41 1.41"></path>
+                <path d="M2 12h2"></path>
+                <path d="M20 12h2"></path>
+                <path d="m6.34 17.66-1.41 1.41"></path>
+                <path d="m19.07 4.93-1.41 1.41"></path>
+              </svg>
+              <span class="dark:hidden">Switch to dark</span>
+              <span class="hidden dark:inline">Switch to light</span>
+            </button>
+
+            <hr class="my-1 border-border" />
+
+            {/* Logout — POST form so it works even without JS.
+                Backend exists: POST /api/auth/logout. The proxy
+                routes /api/* to the server. */}
+            <form method="POST" action="/api/auth/logout">
+              <button
+                type="submit"
+                role="menuitem"
+                class="flex w-full items-center gap-2 rounded-lg px-3 py-2 font-sans text-sm text-foreground transition-colors hover:bg-muted focus-visible:outline-none focus-visible:bg-muted"
+              >
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="size-4 shrink-0 text-muted-foreground" aria-hidden="true">
+                  <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" />
+                  <polyline points="16 17 21 12 16 7" />
+                  <line x1="21" y1="12" x2="9" y2="12" />
+                </svg>
+                Logout
+              </button>
+            </form>
+          </div>
+        </div>
+      </>
     )}
   </div>
 </header>
+
+{/* Avatar dropdown behaviour — small inline script.
+    Toggles the menu, sets aria-expanded, closes on outside click and
+    on Escape. Only attached when an authed dropdown exists in the DOM. */}
+<script>
+  (() => {
+    const root = document.querySelector<HTMLElement>("[data-user-menu]");
+    if (!root) return;
+
+    const trigger = root.querySelector<HTMLButtonElement>("[data-user-menu-trigger]");
+    const menu    = root.querySelector<HTMLElement>("[data-user-menu-list]");
+    if (!trigger || !menu) return;
+
+    const open = () => {
+      menu.removeAttribute("hidden");
+      trigger.setAttribute("aria-expanded", "true");
+    };
+    const close = () => {
+      menu.setAttribute("hidden", "");
+      trigger.setAttribute("aria-expanded", "false");
+    };
+    const toggle = () => (menu.hasAttribute("hidden") ? open() : close());
+
+    trigger.addEventListener("click", (e) => {
+      e.stopPropagation();
+      toggle();
+    });
+
+    // Close on click outside.
+    document.addEventListener("click", (e) => {
+      if (!root.contains(e.target as Node)) close();
+    });
+
+    // Close on Escape.
+    document.addEventListener("keydown", (e) => {
+      if (e.key === "Escape") close();
+    });
+  })();
+</script>
