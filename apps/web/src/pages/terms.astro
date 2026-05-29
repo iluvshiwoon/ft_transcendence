@@ -1,82 +1,81 @@
 ---
 /**
  * /terms — Terms of Service.
- *
- * Static prose page. Required by the 42 subject. Plain-language terms for a
- * non-commercial student project. Same layout template as /privacy.
+ * Static prose page. Required by the 42 subject. Same editorial template as
+ * /privacy: mono accent eyebrow, Fraunces title, numbered sections.
  */
 import RootLayout from "~/layouts/RootLayout.astro";
 
 const lastUpdated = "May 2026";
+
+const sections = [
+  {
+    title: "Your account",
+    body: `You're responsible for keeping your credentials safe and for the
+      activity on your account. Pick a username that isn't offensive or
+      impersonating someone else — we may remove accounts that abuse this.`,
+  },
+  {
+    title: "Acceptable use",
+    body: `Don't harass, threaten, or spam other players. Don't cheat, exploit
+      bugs, or disrupt games. Don't attempt to break, overload, or attack the
+      platform. Don't upload illegal or offensive content as your avatar.`,
+  },
+  {
+    title: "Content you upload",
+    body: `You keep ownership of what you upload (avatar, bio). By uploading it,
+      you let us display it within the platform as part of normal use. You're
+      responsible for having the right to use anything you upload.`,
+  },
+  {
+    title: "Availability",
+    body: `The service is provided “as is”. As a school project it may go down,
+      lose data, or change at any time without notice. Don't rely on it for
+      anything important.`,
+  },
+  {
+    title: "Termination",
+    body: `You can delete your account at any time from your settings. We may
+      suspend accounts that break these terms.`,
+  },
+];
 ---
 
 <RootLayout title="4thewin — Terms of Service" description="The rules for using 4thewin.">
   <main
     id="main"
-    class="mx-auto w-full max-w-3xl flex-1 overflow-y-auto px-margin-mobile pt-[126px] pb-16 md:pt-[140px]"
+    class="mx-auto w-full max-w-3xl flex-1 overflow-y-auto px-margin-mobile pt-[120px] pb-20 md:pt-[150px]"
   >
-    <header class="flex flex-col gap-3">
-      <h1 class="font-display text-4xl font-bold tracking-tight text-foreground md:text-5xl">
-        Terms of Service
+    <header class="flex flex-col gap-4">
+      <span class="font-mono text-mono-sm uppercase text-accent">Legal · Terms</span>
+      <h1 class="font-display text-5xl font-semibold tracking-tight text-foreground md:text-6xl">
+        Terms of <span class="italic font-light">Service</span>
       </h1>
       <p class="font-mono text-mono-sm uppercase text-muted-foreground">
         Last updated · {lastUpdated}
       </p>
     </header>
 
-    <div class="mt-12 flex flex-col gap-10">
-      <section class="flex flex-col gap-3">
-        <p class="leading-relaxed text-foreground/80">
-          By using 4thewin you agree to these terms. It's a free, non-commercial
-          project built by 42 students — there's no warranty, no paid tier, and
-          no guarantee of uptime.
-        </p>
-      </section>
+    <p class="mt-8 font-display text-xl font-light italic leading-relaxed text-foreground/70">
+      A free, non-commercial project — no warranty, no paid tier, no fine print.
+    </p>
 
-      <section class="flex flex-col gap-3">
-        <h2 class="font-display text-xl font-semibold text-foreground">Your account</h2>
-        <p class="leading-relaxed text-foreground/80">
-          You're responsible for keeping your login credentials safe and for the
-          activity on your account. Pick a username that isn't offensive or
-          impersonating someone else — we may remove accounts that abuse this.
-        </p>
-      </section>
+    <hr class="mt-10 border-t border-border" />
 
-      <section class="flex flex-col gap-3">
-        <h2 class="font-display text-xl font-semibold text-foreground">Acceptable use</h2>
-        <ul class="flex flex-col gap-2 text-foreground/80">
-          <li class="leading-relaxed">Don't harass, threaten, or spam other players in chat.</li>
-          <li class="leading-relaxed">Don't try to cheat, exploit bugs, or disrupt games for others.</li>
-          <li class="leading-relaxed">Don't attempt to break, overload, or attack the platform.</li>
-          <li class="leading-relaxed">Don't upload illegal or offensive content as your avatar.</li>
-        </ul>
-      </section>
-
-      <section class="flex flex-col gap-3">
-        <h2 class="font-display text-xl font-semibold text-foreground">Content you upload</h2>
-        <p class="leading-relaxed text-foreground/80">
-          You keep ownership of what you upload (avatar, bio). By uploading it,
-          you let us display it within the platform as part of normal use. You're
-          responsible for having the right to use anything you upload.
-        </p>
-      </section>
-
-      <section class="flex flex-col gap-3">
-        <h2 class="font-display text-xl font-semibold text-foreground">Availability</h2>
-        <p class="leading-relaxed text-foreground/80">
-          The service is provided "as is". As a school project, it may go down,
-          lose data, or change at any time without notice. Don't rely on it for
-          anything important.
-        </p>
-      </section>
-
-      <section class="flex flex-col gap-3">
-        <h2 class="font-display text-xl font-semibold text-foreground">Termination</h2>
-        <p class="leading-relaxed text-foreground/80">
-          You can delete your account at any time from your settings. We may
-          suspend accounts that break these terms.
-        </p>
-      </section>
+    <div class="mt-10 flex flex-col">
+      {sections.map((s, i) => (
+        <section class="grid gap-3 border-t border-border/60 py-8 first:border-t-0 md:grid-cols-[3rem_1fr] md:gap-8">
+          <span class="font-mono text-mono-md text-accent md:pt-1">
+            {String(i + 1).padStart(2, "0")}
+          </span>
+          <div class="flex flex-col gap-3">
+            <h2 class="font-display text-2xl font-semibold tracking-tight text-foreground">
+              {s.title}
+            </h2>
+            <p class="leading-relaxed text-foreground/80">{s.body}</p>
+          </div>
+        </section>
+      ))}
     </div>
   </main>
 </RootLayout>
