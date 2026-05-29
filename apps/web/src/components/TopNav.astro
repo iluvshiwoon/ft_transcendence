@@ -51,16 +51,20 @@ const { authed = false } = Astro.props;
       height; cap-height + descender areas are font-specific empty
       bands that you can't easily measure from CSS).
 
-      Coordinate plan (viewBox 0 0 110 48):
+      Coordinate plan (viewBox 0 0 88 48):
         "4"   font-size 48, x=0,  baseline y=44
               → cap-top at y ≈ 44 - 0.74*48 ≈ 8 (T)
-        "the" font-size 24, x=37, baseline y=26
+        "the" font-size 24, x=28, baseline y=26
               → cap-top at y ≈ 26 - 0.74*24 ≈ 8 (= T, top-aligned with "4")
-        "win" font-size 36, x=37, baseline y=44
+        "win" font-size 36, x=28, baseline y=44
               → x-height-top at y ≈ 44 - 0.5*36 = 26 (= "the" baseline,
                 so visible bottom of "the" touches visible top of "win"
                 with no whitespace strip)
               → baseline at y=44 (= "4" baseline, bottom-aligned)
+      The viewBox right edge (88) is sized to match the actual right
+      edge of the "win" glyph — keeps the SVG's bounding box snug
+      around the visible mark instead of leaving phantom whitespace
+      that shifts the visual center.
       currentColor lets it adapt to light/dark via the parent's
       text-foreground. h-9 / md:h-12 keep the mark scaled with the
       rest of the pill chrome. */}
@@ -70,14 +74,14 @@ const { authed = false } = Astro.props;
     aria-label="4thewin — home"
   >
     <svg
-      viewBox="0 0 110 48"
+      viewBox="0 0 88 48"
       class="h-9 w-auto md:h-12"
       fill="currentColor"
       aria-hidden="true"
     >
       <text x="0"  y="44" style="font-family: var(--font-display)" font-style="italic" font-size="48" font-weight="500">4</text>
-      <text x="37" y="26" style="font-family: var(--font-display)" font-style="italic" font-size="24">the</text>
-      <text x="37" y="44" style="font-family: var(--font-display)" font-style="italic" font-size="36">win</text>
+      <text x="28" y="26" style="font-family: var(--font-display)" font-style="italic" font-size="24">the</text>
+      <text x="28" y="44" style="font-family: var(--font-display)" font-style="italic" font-size="36">win</text>
     </svg>
   </a>
 
