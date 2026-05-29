@@ -61,16 +61,19 @@ interface ActiveGame {
 }
 
 const activeGames: ActiveGame[] = [
+  // Daily 60-min, your turn — clock bounded by 60:00 per side.
   {
-    id: 101, yourTurn: true,  moves: 14, clock: "3:42:11", timeControl: "Daily",
+    id: 101, yourTurn: true,  moves: 14, clock: "45:12", timeControl: "Daily",
     opponent: { username: "Sarah_w",     initial: "S", rating: 2710, isAi: false },
   },
+  // Blitz 10-min, waiting on opponent — clock bounded by 10:00.
   {
-    id: 102, yourTurn: false, moves: 9,  clock: "5:18:00", timeControl: "Daily",
+    id: 102, yourTurn: false, moves: 9,  clock: "7:18",  timeControl: "Blitz",
     opponent: { username: "BotSlayer99", initial: "B", rating: 2699, isAi: false },
   },
+  // AI game has a time control too — Bullet 3-min, your turn.
   {
-    id: 103, yourTurn: true,  moves: 7,  clock: "—",       timeControl: "Blitz",
+    id: 103, yourTurn: true,  moves: 7,  clock: "1:42",  timeControl: "Bullet",
     opponent: { username: "AI · medium", initial: "✦", rating: null, isAi: true, aiDifficulty: "medium" },
   },
 ];
@@ -309,7 +312,7 @@ const cardCls = "rounded-xl border border-border bg-surface text-surface-foregro
                 class:list={[
                   "group flex items-center justify-between gap-3",
                   "rounded-lg border border-border bg-muted px-4 py-3",
-                  "transition-colors hover:border-foreground",
+                  "transition-colors hover:border-foreground hover:bg-surface",
                 ]}
               >
                 <div class="flex min-w-0 items-center gap-3">
