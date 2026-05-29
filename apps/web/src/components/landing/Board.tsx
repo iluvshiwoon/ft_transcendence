@@ -250,10 +250,10 @@ export function Board({ pieces, className, variant = "default" }: BoardProps) {
               so it picks these colors up as the backdrop and smears them — the
               warm tint visible through the glass plate around each piece. */}
           <div
-            className="pointer-events-none absolute inset-0 z-0 p-4 sm:p-5 md:p-6"
+            className="pointer-events-none absolute inset-0 z-0 p-4 sm:p-6"
             aria-hidden="true"
           >
-            <div className="grid grid-cols-7 gap-2 sm:gap-3 md:gap-4">
+            <div className="grid grid-cols-7 gap-2 sm:gap-4">
               {renderedPieces.map((row, rowIdx) =>
                 row.map((cell, colIdx) => {
                   const isFilled = cell !== "empty";
@@ -261,7 +261,7 @@ export function Board({ pieces, className, variant = "default" }: BoardProps) {
                     <div
                       key={`under-${rowIdx}-${colIdx}`}
                       className={cn(
-                        "size-9 rounded-full sm:size-10 md:size-12",
+                        "size-9 rounded-full sm:size-12",
                         cell === "red" && "bg-pawn-red piece-drop",
                         cell === "yellow" && "bg-pawn-yellow piece-drop",
                       )}
@@ -279,8 +279,8 @@ export function Board({ pieces, className, variant = "default" }: BoardProps) {
           <div className="lg-filter" aria-hidden="true" />
           <div className="lg-overlay" aria-hidden="true" />
           <div className="lg-specular" aria-hidden="true" />
-          <div className="lg-content p-4 sm:p-5 md:p-6">
-            <div className="grid grid-cols-7 gap-2 sm:gap-3 md:gap-4">
+          <div className="lg-content p-4 sm:p-6">
+            <div className="grid grid-cols-7 gap-2 sm:gap-4">
               {renderedPieces.map((row, rowIdx) =>
                 row.map((cell, colIdx) => {
                   const isHoveredCol = hoveredCol === colIdx;
@@ -293,7 +293,7 @@ export function Board({ pieces, className, variant = "default" }: BoardProps) {
                       aria-colindex={colIdx + 1}
                       aria-label={cellLabel(cell, rowIdx, colIdx)}
                       data-cell={cell}
-                      className="relative size-9 sm:size-10 md:size-12 rounded-full"
+                      className="relative size-9 sm:size-12 rounded-full"
                     >
                       {/* Empty cell appearance — always rendered. Stays
                           visible under the piece overlay during the drop
@@ -364,13 +364,13 @@ export function Board({ pieces, className, variant = "default" }: BoardProps) {
       aria-rowcount={ROWS}
       aria-colcount={COLS}
       className={cn(
-        "inline-block rounded-xl p-4 sm:p-5 md:p-6",
+        "inline-block rounded-xl p-4 sm:p-6",
         plateClasses(variant),
         snap.endGamePhase === "card" && "endgame-blur",
         className,
       )}
     >
-      <div className="grid grid-cols-7 gap-2 sm:gap-3 md:gap-4">
+      <div className="grid grid-cols-7 gap-2 sm:gap-4">
         {renderedPieces.map((row, rowIdx) =>
           row.map((cell, colIdx) => {
             const isFilled = cell !== "empty";
@@ -382,7 +382,7 @@ export function Board({ pieces, className, variant = "default" }: BoardProps) {
                 aria-colindex={colIdx + 1}
                 aria-label={cellLabel(cell, rowIdx, colIdx)}
                 data-cell={cell}
-                className="relative size-9 sm:size-10 md:size-12 rounded-full"
+                className="relative size-9 sm:size-12 rounded-full"
               >
                 <div
                   className={cn(
