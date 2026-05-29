@@ -1,6 +1,6 @@
 # Handoff backend — page `/profile`
 
-État au 2026-05-27, après merge de `kgriset_landing` dans `main`, import
+État au 2026-05-29, après merge de `kgriset_landing` dans `main`, import
 de `profile.astro` (Adam) puis refonte UI sur `kgriset_profile_review` :
 
 - header inline-hero (avatar + identité + actions sur la même ligne, bio
@@ -9,11 +9,16 @@ de `profile.astro` (Adam) puis refonte UI sur `kgriset_profile_review` :
   blocs : **Streaks & form**, **By time control**, **By opponent
   strength**, **Milestones** (cf. §3.9 plus bas) ;
 - Connect 5 retiré du périmètre.
+- Lobby `/play` v1 (mock) : deux CTA principaux (Play AI / Challenge),
+  resume strip pour les parties actives, Friends online + Recent results
+  en bas. Backend : utilise `POST /api/games/ai` (Tim) directement,
+  attend §3.4 + §3.5 enrichi pour les listes (cf. §3.10 pour le bouton
+  « Find match » v2).
 
-La page `/profile` est aujourd'hui rendue avec des **données mockées**. Ce
-document liste ce qui existe déjà côté serveur, ce qu'apporte la branche
-`tim` (pas encore mergée), et ce qu'il reste à écrire pour câbler la page
-sur de vraies données.
+Les pages `/profile` et `/play` sont aujourd'hui rendues avec des
+**données mockées**. Ce document liste ce qui existe déjà côté serveur,
+ce qu'apporte la branche `tim` (déjà mergée dans `main` à ce stade), et
+ce qu'il reste à écrire pour câbler ces pages sur de vraies données.
 
 ---
 
@@ -419,6 +424,55 @@ gros morceau de la todo restante après §3.2.
 
 ---
 
+### 3.10 — File de matchmaking (`POST /api/match/queue`)
+
+**Pourquoi.** Le **lobby** (`/play`) propose deux entrées principales :
+**Play AI** (instantané, déjà couvert par `POST /api/games/ai` de Tim) et
+**Challenge** qui doit pouvoir trouver un adversaire *de niveau similaire*
+sans passer par un lobby manuel partagé. La v1 du lobby se contente du
+flux "Challenge friend" (qui réutilise `POST /api/lobbies` + une notif).
+La file de matchmaking est l'upgrade v2 — pour quand on veut "trouver
+quelqu'un en ligne" sans connaître personne.
+
+**Spec.**
+```
+POST /api/match/queue                         (auth)
+body: {
+  mode:                 "connect4",
+  timePerPlayerSeconds: 300 | 600 | 3600,
+}
+→ 202 { queueId: string, position: number, estimatedWait: number }
+                                            # number en secondes, best-effort
+→ 400 si déjà dans une file ouverte
+
+DELETE /api/match/queue/:queueId              (auth)
+→ 204 (annule)
+
+Socket S→C : "match:found" { gameId, opponent: { id, username, rating } }
+                                            # le serveur push quand
+                                            # une paire est constituée
+```
+
+**Comportement attendu.**
+- Pairing par fenêtre glissante de rating (±100 au début, ±200 après 30s,
+  ±400 après 60s) pour éviter de geler un joueur isolé.
+- Une seule file active par user (pas de queue dans deux modes en
+  parallèle).
+- Auto-cleanup côté serveur si l'user disconnecte > 30s.
+- Quand un match est trouvé, créer un lobby privé via la logique de
+  `POST /api/lobbies` (Tim) + le démarrer (`POST /api/lobbies/:id/start`)
+  pour que le client tombe directement sur la partie.
+
+**Schéma.** Pas de table dédiée nécessaire pour v2 — la file vit
+en mémoire dans un singleton (similar à `gameManager`). On persistera
+uniquement si le besoin se fait sentir (analytics, reprise après reboot).
+
+**Effort estimé.** ~80 lignes serveur + 1 event socket. Pas critique
+pour le lobby v1 ; le bouton « Find match » reste désactivé avec un
+tooltip « bientôt » jusqu'à ce que cet endpoint soit livré.
+
+---
+
 ## 4. Ordre de priorité recommandé
 
 1. **Merger `tim` dans `main`.** Pré-requis pour 3.2, 3.3, 3.4, 3.5, 3.9.
@@ -436,11 +490,18 @@ gros morceau de la todo restante après §3.2.
 8. **3.6 — Spectate.** Dépend de 3.4 pour le bouton Watch d'un ami.
 9. **3.7 — Challenge direct.** Dépend du système de notifications déjà en
    place + lobby de Tim.
+10. **3.10 — Matchmaking queue.** Pas critique. Active le bouton « Find
+    match » sur le lobby. Peut attendre que le flow Challenge friend
+    (3.7) soit éprouvé en prod avant d'ajouter cette deuxième entrée.
 
 Les points 3.1 → 3.5 + 3.9 forment l'essentiel du câblage de `/profile`.
 Les points 3.6 et 3.7 ne sont nécessaires que pour rendre les boutons
 fonctionnels — la page s'affiche déjà correctement sans eux (elle a juste
 des `href="#"`).
+
+Pour le lobby (`/play`) : 3.4 + 3.5 enrichi suffisent à le rendre vivant
+côté serveur. Tim a déjà `POST /api/games/ai` et `POST /api/lobbies` qui
+couvrent les deux CTA principaux. 3.10 est l'upgrade « Find match » v2.
 
 ---
 

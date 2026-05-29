@@ -1,34 +1,222 @@
 ---
 /**
- * /play — main lobby / dashboard for authenticated users.
+ * /play — lobby (authed home).
  *
- * Anonymous (signed-out) users play on the landing page, where the demo
- * loop runs against the AI with a server-authoritative anonymous session.
- * /play is the post-signup destination — multiplayer, friends, lobbies,
- * stats — and requires an account.
+ * The user lands here after sign-in. Primary action is "play a game now",
+ * with secondary surfaces for resume / friends / recent results.
  *
- * Access control: unauthenticated requests redirect to /signup?step=1.
- * Returning users can navigate from there to the (future) /login page.
+ * Visual language matches /profile: cardCls surfaces, font-display italic
+ * for emotional headers, font-mono uppercase for HUD labels, pawn-yellow /
+ * pawn-red dots for game outcomes.
  *
- * Currently a stub. Will be filled in once Tim's lobby module + friends
- * features ship.
+ * Phase 1 (this commit): page skeleton + Quick Play CTAs (Play AI +
+ * Challenge cards). Mock data only; buttons still href="#" pending wiring.
+ *
+ * Auth: matched /profile.astro for now (no redirect) so the page is
+ * testable while data is mocked. TODO: restore the
+ *   if (!(await isAuthenticated(Astro))) return Astro.redirect("/signup?step=1");
+ * gate once real backend reads land (§3.4 / §3.5 in HANDOFF_BACKEND.md).
  */
 import RootLayout from "~/layouts/RootLayout.astro";
-import { isAuthenticated } from "~/lib/auth";
+import { Button, buttonVariants } from "~/components/ui/button";
+import { cn } from "~/lib/utils";
 
-if (!(await isAuthenticated(Astro))) {
-  return Astro.redirect("/signup?step=1");
-}
+// ─── Mock data (replaced by backend reads in later phases) ──────────────────
+
+type Difficulty = "easy" | "medium" | "hard";
+type TimeControl = { id: "bullet" | "blitz" | "daily"; label: string; duration: string; seconds: 300 | 600 | 3600 };
+
+const DIFFICULTIES: { id: Difficulty; label: string }[] = [
+  { id: "easy",   label: "Easy"   },
+  { id: "medium", label: "Medium" },
+  { id: "hard",   label: "Hard"   },
+];
+
+const TIME_CONTROLS: TimeControl[] = [
+  { id: "bullet", label: "Bullet", duration: "3 min",  seconds: 300  },
+  { id: "blitz",  label: "Blitz",  duration: "10 min", seconds: 600  },
+  { id: "daily",  label: "Daily",  duration: "60 min", seconds: 3600 },
+];
+
+// Defaults — when a settings page lands these'll come from the user's prefs.
+const defaultDifficulty: Difficulty = "medium";
+const defaultTimeControl = "blitz";
+
+// Shared card style (same as /profile).
+const cardCls = "rounded-xl border border-border bg-surface text-surface-foreground";
 ---
 
-<RootLayout title="4thewin — Play" description="Play page (under construction).">
+<RootLayout
+  title="4thewin — Play"
+  description="Quick game vs the AI, or challenge a friend."
+>
   <main
     id="main"
-    class="mx-auto flex w-full max-w-3xl flex-col items-center justify-center gap-3 px-margin-mobile pt-32 pb-12 md:px-margin-desktop"
+    class="mx-auto w-full max-w-7xl px-margin-mobile pt-28 pb-16 md:px-margin-desktop md:pt-32"
   >
-    <p class="font-mono text-mono-sm uppercase text-muted-foreground">Play</p>
-    <h1 class="font-display italic font-light tracking-wide text-3xl md:text-4xl text-foreground leading-none">
-      Coming soon
-    </h1>
+    {/* =========================================================
+        QUICK PLAY CTAs — the hero of the lobby.
+        Two cards, equal weight, dominant on the page.
+        ========================================================= */}
+    <section
+      aria-label="Quick play"
+      class="page-reveal grid grid-cols-1 gap-gutter md:grid-cols-2"
+      style="--reveal-delay: 0s"
+      data-quickplay
+    >
+      {/* ── Play AI card ─────────────────────────────────────── */}
+      <article class={cn(cardCls, "flex flex-col gap-5 p-6 md:p-8")}>
+        <header>
+          <p class="font-mono text-mono-sm uppercase text-muted-foreground">Play</p>
+          <h2 class="mt-1 font-display italic text-3xl tracking-tight md:text-4xl">
+            Vs the AI
+          </h2>
+          <p class="mt-2 font-sans text-sm text-muted-foreground">
+            Quick game. No matchmaking, no waiting — pick your difficulty and start.
+          </p>
+        </header>
+
+        {/* Inline pills: difficulty + time control. Click sets aria-checked
+            via a tiny inline script below; aria-checked drives styling. */}
+        <div class="flex flex-col gap-3">
+          <div>
+            <p class="font-mono text-mono-sm uppercase text-muted-foreground">Difficulty</p>
+            <ul role="radiogroup" aria-label="AI difficulty" data-pills="ai-difficulty" class="mt-2 flex flex-wrap gap-2">
+              {DIFFICULTIES.map((d) => (
+                <li>
+                  <button
+                    type="button"
+                    role="radio"
+                    aria-checked={d.id === defaultDifficulty ? "true" : "false"}
+                    data-value={d.id}
+                    class:list={[
+                      "px-4 py-1.5 rounded-full font-mono text-mono-sm uppercase",
+                      "border border-border bg-muted text-muted-foreground",
+                      "transition-colors",
+                      "hover:border-foreground hover:text-foreground",
+                      "aria-checked:border-foreground aria-checked:bg-foreground aria-checked:text-background",
+                      "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-foreground",
+                    ]}
+                  >
+                    {d.label}
+                  </button>
+                </li>
+              ))}
+            </ul>
+          </div>
+
+          <div>
+            <p class="font-mono text-mono-sm uppercase text-muted-foreground">Time control</p>
+            <ul role="radiogroup" aria-label="Time control" data-pills="ai-time" class="mt-2 flex flex-wrap gap-2">
+              {TIME_CONTROLS.map((tc) => (
+                <li>
+                  <button
+                    type="button"
+                    role="radio"
+                    aria-checked={tc.id === defaultTimeControl ? "true" : "false"}
+                    data-value={tc.id}
+                    data-seconds={tc.seconds}
+                    class:list={[
+                      "px-4 py-1.5 rounded-full font-mono text-mono-sm uppercase",
+                      "border border-border bg-muted text-muted-foreground",
+                      "transition-colors",
+                      "hover:border-foreground hover:text-foreground",
+                      "aria-checked:border-foreground aria-checked:bg-foreground aria-checked:text-background",
+                      "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-foreground",
+                    ]}
+                  >
+                    {tc.label} <span class="font-normal opacity-70">· {tc.duration}</span>
+                  </button>
+                </li>
+              ))}
+            </ul>
+          </div>
+        </div>
+
+        {/* Start button: full-width on mobile, content-width right-aligned on desktop. */}
+        <div class="mt-2 flex md:justify-end">
+          <a
+            href="#"
+            data-todo-integration="POST /api/games/ai — Tim's endpoint, exists post-rebase"
+            data-play-ai-start
+            class={cn(buttonVariants({ variant: "brand-filled", size: "pill" }), "gap-1.5 w-full justify-center md:w-auto")}
+          >
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="size-3.5" aria-hidden="true">
+              <path d="M5 3l14 9-14 9V3z" />
+            </svg>
+            Start game
+          </a>
+        </div>
+      </article>
+
+      {/* ── Challenge card ───────────────────────────────────── */}
+      <article class={cn(cardCls, "flex flex-col gap-5 p-6 md:p-8")}>
+        <header>
+          <p class="font-mono text-mono-sm uppercase text-muted-foreground">Challenge</p>
+          <h2 class="mt-1 font-display italic text-3xl tracking-tight md:text-4xl">
+            Vs a human
+          </h2>
+          <p class="mt-2 font-sans text-sm text-muted-foreground">
+            Invite a friend with a private lobby code, or queue for a random opponent.
+          </p>
+        </header>
+
+        {/* Two action rows: Find match (disabled v1, see HANDOFF §3.10) and
+            Challenge friend (placeholder dropdown — wires to friends list
+            in Phase 3). */}
+        <div class="mt-2 flex flex-col gap-3">
+          <button
+            type="button"
+            disabled
+            title="Matchmaking queue — coming soon (HANDOFF §3.10)"
+            class={cn(
+              buttonVariants({ variant: "brand-outline", size: "pill" }),
+              "w-full justify-center disabled:opacity-50 disabled:cursor-not-allowed",
+            )}
+          >
+            Find match
+            <span class="ml-2 font-mono text-mono-sm uppercase opacity-60">soon</span>
+          </button>
+
+          <a
+            href="#"
+            data-todo-integration="POST /api/lobbies — Tim's endpoint, exists post-rebase"
+            class={cn(buttonVariants({ variant: "brand-filled", size: "pill" }), "gap-1.5 w-full justify-center")}
+          >
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="size-3.5" aria-hidden="true">
+              <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2" />
+              <circle cx="9" cy="7" r="4" />
+              <line x1="19" y1="8" x2="19" y2="14" />
+              <line x1="22" y1="11" x2="16" y2="11" />
+            </svg>
+            Challenge a friend
+          </a>
+        </div>
+
+        <p class="mt-auto font-mono text-mono-sm uppercase text-muted-foreground">
+          Tip: friends online appear below.
+        </p>
+      </article>
+    </section>
   </main>
+
+  {/* =========================================================
+      Inline behaviour — radio-pill state for the AI card.
+      Tiny vanilla JS, no React island. The pills toggle aria-checked
+      on click; CSS attribute selectors handle the visual change.
+      Phase 2 will read these data-value attributes when wiring the
+      Start button to POST /api/games/ai.
+      ========================================================= */}
+  <script>
+    function wirePillGroup(group: HTMLElement) {
+      const pills = Array.from(group.querySelectorAll<HTMLButtonElement>("[role='radio']"));
+      pills.forEach((pill) => {
+        pill.addEventListener("click", () => {
+          pills.forEach((p) => p.setAttribute("aria-checked", p === pill ? "true" : "false"));
+        });
+      });
+    }
+
+    document.querySelectorAll<HTMLElement>("[data-pills]").forEach(wirePillGroup);
+  </script>
 </RootLayout>
