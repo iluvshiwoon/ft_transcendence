@@ -111,89 +111,99 @@ const initial = user?.username?.[0]?.toUpperCase() ?? "?";
   <header
     class:list={[
       "fixed inset-x-0 top-0 z-50",
-      "flex items-center justify-between gap-4",
-      "px-margin-mobile py-3 xs:px-margin-desktop",
       "topnav-bar",
     ]}
     aria-label="Site navigation"
   >
-    {/* Brand — left edge */}
-    <a href="/play" class="block text-foreground" aria-label="4thewin — lobby">
-      <svg viewBox="0 0 88 48" class="h-9 w-auto xs:h-12" fill="currentColor" aria-hidden="true">
-        <text x="0"  y="42" style="font-family: var(--font-display)" font-style="italic" font-size="48" font-weight="500">4</text>
-        <text x="28" y="24" style="font-family: var(--font-display)" font-style="italic" font-size="24">the</text>
-        <text x="28" y="42" style="font-family: var(--font-display)" font-style="italic" font-size="36">win</text>
-      </svg>
-    </a>
-
-    {/* Right group — controls + profile link */}
-    <div class="flex items-center gap-3 xs:gap-4">
-
-      {/* Theme toggle */}
-      <button
-        type="button"
-        data-theme-toggle
-        aria-label="Toggle theme"
-        title="Toggle theme"
-        class="grid size-9 shrink-0 place-items-center rounded-full text-foreground transition-all duration-150 ease-out hover:bg-foreground hover:text-background active:scale-[0.96]"
-      >
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="size-4 dark:hidden" aria-hidden="true">
-          <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path>
+    {/* Inner container — same max-w-7xl + margin-* tokens that page content
+        uses. This makes the logo sit at the left edge of the content gutter
+        on wide viewports (instead of hugging the viewport edge while page
+        content sits ~300px inward, which read as misaligned). */}
+    <div class="mx-auto flex w-full max-w-7xl items-center justify-between gap-4 px-margin-mobile py-3 xs:px-margin-desktop">
+      {/* Brand — left edge of content gutter */}
+      <a href="/play" class="block text-foreground" aria-label="4thewin — lobby">
+        <svg viewBox="0 0 88 48" class="h-9 w-auto xs:h-12" fill="currentColor" aria-hidden="true">
+          <text x="0"  y="42" style="font-family: var(--font-display)" font-style="italic" font-size="48" font-weight="500">4</text>
+          <text x="28" y="24" style="font-family: var(--font-display)" font-style="italic" font-size="24">the</text>
+          <text x="28" y="42" style="font-family: var(--font-display)" font-style="italic" font-size="36">win</text>
         </svg>
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="hidden size-4 dark:block" aria-hidden="true">
-          <circle cx="12" cy="12" r="4"></circle>
-          <path d="M12 2v2"></path>
-          <path d="M12 20v2"></path>
-          <path d="m4.93 4.93 1.41 1.41"></path>
-          <path d="m17.66 17.66 1.41 1.41"></path>
-          <path d="M2 12h2"></path>
-          <path d="M20 12h2"></path>
-          <path d="m6.34 17.66-1.41 1.41"></path>
-          <path d="m19.07 4.93-1.41 1.41"></path>
-        </svg>
-      </button>
+      </a>
 
-      {/* Logout — POST form, works without JS. Icon-only with a title
-          tooltip so the bar stays compact. */}
-      <form method="POST" action="/api/auth/logout" class="contents">
+      {/* Right group — clustered around the profile link.
+          Order: [theme] [profile] [logout]. Theme on the left of the
+          identity, logout on its right (rightmost = "exit" action). All
+          three sit visually together as the user-controls cluster. */}
+      <div class="flex items-center gap-3 xs:gap-4">
+
+        {/* Theme toggle */}
         <button
-          type="submit"
-          aria-label="Logout"
-          title="Logout"
+          type="button"
+          data-theme-toggle
+          aria-label="Toggle theme"
+          title="Toggle theme"
           class="grid size-9 shrink-0 place-items-center rounded-full text-foreground transition-all duration-150 ease-out hover:bg-foreground hover:text-background active:scale-[0.96]"
         >
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="size-4" aria-hidden="true">
-            <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" />
-            <polyline points="16 17 21 12 16 7" />
-            <line x1="21" y1="12" x2="9" y2="12" />
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="size-4 dark:hidden" aria-hidden="true">
+            <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path>
+          </svg>
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="hidden size-4 dark:block" aria-hidden="true">
+            <circle cx="12" cy="12" r="4"></circle>
+            <path d="M12 2v2"></path>
+            <path d="M12 20v2"></path>
+            <path d="m4.93 4.93 1.41 1.41"></path>
+            <path d="m17.66 17.66 1.41 1.41"></path>
+            <path d="M2 12h2"></path>
+            <path d="M20 12h2"></path>
+            <path d="m6.34 17.66-1.41 1.41"></path>
+            <path d="m19.07 4.93-1.41 1.41"></path>
           </svg>
         </button>
-      </form>
 
-      {/* Profile link — avatar + username + rating, all one click target.
-          Username + rating stack on desktop; on narrow viewports only the
-          avatar shows (text hidden via xs:flex on the inner stack). */}
-      <a
-        href="/profile"
-        class="flex items-center gap-2.5 rounded-md p-1 pr-2 transition-colors hover:bg-foreground/10 focus-visible:outline-none focus-visible:bg-foreground/10"
-      >
-        <span
-          aria-hidden="true"
-          class="flex size-9 shrink-0 items-center justify-center rounded-md border border-border bg-foreground font-display italic text-base text-background"
+        {/* Profile link — avatar + username + rating, all one click target.
+            Username + rating stack on desktop; on narrow viewports only
+            the avatar shows (text hidden via xs:flex on the inner stack).
+            Rating gets a 'RATING' inline label so the number isn't a
+            mystery glance ('what's that 2854?'). */}
+        <a
+          href="/profile"
+          class="flex items-center gap-2.5 rounded-md p-1 pr-2 transition-colors hover:bg-foreground/10 focus-visible:outline-none focus-visible:bg-foreground/10"
         >
-          {initial}
-        </span>
-        <span class="hidden flex-col leading-tight xs:flex">
-          <span class="truncate font-sans text-sm font-semibold text-foreground">
-            {user!.username}
+          <span
+            aria-hidden="true"
+            class="flex size-9 shrink-0 items-center justify-center rounded-md border border-border bg-foreground font-display italic text-base text-background"
+          >
+            {initial}
           </span>
-          <span class="font-mono text-mono-sm uppercase tabular-nums text-muted-foreground">
-            {/* Mock rating until HANDOFF §3.2 (Elo + peak_rating) ships and
-                user.rating becomes a real field on CurrentUser. */}
-            2854
+          <span class="hidden flex-col leading-tight xs:flex">
+            <span class="truncate font-sans text-sm font-semibold text-foreground">
+              {user!.username}
+            </span>
+            <span class="font-mono text-mono-sm uppercase tabular-nums text-muted-foreground">
+              {/* Mock rating until HANDOFF §3.2 (Elo + peak_rating) ships and
+                  user.rating becomes a real field on CurrentUser. */}
+              Rating 2854
+            </span>
           </span>
-        </span>
-      </a>
+        </a>
+
+        {/* Logout — POST form (works without JS). Icon-only with a title
+            tooltip so the bar stays compact. Sits at the rightmost edge
+            of the user-controls cluster (the "exit" position). */}
+        <form method="POST" action="/api/auth/logout" class="contents">
+          <button
+            type="submit"
+            aria-label="Logout"
+            title="Logout"
+            class="grid size-9 shrink-0 place-items-center rounded-full text-foreground transition-all duration-150 ease-out hover:bg-foreground hover:text-background active:scale-[0.96]"
+          >
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="size-4" aria-hidden="true">
+              <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" />
+              <polyline points="16 17 21 12 16 7" />
+              <line x1="21" y1="12" x2="9" y2="12" />
+            </svg>
+          </button>
+        </form>
+      </div>
     </div>
   </header>
 )}
