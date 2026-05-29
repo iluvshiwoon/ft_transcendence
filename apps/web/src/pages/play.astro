@@ -78,6 +78,59 @@ const activeGames: ActiveGame[] = [
   },
 ];
 
+// ─── Friends online ─────────────────────────────────────────────────────────
+// Replaced by GET /api/friends (HANDOFF §3.5 augmented) once it ships —
+// existing endpoint returns the friend list, augmentation adds rating +
+// currentGameId for in-game friends.
+
+type FriendStatus = "online" | "in_game";
+interface OnlineFriend {
+  id: number;
+  username: string;
+  initial: string;
+  status: FriendStatus;
+  rating: number;
+  currentGameId: number | null;          // set when status === 'in_game'
+}
+
+const onlineFriends: OnlineFriend[] = [
+  { id: 1, username: "Sarah_w",     initial: "S", status: "online",  rating: 2710, currentGameId: null },
+  { id: 2, username: "GridLock_",   initial: "G", status: "online",  rating: 2569, currentGameId: null },
+  { id: 3, username: "Pivot_",      initial: "P", status: "in_game", rating: 2210, currentGameId: 88   },
+  { id: 4, username: "FourFingers", initial: "F", status: "online",  rating: 2080, currentGameId: null },
+];
+
+const friendStatusTokens: Record<FriendStatus, { dot: string; label: string }> = {
+  online:  { dot: "bg-pawn-yellow", label: "Online"  },
+  in_game: { dot: "bg-accent",      label: "In game" },
+};
+
+// ─── Recent results ─────────────────────────────────────────────────────────
+// Replaced by GET /api/users/:id/games?limit=5 (HANDOFF §3.3) once it ships.
+
+type GameResult = "win" | "loss" | "draw";
+
+interface RecentResult {
+  id: number;
+  result: GameResult;
+  opponent: { username: string; rating: number | null; isAi: boolean };
+  finishedAt: string;                    // human-readable; will be ISO from API + relative-time helper
+}
+
+const recentResults: RecentResult[] = [
+  { id: 999, result: "win",  opponent: { username: "Sarah_w",     rating: 2710, isAi: false }, finishedAt: "2 days ago" },
+  { id: 998, result: "loss", opponent: { username: "BotSlayer99", rating: 2699, isAi: false }, finishedAt: "3 days ago" },
+  { id: 997, result: "win",  opponent: { username: "A_connect",   rating: 2349, isAi: false }, finishedAt: "3 days ago" },
+  { id: 996, result: "draw", opponent: { username: "Sarah_w",     rating: 2710, isAi: false }, finishedAt: "4 days ago" },
+  { id: 995, result: "loss", opponent: { username: "AI · medium", rating: null, isAi: true  }, finishedAt: "5 days ago" },
+];
+
+const resultTokens: Record<GameResult, { dot: string; label: string }> = {
+  win:  { dot: "bg-pawn-yellow",      label: "WIN"  },
+  loss: { dot: "bg-pawn-red",         label: "LOSS" },
+  draw: { dot: "bg-muted-foreground", label: "DRAW" },
+};
+
 // Shared card style (same as /profile).
 const cardCls = "rounded-xl border border-border bg-surface text-surface-foreground";
 ---
@@ -356,6 +409,143 @@ const cardCls = "rounded-xl border border-border bg-surface text-surface-foregro
           ))}
         </ul>
       )}
+    </section>
+
+    {/* =========================================================
+        FRIENDS ONLINE + RECENT RESULTS — side-by-side on desktop,
+        stacked on mobile. Both follow the same card pattern as the
+        resume strip: section card → list of bordered rows, with
+        hover:bg-surface for the lift. Empty state keeps the card
+        visible (per spec).
+        ========================================================= */}
+    <section
+      aria-label="Social"
+      class="page-reveal mt-gutter grid grid-cols-1 gap-gutter md:grid-cols-2"
+      style="--reveal-delay: 0.2s"
+    >
+      {/* ── Friends online ───────────────────────────────────── */}
+      <article class={cn(cardCls, "p-5")}>
+        <header class="flex items-baseline justify-between gap-3">
+          <h2 class="font-mono text-mono-md uppercase text-foreground">
+            Friends online
+          </h2>
+          <p class="font-mono text-mono-sm uppercase text-muted-foreground tabular-nums">
+            {onlineFriends.length} online
+          </p>
+        </header>
+
+        {onlineFriends.length === 0 ? (
+          <div class="mt-5 flex flex-col items-center gap-2 py-6 text-center">
+            <p class="font-display italic text-2xl text-muted-foreground">
+              No friends online.
+            </p>
+            <a
+              href="/profile?tab=friends"
+              data-todo-integration="frontend route — add friends UI on /profile"
+              class="font-mono text-mono-sm uppercase text-muted-foreground transition-colors hover:text-foreground"
+            >
+              Find some →
+            </a>
+          </div>
+        ) : (
+          <ul class="mt-5 flex flex-col gap-3">
+            {onlineFriends.map((f) => (
+              <li>
+                <a
+                  href={f.status === "in_game" && f.currentGameId !== null
+                    ? `/play/m/${f.currentGameId}`
+                    : "#"}
+                  data-todo-integration={
+                    f.status === "in_game"
+                      ? "GET /api/games/:id/spectate (HANDOFF §3.6)"
+                      : "POST /api/lobbies — Tim's endpoint"
+                  }
+                  class="flex items-center justify-between gap-3 rounded-lg border border-border bg-muted px-4 py-3 transition-colors hover:border-foreground hover:bg-surface"
+                >
+                  <div class="flex min-w-0 items-center gap-3">
+                    <span
+                      aria-hidden="true"
+                      class="flex size-9 shrink-0 items-center justify-center rounded-md border border-border bg-surface font-display italic text-base text-foreground"
+                    >
+                      {f.initial}
+                    </span>
+                    <div class="flex min-w-0 flex-col">
+                      <span class="truncate font-sans text-sm font-semibold text-foreground">
+                        {f.username}
+                      </span>
+                      <span class="font-mono text-mono-sm uppercase tabular-nums text-muted-foreground">
+                        {f.rating}
+                      </span>
+                    </div>
+                  </div>
+
+                  <div class="flex shrink-0 items-center gap-2">
+                    <span aria-hidden="true" class:list={["size-2.5 rounded-full", friendStatusTokens[f.status].dot]} />
+                    <span class:list={[
+                      "font-mono text-mono-sm uppercase",
+                      f.status === "in_game" ? "text-accent" : "text-muted-foreground",
+                    ]}>
+                      {f.status === "in_game" ? "Watch" : "Challenge"}
+                    </span>
+                  </div>
+                </a>
+              </li>
+            ))}
+          </ul>
+        )}
+      </article>
+
+      {/* ── Recent results ───────────────────────────────────── */}
+      <article class={cn(cardCls, "p-5")}>
+        <header class="flex items-baseline justify-between gap-3">
+          <h2 class="font-mono text-mono-md uppercase text-foreground">
+            Recent games
+          </h2>
+          <a
+            href="/profile"
+            class="font-mono text-mono-sm uppercase text-muted-foreground transition-colors hover:text-foreground"
+          >
+            View all →
+          </a>
+        </header>
+
+        {recentResults.length === 0 ? (
+          <div class="mt-5 flex flex-col items-center gap-2 py-6 text-center">
+            <p class="font-display italic text-2xl text-muted-foreground">
+              No games yet.
+            </p>
+            <p class="font-mono text-mono-sm uppercase text-muted-foreground">
+              Start one with the cards above.
+            </p>
+          </div>
+        ) : (
+          <ul class="mt-5 flex flex-col gap-3">
+            {recentResults.map((r) => (
+              <li class="flex items-center justify-between gap-3 rounded-lg border border-border bg-muted px-4 py-3">
+                <div class="flex min-w-0 items-center gap-3">
+                  <span aria-hidden="true" class:list={["size-2.5 shrink-0 rounded-full", resultTokens[r.result].dot]} />
+                  <div class="flex min-w-0 flex-col">
+                    <span class="font-mono text-mono-md uppercase text-foreground">
+                      {resultTokens[r.result].label}
+                    </span>
+                    <span class="truncate font-sans text-sm text-muted-foreground">
+                      vs {r.opponent.username}
+                      {r.opponent.rating !== null && (
+                        <span class="ml-1 font-mono text-mono-sm tabular-nums text-muted-foreground">
+                          ({r.opponent.rating})
+                        </span>
+                      )}
+                    </span>
+                  </div>
+                </div>
+                <span class="font-mono text-mono-sm uppercase text-muted-foreground tabular-nums whitespace-nowrap">
+                  {r.finishedAt}
+                </span>
+              </li>
+            ))}
+          </ul>
+        )}
+      </article>
     </section>
   </main>
 
