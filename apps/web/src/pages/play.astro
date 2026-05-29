@@ -56,7 +56,15 @@ const cardCls = "rounded-xl border border-border bg-surface text-surface-foregro
   >
     {/* =========================================================
         QUICK PLAY CTAs — the hero of the lobby.
-        Two cards, equal weight, dominant on the page.
+        Two cards, equal weight. Card structure (matches the Stats
+        time-control cards in /profile):
+          - mono uppercase header (functional voice, not display italic
+            — same language as BULLET / BLITZ / DAILY)
+          - optional one-line font-sans subtitle
+          - inline controls (pills) — varies per card
+          - primary CTA pinned to the bottom via mt-auto so both cards
+            share an identical vertical skeleton even when their
+            middle-content differs
         ========================================================= */}
     <section
       aria-label="Quick play"
@@ -65,19 +73,18 @@ const cardCls = "rounded-xl border border-border bg-surface text-surface-foregro
       data-quickplay
     >
       {/* ── Play AI card ─────────────────────────────────────── */}
-      <article class={cn(cardCls, "flex flex-col gap-5 p-6 md:p-8")}>
-        <header>
-          <p class="font-mono text-mono-sm uppercase text-muted-foreground">Play</p>
-          <h2 class="mt-1 font-display italic text-3xl tracking-tight md:text-4xl">
-            Vs the AI
-          </h2>
-          <p class="mt-2 font-sans text-sm text-muted-foreground">
-            Quick game. No matchmaking, no waiting — pick your difficulty and start.
+      <article class={cn(cardCls, "flex flex-col gap-5 p-5")}>
+        <header class="flex items-baseline justify-between gap-3">
+          <p class="font-mono text-mono-md uppercase text-foreground">
+            Vs AI
+          </p>
+          <p class="font-mono text-mono-sm uppercase text-muted-foreground">
+            Quick
           </p>
         </header>
 
         {/* Inline pills: difficulty + time control. Click sets aria-checked
-            via a tiny inline script below; aria-checked drives styling. */}
+            via inline script; aria-checked drives styling. */}
         <div class="flex flex-col gap-3">
           <div>
             <p class="font-mono text-mono-sm uppercase text-muted-foreground">Difficulty</p>
@@ -90,7 +97,7 @@ const cardCls = "rounded-xl border border-border bg-surface text-surface-foregro
                     aria-checked={d.id === defaultDifficulty ? "true" : "false"}
                     data-value={d.id}
                     class:list={[
-                      "px-4 py-1.5 rounded-full font-mono text-mono-sm uppercase",
+                      "px-3 py-1 rounded-full font-mono text-mono-sm uppercase",
                       "border border-border bg-muted text-muted-foreground",
                       "transition-colors",
                       "hover:border-foreground hover:text-foreground",
@@ -117,7 +124,7 @@ const cardCls = "rounded-xl border border-border bg-surface text-surface-foregro
                     data-value={tc.id}
                     data-seconds={tc.seconds}
                     class:list={[
-                      "px-4 py-1.5 rounded-full font-mono text-mono-sm uppercase",
+                      "px-3 py-1 rounded-full font-mono text-mono-sm uppercase tabular-nums",
                       "border border-border bg-muted text-muted-foreground",
                       "transition-colors",
                       "hover:border-foreground hover:text-foreground",
@@ -125,7 +132,7 @@ const cardCls = "rounded-xl border border-border bg-surface text-surface-foregro
                       "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-foreground",
                     ]}
                   >
-                    {tc.label} <span class="font-normal opacity-70">· {tc.duration}</span>
+                    {tc.duration}
                   </button>
                 </li>
               ))}
@@ -133,38 +140,38 @@ const cardCls = "rounded-xl border border-border bg-surface text-surface-foregro
           </div>
         </div>
 
-        {/* Start button: full-width on mobile, content-width right-aligned on desktop. */}
-        <div class="mt-2 flex md:justify-end">
-          <a
-            href="#"
-            data-todo-integration="POST /api/games/ai — Tim's endpoint, exists post-rebase"
-            data-play-ai-start
-            class={cn(buttonVariants({ variant: "brand-filled", size: "pill" }), "gap-1.5 w-full justify-center md:w-auto")}
-          >
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="size-3.5" aria-hidden="true">
-              <path d="M5 3l14 9-14 9V3z" />
-            </svg>
-            Start game
-          </a>
-        </div>
+        {/* Primary action — pinned to bottom of card via mt-auto */}
+        <a
+          href="#"
+          data-todo-integration="POST /api/games/ai — Tim's endpoint, exists post-rebase"
+          data-play-ai-start
+          class={cn(buttonVariants({ variant: "brand-filled", size: "pill" }), "mt-auto w-full justify-center gap-1.5")}
+        >
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="size-3.5" aria-hidden="true">
+            <path d="M5 3l14 9-14 9V3z" />
+          </svg>
+          Start game
+        </a>
       </article>
 
       {/* ── Challenge card ───────────────────────────────────── */}
-      <article class={cn(cardCls, "flex flex-col gap-5 p-6 md:p-8")}>
-        <header>
-          <p class="font-mono text-mono-sm uppercase text-muted-foreground">Challenge</p>
-          <h2 class="mt-1 font-display italic text-3xl tracking-tight md:text-4xl">
-            Vs a human
-          </h2>
-          <p class="mt-2 font-sans text-sm text-muted-foreground">
-            Invite a friend with a private lobby code, or queue for a random opponent.
+      <article class={cn(cardCls, "flex flex-col gap-5 p-5")}>
+        <header class="flex items-baseline justify-between gap-3">
+          <p class="font-mono text-mono-md uppercase text-foreground">
+            Vs a friend
+          </p>
+          <p class="font-mono text-mono-sm uppercase text-muted-foreground">
+            Multiplayer
           </p>
         </header>
 
-        {/* Two action rows: Find match (disabled v1, see HANDOFF §3.10) and
-            Challenge friend (placeholder dropdown — wires to friends list
-            in Phase 3). */}
-        <div class="mt-2 flex flex-col gap-3">
+        <p class="font-sans text-sm text-muted-foreground">
+          Send a private invite, or queue for a random opponent.
+        </p>
+
+        {/* Two action rows — primary at the bottom (Challenge), secondary
+            above (Find match, disabled v1 → HANDOFF §3.10). */}
+        <div class="mt-auto flex flex-col gap-3">
           <button
             type="button"
             disabled
@@ -174,14 +181,13 @@ const cardCls = "rounded-xl border border-border bg-surface text-surface-foregro
               "w-full justify-center disabled:opacity-50 disabled:cursor-not-allowed",
             )}
           >
-            Find match
-            <span class="ml-2 font-mono text-mono-sm uppercase opacity-60">soon</span>
+            Find match · soon
           </button>
 
           <a
             href="#"
             data-todo-integration="POST /api/lobbies — Tim's endpoint, exists post-rebase"
-            class={cn(buttonVariants({ variant: "brand-filled", size: "pill" }), "gap-1.5 w-full justify-center")}
+            class={cn(buttonVariants({ variant: "brand-filled", size: "pill" }), "w-full justify-center gap-1.5")}
           >
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="size-3.5" aria-hidden="true">
               <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2" />
@@ -192,10 +198,6 @@ const cardCls = "rounded-xl border border-border bg-surface text-surface-foregro
             Challenge a friend
           </a>
         </div>
-
-        <p class="mt-auto font-mono text-mono-sm uppercase text-muted-foreground">
-          Tip: friends online appear below.
-        </p>
       </article>
     </section>
   </main>
