@@ -42,6 +42,39 @@ const TIME_CONTROLS: TimeControl[] = [
 const defaultDifficulty: Difficulty = "medium";
 const defaultTimeControl = "blitz";
 
+// ─── Active games (resume strip) ────────────────────────────────────────────
+// Replaced by GET /api/users/me/games/active (HANDOFF §3.4) once it ships.
+
+interface ActiveGame {
+  id: number;
+  yourTurn: boolean;
+  moves: number;
+  clock: string;                                // mm:ss or hh:mm:ss formatted
+  timeControl: "Bullet" | "Blitz" | "Daily";
+  opponent: {
+    username: string;
+    initial: string;
+    rating: number | null;                      // null for AI
+    isAi: boolean;
+    aiDifficulty?: "easy" | "medium" | "hard";
+  };
+}
+
+const activeGames: ActiveGame[] = [
+  {
+    id: 101, yourTurn: true,  moves: 14, clock: "3:42:11", timeControl: "Daily",
+    opponent: { username: "Sarah_w",     initial: "S", rating: 2710, isAi: false },
+  },
+  {
+    id: 102, yourTurn: false, moves: 9,  clock: "5:18:00", timeControl: "Daily",
+    opponent: { username: "BotSlayer99", initial: "B", rating: 2699, isAi: false },
+  },
+  {
+    id: 103, yourTurn: true,  moves: 7,  clock: "—",       timeControl: "Blitz",
+    opponent: { username: "AI · medium", initial: "✦", rating: null, isAi: true, aiDifficulty: "medium" },
+  },
+];
+
 // Shared card style (same as /profile).
 const cardCls = "rounded-xl border border-border bg-surface text-surface-foreground";
 ---
@@ -230,6 +263,96 @@ const cardCls = "rounded-xl border border-border bg-surface text-surface-foregro
           </a>
         </div>
       </article>
+    </section>
+
+    {/* =========================================================
+        RESUME STRIP — list of active games. Empty card when none.
+        Pattern mirrors the Daily Games sidebar in /profile (overview
+        tab): same card surface, same row layout (avatar + identity on
+        the left, status + clock on the right). Sorted by your-turn
+        first, then by clock urgency (server-side eventually; mock data
+        is hand-ordered for now).
+        ========================================================= */}
+    <section
+      aria-label="Active games"
+      class={cn(cardCls, "page-reveal mt-gutter p-5")}
+      style="--reveal-delay: 0.1s"
+    >
+      <header class="flex items-baseline justify-between gap-3">
+        <h2 class="font-mono text-mono-md uppercase text-foreground">
+          Resume
+        </h2>
+        <p class="font-mono text-mono-sm uppercase text-muted-foreground tabular-nums">
+          {activeGames.length} active
+        </p>
+      </header>
+
+      {activeGames.length === 0 ? (
+        /* Empty state — keep the card visible (per spec), just swap the
+           list for a centered prompt. Same card surface so the layout
+           doesn't jump when games come/go. */
+        <div class="mt-5 flex flex-col items-center gap-2 py-6 text-center">
+          <p class="font-display italic text-2xl text-muted-foreground">
+            No active games.
+          </p>
+          <p class="font-mono text-mono-sm uppercase text-muted-foreground">
+            Start one with the cards above.
+          </p>
+        </div>
+      ) : (
+        <ul class="mt-5 flex flex-col gap-3">
+          {activeGames.map((g) => (
+            <li>
+              <a
+                href={`/play/${g.opponent.isAi ? "ai" : "m"}/${g.id}`}
+                data-todo-integration="GET /api/games/:id — Tim's endpoint, exists post-rebase"
+                class:list={[
+                  "group flex items-center justify-between gap-3",
+                  "rounded-lg border border-border bg-muted px-4 py-3",
+                  "transition-colors hover:border-foreground",
+                ]}
+              >
+                <div class="flex min-w-0 items-center gap-3">
+                  {/* Avatar — same squircle pattern as friends list */}
+                  <span
+                    aria-hidden="true"
+                    class="flex size-9 shrink-0 items-center justify-center rounded-md border border-border bg-surface font-display italic text-base text-foreground"
+                  >
+                    {g.opponent.initial}
+                  </span>
+                  <div class="flex min-w-0 flex-col">
+                    <span class="truncate font-sans text-sm font-semibold text-foreground">
+                      vs {g.opponent.username}
+                      {g.opponent.rating !== null && (
+                        <span class="ml-1 font-mono text-mono-sm tabular-nums text-muted-foreground">
+                          ({g.opponent.rating})
+                        </span>
+                      )}
+                    </span>
+                    <span class="font-mono text-mono-sm uppercase text-muted-foreground">
+                      {g.timeControl} · Move {g.moves}
+                    </span>
+                  </div>
+                </div>
+
+                <div class="flex shrink-0 flex-col items-end gap-0.5">
+                  <span
+                    class:list={[
+                      "font-mono text-mono-sm uppercase",
+                      g.yourTurn ? "text-accent" : "text-muted-foreground",
+                    ]}
+                  >
+                    {g.yourTurn ? "Your turn" : "Waiting"}
+                  </span>
+                  <span class="font-mono text-mono-md tabular-nums text-foreground">
+                    {g.clock}
+                  </span>
+                </div>
+              </a>
+            </li>
+          ))}
+        </ul>
+      )}
     </section>
   </main>
 
