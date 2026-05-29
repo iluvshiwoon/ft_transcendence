@@ -92,9 +92,24 @@ const user = await getCurrentUser(Astro);
       (function () {
         function setTheme(theme) {
           var root = document.documentElement;
+          // Strip every transition for the duration of this paint.
+          // Without this, body bg / pawn shadows / scrollbars snap
+          // instantly while elements with transition-colors slowly fade
+          // through gray — visible 'shimmer'. With it, the whole page
+          // changes mode in one frame (matches GitHub / Linear / Slack).
+          // Re-enabled on the next animation frame so user-initiated
+          // hover transitions resume working immediately afterwards.
+          root.classList.add("disable-transitions");
           root.classList.remove("light", "dark");
           root.classList.add(theme);
           root.style.colorScheme = theme;
+          // Force a reflow so the browser commits the no-transition state
+          // before any color changes paint, then drop the class.
+          // eslint-disable-next-line no-unused-expressions
+          void root.offsetHeight;
+          requestAnimationFrame(function () {
+            root.classList.remove("disable-transitions");
+          });
         }
 
         // Initial theme: localStorage → prefers-color-scheme → "light".

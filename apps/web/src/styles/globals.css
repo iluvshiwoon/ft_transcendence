@@ -290,6 +290,27 @@
     color-scheme: dark;
   }
 
+  /* Theme-toggle anti-flash.
+
+     The theme toggle in RootLayout adds .disable-transitions to <html>
+     immediately before flipping the .dark class, then removes it on the
+     next animation frame. While the class is present, *all* CSS
+     transitions in the document are cancelled — that prevents the
+     "shimmer" where hundreds of elements with transition-colors each
+     fade to their new tokenised colour over 150-300ms while body bg /
+     pawn box-shadows / native scrollbars snap instantly. Result: the
+     whole page changes mode in one frame (matches GitHub / Linear /
+     Slack / etc.).
+
+     Only `transition` is killed — `animation` is untouched, so the
+     page-reveal keyframes and other intentional motion still run. */
+  html.disable-transitions,
+  html.disable-transitions *,
+  html.disable-transitions *::before,
+  html.disable-transitions *::after {
+    transition: none !important;
+  }
+
   body {
     background-color: var(--color-background);
     color: var(--color-foreground);
