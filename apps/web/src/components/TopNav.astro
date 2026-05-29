@@ -85,21 +85,9 @@ const { authed = false } = Astro.props;
     </svg>
   </a>
 
-  {/* Right group: auth CTAs with theme toggle slotted between them.
-      Anon flow: [Login] [theme] [Sign up] — theme sits centred between
-      the two CTAs. Authed flow: [theme] [Play] — Login disappears
-      (would just bounce back to /), so the order naturally shrinks. */}
+  {/* Right group: theme toggle then auth CTAs.
+      Order: [theme] [Login] [Sign up] (anon) / [theme] [Play] (authed). */}
   <div class="flex items-center gap-2.5 md:gap-3">
-    {!authed && (
-      <a
-        href="/login"
-        class={cn(buttonVariants({ variant: "brand-outline", size: "pill" }), "hidden sm:inline-flex")}
-        data-todo-integration="POST /api/auth/login — wire to apps/server"
-      >
-        Login
-      </a>
-    )}
-
     {/* Theme toggle — pure SSR. Both icons are in the DOM; CSS picks which
         one shows based on `<html class="dark">`. The bootstrap script in
         RootLayout sets that class synchronously before paint AND wires the
@@ -128,6 +116,16 @@ const { authed = false } = Astro.props;
         <path d="m19.07 4.93-1.41 1.41"></path>
       </svg>
     </button>
+
+    {!authed && (
+      <a
+        href="/login"
+        class={cn(buttonVariants({ variant: "brand-outline", size: "pill" }), "hidden sm:inline-flex")}
+        data-todo-integration="POST /api/auth/login — wire to apps/server"
+      >
+        Login
+      </a>
+    )}
 
     {authed ? (
       <a
