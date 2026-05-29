@@ -45,27 +45,40 @@ const { authed = false } = Astro.props;
   ]}
   aria-label="Site navigation"
 >
-  {/* Brand: tall "4" + stacked "the/win".
-      Sizes pick the largest "win" that, paired with a text-sm/base
-      "the", produces a stack height close to the "4"'s line-height
-      WITHOUT a negative margin (which was making italic descenders
-      and ascenders collide):
-        mobile : 14 ("the") + 24 ("win") = 38 ≈ 36 (text-4xl "4")
-        desktop: 16 ("the") + 30 ("win") = 46 ≈ 48 (text-5xl "4")
-      Tiny ±2px discrepancy is invisible vs. the cap-height of italic
-      letters. items-center centres both elements on a shared midline. */}
+  {/* Brand: inline-SVG logomark — pixel-perfect alignment.
+      Built as SVG because aligning HTML/CSS line-boxes with visible
+      glyph metrics is metric-fragile (line-box height ≠ visible glyph
+      height; cap-height + descender areas are font-specific empty
+      bands that you can't easily measure from CSS).
+
+      Coordinate plan (viewBox 0 0 110 48):
+        "4"   font-size 48, x=0,  baseline y=44
+              → cap-top at y ≈ 44 - 0.74*48 ≈ 8 (T)
+        "the" font-size 24, x=37, baseline y=26
+              → cap-top at y ≈ 26 - 0.74*24 ≈ 8 (= T, top-aligned with "4")
+        "win" font-size 36, x=37, baseline y=44
+              → x-height-top at y ≈ 44 - 0.5*36 = 26 (= "the" baseline,
+                so visible bottom of "the" touches visible top of "win"
+                with no whitespace strip)
+              → baseline at y=44 (= "4" baseline, bottom-aligned)
+      currentColor lets it adapt to light/dark via the parent's
+      text-foreground. h-9 / md:h-12 keep the mark scaled with the
+      rest of the pill chrome. */}
   <a
     href="/"
-    class="flex items-center gap-2 text-foreground"
+    class="block text-foreground"
     aria-label="4thewin — home"
   >
-    <span class="font-display italic text-4xl md:text-5xl tracking-tight leading-none">
-      4
-    </span>
-    <span class="flex flex-col font-display italic tracking-tight">
-      <span class="text-lg md:text-xl leading-[0.85]">the</span>
-      <span class="text-2xl md:text-4xl leading-[0.85]">win</span>
-    </span>
+    <svg
+      viewBox="0 0 110 48"
+      class="h-9 w-auto md:h-12"
+      fill="currentColor"
+      aria-hidden="true"
+    >
+      <text x="0"  y="44" font-family="var(--font-display)" font-style="italic" font-size="48" font-weight="500">4</text>
+      <text x="37" y="26" font-family="var(--font-display)" font-style="italic" font-size="24">the</text>
+      <text x="37" y="44" font-family="var(--font-display)" font-style="italic" font-size="36">win</text>
+    </svg>
   </a>
 
   {/* Right group: theme toggle + auth CTAs */}
