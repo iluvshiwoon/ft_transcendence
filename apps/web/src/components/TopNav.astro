@@ -99,8 +99,12 @@ const { authed = false } = Astro.props;
       title="Toggle theme"
       class="mr-2 grid size-9 shrink-0 place-items-center rounded-full text-foreground transition-all duration-150 ease-out hover:bg-foreground hover:text-background active:scale-[0.96] xs:mr-4"
     >
-      {/* Moon: visible in light mode (hidden in dark) */}
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="size-4 dark:hidden" aria-hidden="true">
+      {/* Moon: visible in light mode (hidden in dark).
+          Lucide moon's lit crescent has its visual mass slightly
+          below-right of the SVG's geometric centre, so a small
+          translate up-left compensates for the visual-vs-geometric
+          centre mismatch. Sun is radially symmetric — no offset. */}
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="size-4 -translate-x-px -translate-y-px dark:hidden" aria-hidden="true">
         <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path>
       </svg>
       {/* Sun: visible in dark mode (hidden in light) */}
