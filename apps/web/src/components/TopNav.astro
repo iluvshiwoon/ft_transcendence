@@ -112,7 +112,6 @@ const initial = user?.username?.[0]?.toUpperCase() ?? "?";
     class:list={[
       "fixed inset-x-0 top-0 z-50",
       "flex items-center justify-between gap-4",
-      "border-b border-border bg-muted",
       "px-margin-mobile py-3 xs:px-margin-desktop",
       "topnav-bar",
     ]}
@@ -129,18 +128,6 @@ const initial = user?.username?.[0]?.toUpperCase() ?? "?";
 
     {/* Right group — controls + profile link */}
     <div class="flex items-center gap-3 xs:gap-4">
-
-      {/* Play — primary action, always one click */}
-      <a
-        href="/play"
-        class={cn(buttonVariants({ variant: "brand-filled", size: "pill" }), "gap-1.5")}
-      >
-        Play
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="size-3.5" aria-hidden="true">
-          <path d="M5 12h14"></path>
-          <path d="m12 5 7 7-7 7"></path>
-        </svg>
-      </a>
 
       {/* Theme toggle */}
       <button
@@ -201,8 +188,9 @@ const initial = user?.username?.[0]?.toUpperCase() ?? "?";
             {user!.username}
           </span>
           <span class="font-mono text-mono-sm uppercase tabular-nums text-muted-foreground">
-            {/* Rating placeholder — replaced by user.rating once HANDOFF §3.2 ships */}
-            Rating · soon
+            {/* Mock rating until HANDOFF §3.2 (Elo + peak_rating) ships and
+                user.rating becomes a real field on CurrentUser. */}
+            2854
           </span>
         </span>
       </a>
