@@ -1,0 +1,82 @@
+---
+/**
+ * /how-to-play — Connect 4 rules + platform basics.
+ * Static prose page. Same layout template as /privacy and /terms.
+ */
+import RootLayout from "~/layouts/RootLayout.astro";
+---
+
+<RootLayout title="4thewin — How to play" description="Connect 4 rules and how to get started.">
+  <main
+    id="main"
+    class="mx-auto w-full max-w-3xl flex-1 overflow-y-auto px-margin-mobile pt-[126px] pb-16 md:pt-[140px]"
+  >
+    <header class="flex flex-col gap-3">
+      <h1 class="font-display text-4xl font-bold tracking-tight text-foreground md:text-5xl">
+        How to play
+      </h1>
+    </header>
+
+    <div class="mt-12 flex flex-col gap-10">
+      <section class="flex flex-col gap-3">
+        <h2 class="font-display text-xl font-semibold text-foreground">The goal</h2>
+        <p class="leading-relaxed text-foreground/80">
+          Connect 4 is played on a grid of 7 columns and 6 rows. Two players take
+          turns dropping tokens into a column — the token falls to the lowest
+          free slot. The first to line up <span class="font-semibold text-foreground">four of their tokens
+          in a row</span> — horizontally, vertically, or diagonally — wins.
+        </p>
+      </section>
+
+      <section class="flex flex-col gap-3">
+        <h2 class="font-display text-xl font-semibold text-foreground">Taking a turn</h2>
+        <ul class="flex flex-col gap-2 text-foreground/80">
+          <li class="leading-relaxed">Click a column to drop your token into it.</li>
+          <li class="leading-relaxed">You can only play when it's your turn — the board shows whose turn it is.</li>
+          <li class="leading-relaxed">If the whole board fills with no four-in-a-row, the game is a draw.</li>
+        </ul>
+      </section>
+
+      <section class="flex flex-col gap-3">
+        <h2 class="font-display text-xl font-semibold text-foreground">The clock</h2>
+        <p class="leading-relaxed text-foreground/80">
+          Each player has a total time budget (chess-style), not a per-move
+          limit. Your clock only counts down on your turn. Pick from 5, 10, or 60
+          minutes when creating a game. Run out of time and you lose.
+        </p>
+      </section>
+
+      <section class="flex flex-col gap-3">
+        <h2 class="font-display text-xl font-semibold text-foreground">Ways to play</h2>
+        <ul class="flex flex-col gap-2 text-foreground/80">
+          <li class="leading-relaxed">
+            <span class="font-semibold text-foreground">Against the AI</span> — jump in instantly from the
+            home page, no account needed. Three difficulty levels.
+          </li>
+          <li class="leading-relaxed">
+            <span class="font-semibold text-foreground">Against a friend</span> — sign up, then create or
+            join a lobby. Public lobbies are open to anyone; private ones need a code.
+          </li>
+        </ul>
+      </section>
+
+      <section class="flex flex-col gap-3">
+        <h2 class="font-display text-xl font-semibold text-foreground">Forfeit & disconnect</h2>
+        <p class="leading-relaxed text-foreground/80">
+          You can surrender a game at any time with the surrender button. If you
+          lose connection, you have one minute to reconnect before the game is
+          automatically abandoned.
+        </p>
+      </section>
+
+      <section class="flex flex-col gap-3">
+        <a
+          href="/play"
+          class="font-mono text-mono-md uppercase font-bold text-emphasis underline underline-offset-4 transition-opacity hover:opacity-70"
+        >
+          Start playing →
+        </a>
+      </section>
+    </div>
+  </main>
+</RootLayout>

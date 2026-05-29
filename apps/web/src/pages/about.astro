@@ -1,0 +1,68 @@
+---
+/**
+ * /about — what 4thewin is and who built it.
+ * Static prose page. Same layout template as /privacy and /terms.
+ */
+import RootLayout from "~/layouts/RootLayout.astro";
+---
+
+<RootLayout title="4thewin — About" description="What 4thewin is and who built it.">
+  <main
+    id="main"
+    class="mx-auto w-full max-w-3xl flex-1 overflow-y-auto px-margin-mobile pt-[126px] pb-16 md:pt-[140px]"
+  >
+    <header class="flex flex-col gap-3">
+      <h1 class="font-display text-4xl font-bold tracking-tight text-foreground md:text-5xl">
+        About
+      </h1>
+    </header>
+
+    <div class="mt-12 flex flex-col gap-10">
+      <section class="flex flex-col gap-3">
+        <p class="leading-relaxed text-foreground/80">
+          <span class="font-display italic text-foreground">4thewin</span> is a
+          web-based Connect 4 platform: play against a smart AI right in your
+          browser, or sign up to challenge other players online, track your
+          stats, chat, and climb the leaderboard.
+        </p>
+      </section>
+
+      <section class="flex flex-col gap-3">
+        <h2 class="font-display text-xl font-semibold text-foreground">The project</h2>
+        <p class="leading-relaxed text-foreground/80">
+          It's the final group project of the 42 Common Core — a full-stack web
+          app built from scratch: real-time multiplayer over WebSockets, an AI
+          opponent using minimax with alpha-beta pruning, user accounts, a
+          friends system, in-app chat and notifications, all behind a hardened
+          security layer.
+        </p>
+      </section>
+
+      <section class="flex flex-col gap-3">
+        <h2 class="font-display text-xl font-semibold text-foreground">Under the hood</h2>
+        <ul class="flex flex-col gap-2 text-foreground/80">
+          <li class="leading-relaxed">
+            <span class="font-semibold text-foreground">Frontend</span> — Astro + React, Tailwind CSS.
+          </li>
+          <li class="leading-relaxed">
+            <span class="font-semibold text-foreground">Backend</span> — Fastify, Socket.io, PostgreSQL with Drizzle ORM.
+          </li>
+          <li class="leading-relaxed">
+            <span class="font-semibold text-foreground">Security</span> — ModSecurity WAF, HashiCorp Vault, JWT auth.
+          </li>
+          <li class="leading-relaxed">
+            <span class="font-semibold text-foreground">Infra</span> — Podman containers, single-command deploy.
+          </li>
+        </ul>
+      </section>
+
+      <section class="flex flex-col gap-3">
+        <h2 class="font-display text-xl font-semibold text-foreground">The team</h2>
+        <p class="leading-relaxed text-foreground/80">
+          Built by a team of 42 students, each owning a slice of the stack:
+          backend, frontend, cybersecurity, and project management.
+        </p>
+      </section>
+    </div>
+  </main>
+</RootLayout>
