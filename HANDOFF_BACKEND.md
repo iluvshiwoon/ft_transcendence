@@ -127,6 +127,12 @@ inclure :
 }
 ```
 
+**Aussi étendre `GET /api/auth/me`** (et donc `CurrentUser` côté front
+dans `apps/web/src/lib/auth.ts`) pour renvoyer `rating` (et idéalement
+`peakRating`). Sans ça, la TopNav authed affiche `Rating 2854` mock
+même après que la colonne soit en DB — `getCurrentUser()` ne sait pas
+le lire. Le slot UI est prêt, il attend juste le champ.
+
 - `rank` = `SELECT count(*) + 1 FROM users WHERE rating > $me AND is_deleted = false`
 - `title` = dérivé du rating, par paliers (à arrêter — proposition) :
   - `< 1000`  → "Beginner"
@@ -136,7 +142,7 @@ inclure :
   - `>= 2200` → "Grandmaster"
 
 **Effort estimé.** Migration courte + ~30 lignes dans `gameManager` +
-~10 lignes dans `users.ts`.
+~10 lignes dans `users.ts` + 2 lignes dans `auth.ts` (route `/me`).
 
 ---
 
@@ -525,6 +531,43 @@ les justifie.
 
 ---
 
+### 3.12 — `POST /api/auth/logout` — comportement form vs API
+
+**Pourquoi.** La TopNav authed (sur `/play`, `/profile`, etc.) utilise
+un `<form method="POST" action="/api/auth/logout">` pour le bouton
+Logout — choix volontaire pour que ça marche **sans JS**. Le serveur
+aujourd'hui répond `200 { message: "Logged out" }` après avoir effacé
+le cookie. Conséquence : après le clic, le navigateur affiche le JSON
+brut au lieu de revenir sur la page d'accueil. UX cassée.
+
+**Spec proposée.**
+
+Faire en sorte que la route détecte le type de client et réponde en
+conséquence (content negotiation classique) :
+
+```ts
+app.post("/logout", async (request, reply) => {
+  reply.clearCookie("auth_token", { path: "/" });
+
+  // Form submission from a browser → 302 redirect to /.
+  // API call (fetch / axios with Accept: application/json) → JSON.
+  const accept = request.headers.accept ?? "";
+  if (accept.includes("text/html")) {
+    return reply.redirect(302, "/");
+  }
+  return reply.send({ message: "Logged out" });
+});
+```
+
+**Effort.** ~5 lignes. Aucune migration.
+
+**Alternative côté front** si on ne veut pas toucher au backend : le
+`<form>` dans `TopNav.astro` se transforme en `<button>` avec un
+handler JS qui fait `fetch(POST /api/auth/logout)` puis
+`window.location = "/"`. Casse le no-JS path mais reste fonctionnel.
+
+---
+
 ## 4. Ordre de priorité recommandé
 
 1. **Merger `tim` dans `main`.** Pré-requis pour 3.2, 3.3, 3.4, 3.5, 3.9.
@@ -545,6 +588,9 @@ les justifie.
 10. **3.10 — Matchmaking queue.** Pas critique. Active le bouton « Find
     match » sur le lobby. Peut attendre que le flow Challenge friend
     (3.7) soit éprouvé en prod avant d'ajouter cette deuxième entrée.
+11. **3.12 — Logout content-negotiation.** Tout petit (~5 lignes).
+    Sans ça le bouton Logout de la TopNav affiche du JSON brut après
+    déconnexion. À faire dès qu'on touche `auth.ts`.
 
 Les points 3.1 → 3.5 + 3.9 forment l'essentiel du câblage de `/profile`.
 Les points 3.6 et 3.7 ne sont nécessaires que pour rendre les boutons
