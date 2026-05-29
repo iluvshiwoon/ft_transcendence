@@ -2,102 +2,90 @@
 /**
  * /privacy — Privacy Policy.
  *
- * Static prose page. Required by the 42 subject. Content describes what data
- * the platform collects (account info, game stats) and how it's handled.
+ * Static prose page. Required by the 42 subject. Editorial layout matching the
+ * site's voice: mono accent eyebrow, Fraunces title, numbered sections in a
+ * two-column (index + body) grid on desktop.
  *
- * Layout note: RootLayout's body is `md:overflow-hidden` (single-screen pages
- * like the landing). Prose pages can exceed the viewport, so <main> takes
+ * Layout note: RootLayout's body is `md:overflow-hidden`, so <main> takes
  * `flex-1 overflow-y-auto` to scroll its own content on desktop.
  */
 import RootLayout from "~/layouts/RootLayout.astro";
 
 const lastUpdated = "May 2026";
+
+const sections = [
+  {
+    title: "Data we collect",
+    body: `Account info — your email, username, and (if you sign up with a
+      password) a securely hashed password, never stored in clear text.
+      Profile — optional bio, avatar, chosen skins. Game data — your match
+      history, results, and statistics. If you sign in with 42, we receive your
+      42 login, email, and avatar from their API, and nothing else.`,
+  },
+  {
+    title: "How we use it",
+    body: `Your data runs the platform: it authenticates you, displays your
+      profile to other players, matches you in games, delivers chat messages,
+      and computes your stats. We don't sell your data, run ads, or share it
+      with third parties.`,
+  },
+  {
+    title: "Security",
+    body: `Passwords are hashed with bcrypt. Sessions use signed tokens in
+      HttpOnly cookies, inaccessible to client-side scripts. Secrets are managed
+      through HashiCorp Vault, and traffic passes through a web application
+      firewall.`,
+  },
+  {
+    title: "Your rights",
+    body: `You can edit your profile at any time, and delete your account from
+      your settings. On deletion your personal data is anonymized — your
+      username becomes “Joueur supprimé” — while past games stay in other
+      players' history for integrity.`,
+  },
+  {
+    title: "Contact",
+    body: `This is a non-commercial school project. For any question about your
+      data, reach out to the project team through the school.`,
+  },
+];
 ---
 
 <RootLayout title="4thewin — Privacy Policy" description="How 4thewin handles your data.">
   <main
     id="main"
-    class="mx-auto w-full max-w-3xl flex-1 overflow-y-auto px-margin-mobile pt-[126px] pb-16 md:pt-[140px]"
+    class="mx-auto w-full max-w-3xl flex-1 overflow-y-auto px-margin-mobile pt-[120px] pb-20 md:pt-[150px]"
   >
-    <header class="flex flex-col gap-3">
-      <h1 class="font-display text-4xl font-bold tracking-tight text-foreground md:text-5xl">
-        Privacy Policy
+    <header class="flex flex-col gap-4">
+      <span class="font-mono text-mono-sm uppercase text-accent">Legal · Privacy</span>
+      <h1 class="font-display text-5xl font-semibold tracking-tight text-foreground md:text-6xl">
+        Privacy <span class="italic font-light">Policy</span>
       </h1>
       <p class="font-mono text-mono-sm uppercase text-muted-foreground">
         Last updated · {lastUpdated}
       </p>
     </header>
 
-    <div class="mt-12 flex flex-col gap-10">
-      <section class="flex flex-col gap-3">
-        <p class="leading-relaxed text-foreground/80">
-          4thewin is a student project built for the 42 school curriculum. This
-          page explains what data we collect, why, and what you can do about it.
-          We keep it short because we keep the data minimal.
-        </p>
-      </section>
+    <p class="mt-8 font-display text-xl font-light italic leading-relaxed text-foreground/70">
+      A student project that keeps its data minimal — so this stays short.
+    </p>
 
-      <section class="flex flex-col gap-3">
-        <h2 class="font-display text-xl font-semibold text-foreground">Data we collect</h2>
-        <ul class="flex flex-col gap-2 text-foreground/80">
-          <li class="leading-relaxed">
-            <span class="font-semibold text-foreground">Account info</span> — your
-            email, username, and (if you sign up with a password) a securely
-            hashed password. We never store passwords in clear text.
-          </li>
-          <li class="leading-relaxed">
-            <span class="font-semibold text-foreground">Profile</span> — optional
-            bio, avatar image, and your chosen game skins.
-          </li>
-          <li class="leading-relaxed">
-            <span class="font-semibold text-foreground">Game data</span> — your
-            match history, results, and statistics (games played, won, lost).
-          </li>
-          <li class="leading-relaxed">
-            <span class="font-semibold text-foreground">42 OAuth</span> — if you
-            sign in with your 42 account, we receive your 42 login, email, and
-            avatar from 42's API. We do not access anything else.
-          </li>
-        </ul>
-      </section>
+    <hr class="mt-10 border-t border-border" />
 
-      <section class="flex flex-col gap-3">
-        <h2 class="font-display text-xl font-semibold text-foreground">How we use it</h2>
-        <p class="leading-relaxed text-foreground/80">
-          Your data is used solely to run the platform: authenticate you,
-          display your profile to other players, match you in games, deliver
-          chat messages, and compute your statistics. We do not sell your data,
-          run ads, or share it with third parties.
-        </p>
-      </section>
-
-      <section class="flex flex-col gap-3">
-        <h2 class="font-display text-xl font-semibold text-foreground">Security</h2>
-        <p class="leading-relaxed text-foreground/80">
-          Passwords are hashed with bcrypt. Sessions use signed tokens stored in
-          HttpOnly cookies (inaccessible to client-side scripts). Secrets are
-          managed through HashiCorp Vault, and traffic passes through a web
-          application firewall (ModSecurity).
-        </p>
-      </section>
-
-      <section class="flex flex-col gap-3">
-        <h2 class="font-display text-xl font-semibold text-foreground">Your rights</h2>
-        <p class="leading-relaxed text-foreground/80">
-          You can edit your profile information at any time. You can delete your
-          account from your settings — when you do, your personal data is
-          anonymized (your username becomes "Joueur supprimé") while past games
-          remain in other players' history for integrity.
-        </p>
-      </section>
-
-      <section class="flex flex-col gap-3">
-        <h2 class="font-display text-xl font-semibold text-foreground">Contact</h2>
-        <p class="leading-relaxed text-foreground/80">
-          This is a non-commercial school project. For any question about your
-          data, reach out to the project team through the school.
-        </p>
-      </section>
+    <div class="mt-10 flex flex-col">
+      {sections.map((s, i) => (
+        <section class="grid gap-3 border-t border-border/60 py-8 first:border-t-0 md:grid-cols-[3rem_1fr] md:gap-8">
+          <span class="font-mono text-mono-md text-accent md:pt-1">
+            {String(i + 1).padStart(2, "0")}
+          </span>
+          <div class="flex flex-col gap-3">
+            <h2 class="font-display text-2xl font-semibold tracking-tight text-foreground">
+              {s.title}
+            </h2>
+            <p class="leading-relaxed text-foreground/80">{s.body}</p>
+          </div>
+        </section>
+      ))}
     </div>
   </main>
 </RootLayout>
