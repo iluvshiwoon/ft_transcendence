@@ -129,7 +129,7 @@ const cardCls = "rounded-xl border border-border bg-surface text-surface-foregro
           (board is small enough to scan, games rarely exceed 25 moves)
           and it just left a 'few dots in a sea of blank space'. */}
       <div
-        class="page-reveal order-3 flex justify-center md:order-3 md:col-span-3"
+        class="page-reveal order-3 flex justify-center md:order-3 md:col-span-3 md:justify-start"
         style="--reveal-delay: 0s"
       >
         <div class="flex w-full max-w-[220px] flex-col gap-5">
@@ -173,18 +173,20 @@ const cardCls = "rounded-xl border border-border bg-surface text-surface-foregro
             </p>
           </div>
 
-          {/* Controls — small custom pills.
-              Default fill = bg-muted so they sit quietly on the page;
-              hover flips to the design-system's inverse (bg-foreground
-              + text-background) for an unmistakable 'click me' state.
-              Smaller padding than the standard pill size so they
-              don't compete with the board for attention. Stacked
-              full-width so they read as a tidy controls strip. */}
-          <div class="flex flex-col gap-2 pt-1">
+          {/* Controls — small custom pills, content-width and left-
+              aligned with the rest of the column so they read as part
+              of the same stack (not separate full-width buttons).
+
+              Default fill = bg-muted so they sit quietly on the page.
+              Hover = bg-foreground / text-background (design-system
+              inverse), instant — transition-colors removed because
+              the muted→foreground interpolation passed through a gray
+              midpoint that looked like the bg was 'disappearing'. */}
+          <div class="flex flex-col items-start gap-3 pt-1">
             <a
               href="/play"
               data-todo-integration="POST /api/games/ai with current params, then redirect"
-              class="flex items-center justify-center gap-1.5 rounded-full bg-muted px-4 py-1.5 font-mono text-mono-sm uppercase text-muted-foreground transition-colors hover:bg-foreground hover:text-background active:scale-[0.98] focus-visible:outline-none focus-visible:bg-foreground focus-visible:text-background"
+              class="inline-flex items-center gap-1.5 rounded-full bg-muted px-4 py-1.5 font-mono text-mono-sm uppercase text-muted-foreground hover:bg-foreground hover:text-background active:scale-[0.98] focus-visible:outline-none focus-visible:bg-foreground focus-visible:text-background"
             >
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="size-3.5" aria-hidden="true">
                 <polyline points="1 4 1 10 7 10" />
@@ -195,7 +197,7 @@ const cardCls = "rounded-xl border border-border bg-surface text-surface-foregro
             <a
               href="/play"
               data-todo-integration="POST /api/games/:id/surrender (socket: game:surrender)"
-              class="flex items-center justify-center gap-1.5 rounded-full bg-muted px-4 py-1.5 font-mono text-mono-sm uppercase text-muted-foreground transition-colors hover:bg-foreground hover:text-background active:scale-[0.98] focus-visible:outline-none focus-visible:bg-foreground focus-visible:text-background"
+              class="inline-flex items-center gap-1.5 rounded-full bg-muted px-4 py-1.5 font-mono text-mono-sm uppercase text-muted-foreground hover:bg-foreground hover:text-background active:scale-[0.98] focus-visible:outline-none focus-visible:bg-foreground focus-visible:text-background"
             >
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="size-3.5" aria-hidden="true">
                 <line x1="4" y1="22" x2="4" y2="15" />
