@@ -64,20 +64,75 @@ interface ActiveGame {
 }
 
 const activeGames: ActiveGame[] = [
-  // Daily 60-min, your turn — clock bounded by 60:00 per side.
+  // ─── Your turn (sorted by clock urgency, most-time-left first) ───────────
+
+  // Daily 60-min — comfortable clocks
   {
-    id: 101, yourTurn: true,  moves: 14, clock: "45:12", timeControl: "Daily",
+    id: 101, yourTurn: true,  moves: 14, clock: "51:33", timeControl: "Daily",
+    opponent: { username: "GridLock_",   initial: "G", rating: 2569, isAi: false },
+  },
+  {
+    id: 102, yourTurn: true,  moves: 14, clock: "45:12", timeControl: "Daily",
     opponent: { username: "Sarah_w",     initial: "S", rating: 2710, isAi: false },
   },
-  // Blitz 10-min, waiting on opponent — clock bounded by 10:00.
   {
-    id: 102, yourTurn: false, moves: 9,  clock: "7:18",  timeControl: "Blitz",
+    id: 103, yourTurn: true,  moves: 12, clock: "38:02", timeControl: "Daily",
+    opponent: { username: "AI · hard",   initial: "✦", rating: null, isAi: true, aiDifficulty: "hard" },
+  },
+  {
+    id: 104, yourTurn: true,  moves:  4, clock: "22:08", timeControl: "Daily",
+    opponent: { username: "ChessLover42",initial: "C", rating: 1850, isAi: false },
+  },
+
+  // Blitz 10-min
+  {
+    id: 105, yourTurn: true,  moves:  2, clock: "9:47",  timeControl: "Blitz",
+    opponent: { username: "RookieRed",   initial: "R", rating: 1654, isAi: false },
+  },
+  {
+    id: 106, yourTurn: true,  moves:  8, clock: "6:33",  timeControl: "Blitz",
+    opponent: { username: "NeuralNet",   initial: "N", rating: 1745, isAi: false },
+  },
+
+  // Bullet 3-min — tight clocks, urgent
+  {
+    id: 107, yourTurn: true,  moves:  7, clock: "1:42",  timeControl: "Bullet",
+    opponent: { username: "AI · medium", initial: "✦", rating: null, isAi: true, aiDifficulty: "medium" },
+  },
+  {
+    id: 108, yourTurn: true,  moves:  5, clock: "1:12",  timeControl: "Bullet",
+    opponent: { username: "QuantumDrop", initial: "Q", rating: 2890, isAi: false },
+  },
+  {
+    id: 109, yourTurn: true,  moves: 16, clock: "0:42",  timeControl: "Bullet",
+    opponent: { username: "FourFingers", initial: "F", rating: 2080, isAi: false },
+  },
+
+  // ─── Waiting (opponent's turn, sorted by clock urgency too) ──────────────
+
+  {
+    id: 110, yourTurn: false, moves: 23, clock: "33:15", timeControl: "Daily",
+    opponent: { username: "SpinDoctor",  initial: "S", rating: 2401, isAi: false },
+  },
+  {
+    id: 111, yourTurn: false, moves: 19, clock: "14:30", timeControl: "Daily",
+    opponent: { username: "DiagonalDan", initial: "D", rating: 1980, isAi: false },
+  },
+  {
+    id: 112, yourTurn: false, moves:  9, clock: "7:18",  timeControl: "Blitz",
     opponent: { username: "BotSlayer99", initial: "B", rating: 2699, isAi: false },
   },
-  // AI game has a time control too — Bullet 3-min, your turn.
   {
-    id: 103, yourTurn: true,  moves: 7,  clock: "1:42",  timeControl: "Bullet",
-    opponent: { username: "AI · medium", initial: "✦", rating: null, isAi: true, aiDifficulty: "medium" },
+    id: 113, yourTurn: false, moves: 18, clock: "4:55",  timeControl: "Blitz",
+    opponent: { username: "Pivot_",      initial: "P", rating: 2210, isAi: false },
+  },
+  {
+    id: 114, yourTurn: false, moves: 22, clock: "2:11",  timeControl: "Blitz",
+    opponent: { username: "A_connect",   initial: "A", rating: 2349, isAi: false },
+  },
+  {
+    id: 115, yourTurn: false, moves: 11, clock: "0:28",  timeControl: "Bullet",
+    opponent: { username: "AI · easy",   initial: "✦", rating: null, isAi: true, aiDifficulty: "easy" },
   },
 ];
 
