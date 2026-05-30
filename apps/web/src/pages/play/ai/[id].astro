@@ -1,0 +1,102 @@
+---
+/**
+ * /play/ai/[id] — vs-AI game page (authed).
+ *
+ * Reuses the gameplay composition from the landing page (Board +
+ * AITelemetry + EndGameOverlay) but swaps the marketing Leaderboard
+ * on the right for a gameplay-focused panel: AI opponent card +
+ * Move history + Game controls (filled in Step 2 of this work).
+ *
+ * Layout matches landing's 3-col grid so the board reads as the
+ * focal point with AITelemetry on the left and the right-column
+ * tool stack flanking it. No hero text, no marketing CTAs — this
+ * is a tool surface for in-game use.
+ *
+ * Auth: matches /play and /profile — no redirect for now while
+ * data is mocked. TODO: gate behind isAuthenticated() once real
+ * games land. The :id parameter is the game ID returned by
+ * POST /api/games/ai (Tim's endpoint).
+ *
+ * Board variant: 'none' for the in-game shell — plain, no liquid
+ * glass effects (those are marketing flair on landing). Keeps the
+ * tool focus.
+ */
+import RootLayout from "~/layouts/RootLayout.astro";
+import { Board } from "~/components/landing/Board";
+import { EndGameOverlay } from "~/components/landing/EndGameOverlay";
+import { AITelemetry } from "~/components/landing/AITelemetry";
+import { isAuthenticated } from "~/lib/auth";
+import { cn } from "~/lib/utils";
+
+// We don't actually use the game id in the mock — it just needs to be
+// a valid Astro dynamic-route param. Once Step 4 of the lobby plan wires
+// the lobby's "Start AI game" button to POST /api/games/ai, that
+// endpoint returns { gameId } and the client navigates to /play/ai/<id>.
+// At that point this page reads :id and calls GET /api/games/:id (also
+// Tim's endpoint, exists) to load the live state via gameManager.
+const { id: _gameId } = Astro.params;
+const authed = await isAuthenticated(Astro);
+
+const cardCls = "rounded-xl border border-border bg-surface text-surface-foreground";
+---
+
+<RootLayout
+  title="Game vs AI — 4thewin"
+  description="Connect 4 vs AI"
+>
+  <main
+    id="main"
+    class="relative mx-auto flex w-full max-w-7xl flex-col px-margin-mobile pt-28 pb-8 md:h-full md:overflow-hidden md:px-margin-desktop md:pt-28 md:pb-4"
+  >
+    {/* 3-col grid mirrors the landing composition: AITelemetry / Board /
+        right-stack. items-center anchors the side panels around the
+        board's vertical centre. Mobile collapses to a single column
+        with the board first (order-1), AITelemetry under it (order-2),
+        right stack last (order-3). */}
+    <div class="grid grid-cols-1 gap-16 md:flex-1 md:grid-cols-12 md:items-center md:gap-gutter">
+
+      {/* AITelemetry — desktop left, mobile after the board */}
+      <div
+        class="page-reveal order-2 flex justify-center md:order-1 md:col-span-3"
+        style="--reveal-delay: 0s"
+      >
+        <AITelemetry client:load />
+      </div>
+
+      {/* Board — center column. EndGameOverlay sits inside the same
+          relative wrapper so when a game ends the card overlays the
+          board exactly. authed prop drives the CTA — 'Play again' /
+          'Back to lobby' for authed users (always us on this page). */}
+      <div class="order-1 flex flex-col items-center gap-8 md:order-2 md:col-span-6 md:gap-0 md:relative">
+        <div
+          class="page-reveal relative"
+          style="--reveal-delay: 0.2s"
+        >
+          <Board variant="none" client:load />
+          <EndGameOverlay authed={authed} client:load />
+        </div>
+      </div>
+
+      {/* Right column — placeholder card for Step 1. Step 2 of this
+          work fills this slot with three stacked sections:
+            1. AI opponent card (difficulty, your form last 5, streak)
+            2. Move history (compact column-by-column log)
+            3. Game controls (Resign, New game)
+          See the brainstorm in chat history for the design intent. */}
+      <div
+        class="page-reveal order-3 flex justify-center md:order-3 md:col-span-3"
+        style="--reveal-delay: 0s"
+      >
+        <article class={cn(cardCls, "w-full max-w-[280px] p-5")}>
+          <p class="font-mono text-mono-sm uppercase text-muted-foreground">
+            Right column — placeholder
+          </p>
+          <p class="mt-3 font-sans text-sm text-muted-foreground">
+            Coming next: AI opponent card · Move history · Game controls.
+          </p>
+        </article>
+      </div>
+
+    </div>
+  </main>
+</RootLayout>
