@@ -159,27 +159,33 @@ const cardCls = "rounded-xl border border-border bg-surface text-surface-foregro
             </ol>
           </div>
 
-          {/* Current streak — single line, single font (mono throughout)
-              so the two adjacent values read as the same kind of number. */}
+          {/* Current streak — all values on the same line use the same
+              font (mono) and the same size (text-mono-md). Color does
+              the visual hierarchy: foreground for the streak number,
+              muted-foreground for the suffix and the 'best N' aside. */}
           <div>
             <p class="font-mono text-mono-sm uppercase text-muted-foreground">
               Current streak
             </p>
-            <p class="mt-1 font-mono tabular-nums text-foreground">
-              <span class="text-2xl">{aiOpponent.currentStreak}</span>
-              <span class="ml-1 font-mono text-mono-md uppercase text-muted-foreground">W</span>
-              <span class="ml-3 font-mono text-mono-sm uppercase text-muted-foreground">
-                · best {aiOpponent.longestStreak}
-              </span>
+            <p class="mt-1 font-mono text-mono-md uppercase tabular-nums">
+              <span class="text-foreground">{aiOpponent.currentStreak} W</span>
+              <span class="ml-2 text-muted-foreground">· best {aiOpponent.longestStreak}</span>
             </p>
           </div>
 
-          {/* Controls */}
-          <div class="flex flex-col gap-2 pt-1">
+          {/* Controls — intentionally muted. The board is what the user
+              should be looking at; these are utility actions that should
+              quietly say 'I'm here when you want me' without competing.
+              Custom styling (off-spec design-system) for that reason:
+                - default: muted text, no fill, no border
+                - hover:  text + small bg lift, signalling interactivity
+                - active: light scale-down
+              border-t separates them as a 'controls band' visually. */}
+          <div class="flex flex-col gap-1 border-t border-border pt-3">
             <a
               href="/play"
               data-todo-integration="POST /api/games/ai with current params, then redirect"
-              class={cn(buttonVariants({ variant: "brand-filled", size: "pill" }), "w-full justify-center gap-1.5")}
+              class="flex items-center justify-center gap-2 rounded-md px-3 py-2 font-mono text-mono-md uppercase text-muted-foreground transition-colors hover:bg-muted hover:text-foreground active:scale-[0.98] focus-visible:outline-none focus-visible:bg-muted focus-visible:text-foreground"
             >
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="size-3.5" aria-hidden="true">
                 <polyline points="1 4 1 10 7 10" />
@@ -190,7 +196,7 @@ const cardCls = "rounded-xl border border-border bg-surface text-surface-foregro
             <a
               href="/play"
               data-todo-integration="POST /api/games/:id/surrender (socket: game:surrender)"
-              class={cn(buttonVariants({ variant: "brand-outline", size: "pill" }), "w-full justify-center gap-1.5 border-2")}
+              class="flex items-center justify-center gap-2 rounded-md px-3 py-2 font-mono text-mono-md uppercase text-muted-foreground transition-colors hover:bg-muted hover:text-foreground active:scale-[0.98] focus-visible:outline-none focus-visible:bg-muted focus-visible:text-foreground"
             >
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="size-3.5" aria-hidden="true">
                 <line x1="4" y1="22" x2="4" y2="15" />
