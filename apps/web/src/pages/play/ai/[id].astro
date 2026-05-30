@@ -173,19 +173,18 @@ const cardCls = "rounded-xl border border-border bg-surface text-surface-foregro
             </p>
           </div>
 
-          {/* Controls — intentionally muted. The board is what the user
-              should be looking at; these are utility actions that should
-              quietly say 'I'm here when you want me' without competing.
-              Custom styling (off-spec design-system) for that reason:
-                - default: muted text, no fill, no border
-                - hover:  text + small bg lift, signalling interactivity
-                - active: light scale-down
-              border-t separates them as a 'controls band' visually. */}
-          <div class="flex flex-col gap-1 border-t border-border pt-3">
+          {/* Controls — small custom pills.
+              Default fill = bg-muted so they sit quietly on the page;
+              hover flips to the design-system's inverse (bg-foreground
+              + text-background) for an unmistakable 'click me' state.
+              Smaller padding than the standard pill size so they
+              don't compete with the board for attention. Stacked
+              full-width so they read as a tidy controls strip. */}
+          <div class="flex flex-col gap-2 pt-1">
             <a
               href="/play"
               data-todo-integration="POST /api/games/ai with current params, then redirect"
-              class="flex items-center justify-center gap-2 rounded-md px-3 py-2 font-mono text-mono-md uppercase text-muted-foreground transition-colors hover:bg-muted hover:text-foreground active:scale-[0.98] focus-visible:outline-none focus-visible:bg-muted focus-visible:text-foreground"
+              class="flex items-center justify-center gap-1.5 rounded-full bg-muted px-4 py-1.5 font-mono text-mono-sm uppercase text-muted-foreground transition-colors hover:bg-foreground hover:text-background active:scale-[0.98] focus-visible:outline-none focus-visible:bg-foreground focus-visible:text-background"
             >
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="size-3.5" aria-hidden="true">
                 <polyline points="1 4 1 10 7 10" />
@@ -196,7 +195,7 @@ const cardCls = "rounded-xl border border-border bg-surface text-surface-foregro
             <a
               href="/play"
               data-todo-integration="POST /api/games/:id/surrender (socket: game:surrender)"
-              class="flex items-center justify-center gap-2 rounded-md px-3 py-2 font-mono text-mono-md uppercase text-muted-foreground transition-colors hover:bg-muted hover:text-foreground active:scale-[0.98] focus-visible:outline-none focus-visible:bg-muted focus-visible:text-foreground"
+              class="flex items-center justify-center gap-1.5 rounded-full bg-muted px-4 py-1.5 font-mono text-mono-sm uppercase text-muted-foreground transition-colors hover:bg-foreground hover:text-background active:scale-[0.98] focus-visible:outline-none focus-visible:bg-foreground focus-visible:text-background"
             >
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="size-3.5" aria-hidden="true">
                 <line x1="4" y1="22" x2="4" y2="15" />
