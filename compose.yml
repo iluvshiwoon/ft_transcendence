@@ -19,8 +19,8 @@
         retries: 15
         start_period: 15s
       environment:
-        POSTGRES_DB: postgres_transcendance
-        POSTGRES_USER: postgres_transcendance
+        POSTGRES_DB: postgres_transcendence
+        POSTGRES_USER: postgres_transcendence
       volumes:
         - pgdata:/var/lib/postgresql/data
         - vdata:/vault/file
@@ -76,7 +76,11 @@
         - vdata:/vault/file 
       networks:
         - backend
-      restart: on-failure
+      # Long-running watchdog (see vault/scripts/unseal.sh). Keeps Vault
+      # unsealed across vault_server restarts and rewrites /vault/file/.db_pass
+      # whenever postgres consumes it. unless-stopped so it auto-restarts on
+      # crash but stays down on `make down`.
+      restart: unless-stopped
 
     server:
       container_name: server
@@ -91,11 +95,22 @@
           condition: service_healthy
       environment:
         DB_HOST: postgres
-        DB_NAME: postgres_transcendance
-        DB_USER: postgres_transcendance
+        DB_NAME: postgres_transcendence
+        DB_USER: postgres_transcendence
         VAULT_ADDR: http://vault_server:8200
-      # ports:
-      #   - "3000:3000"
+        # OAuth 42 callback URI — must match exactly what's registered in the
+        # 42 intra app config. ModSec at :8080 is the public entrypoint, so
+        # 42 will redirect the user's browser there after they authenticate.
+        OAUTH42_REDIRECT_URI: http://localhost:8080/api/auth/42/callback
+        # Frontend URL — used for CORS and post-OAuth redirects back to the
+        # SPA. Same host/port via ModSec.
+        FRONTEND_URL: http://localhost:8080
+      # Expose 3000 on the host so the local Astro dev server (`make dev`)
+      # can reach the API. In production-like full-compose mode (`make build`),
+      # nothing external talks to :3000 — everything routes through ModSec
+      # at :8080.
+      ports:
+        - "3000:3000"
       volumes:
         - vdata:/vault/file
       networks:
@@ -126,7 +141,7 @@
       container_name: mod_security
       user: root
       command: >
-        sh -c "chown nginx:nginx /var/log/nginx/error.log && 
+        sh -c "chown nginx:nginx /var/log/nginx/error.log &&
         /docker-entrypoint.sh nginx -g 'daemon off;'"
       ports:
         - "8080:8080" # PORT_EXTERIEUR:PORT_INTERIEUR
@@ -140,6 +155,14 @@
         - ERRORLOG=/var/log/nginx/modsec_error.log
         - BACKEND=web:4321 
         - ALLOWED_METHODS=GET POST PUT HEAD
+        # The image already wires nginx.conf's resolver from /etc/resolv.conf
+        # at startup (see /docker-entrypoint.d/91-update-resolver.sh). That
+        # gives us a cross-runtime resolver — Docker (127.0.0.11) and Podman
+        # (aardvark gateway IP) — without hardcoding either. We just pass
+        # the cache settings here. valid=10s re-resolves at most every 10s
+        # so a recreated upstream container's new IP gets picked up quickly;
+        # ipv6=off avoids spurious AAAA lookups on networks that don't have v6.
+        - RESOLVER_CONFIG=valid=10s ipv6=off
       depends_on:
         - server
         - web

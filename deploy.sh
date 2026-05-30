@@ -25,7 +25,7 @@ echo "Environment variables loaded successfully!"
 echo "Setting permissions..."
 chmod +x vault/scripts/*.sh
 
-echo "Starting ft_transcendance..."
+echo "Starting ft_transcendence..."
 make build
 
 # echo "Initializing Vault..."

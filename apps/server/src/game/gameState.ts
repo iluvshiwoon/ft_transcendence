@@ -1,25 +1,31 @@
-import { Board, createBoard, dropToken } from "./board.js";
+import { Board, createBoard, dropToken, getDropRow } from "./board.js";
 import { checkWin, isDraw } from "./check_board.js";
 
-type GameVariant = "connect4";
 type GameStatus = "in_progress" | "finished" | "abandoned";
 
 interface Players
 {
-  1: number; // userId du joueur 1
-  2: number | null; // userId du joueur 2 (null si IA)
+  1: number;             // userId du joueur 1
+  2: number | null;      // userId du joueur 2 (null si IA)
 }
 
-interface StateSnapshot
+export interface MoveResult
+{
+  ok: boolean;
+  row?: number;          // rangee ou le jeton est tombe (pour la persistance)
+  moveNumber?: number;
+}
+
+export interface StateSnapshot
 {
   board: Board;
   currentPlayer: 1 | 2;
   players: Players;
-  variant: GameVariant;
   status: GameStatus;
   winner: 1 | 2 | null;
   timerP1: number;
   timerP2: number;
+  moveNumber: number;
 }
 
 export class GameState
@@ -27,35 +33,37 @@ export class GameState
   board: Board;
   currentPlayer: 1 | 2;
   players: Players;
-  variant: GameVariant;
   status: GameStatus;
   winner: 1 | 2 | null;
   timerP1: number;
   timerP2: number;
+  moveNumber: number;
 
-  constructor(players: Players, variant: GameVariant = "connect4", timePerPlayer = 300)
+  constructor(players: Players, timePerPlayer = 300)
   {
     this.board = createBoard();
     this.currentPlayer = 1;
     this.players = players;
-    this.variant = variant;
     this.status = "in_progress";
     this.winner = null;
     this.timerP1 = timePerPlayer;
     this.timerP2 = timePerPlayer;
+    this.moveNumber = 0;
   }
 
-  // Joue un coup dans la colonne donnee, retourne false si le coup est invalide
-  makeMove(col: number): boolean
+  // Joue un coup dans la colonne donnee. Retourne la rangee + le numero de coup si valide.
+  makeMove(col: number): MoveResult
   {
     if (this.status !== "in_progress")
-      return false;
+      return { ok: false };
 
+    const row = getDropRow(this.board, col);
     const newBoard = dropToken(this.board, col, this.currentPlayer);
     if (newBoard === null)
-      return false;
+      return { ok: false };
 
     this.board = newBoard;
+    this.moveNumber++;
 
     const gagnant = checkWin(this.board);
     if (gagnant !== null) {
@@ -67,7 +75,24 @@ export class GameState
       this.currentPlayer = this.currentPlayer === 1 ? 2 : 1;
     }
 
-    return true;
+    return { ok: true, row, moveNumber: this.moveNumber };
+  }
+
+  // Abandon manuel d'un joueur : l'adversaire gagne.
+  surrender(playerSlot: 1 | 2): void
+  {
+    if (this.status !== "in_progress")
+      return;
+    this.status = "abandoned";
+    this.winner = playerSlot === 1 ? 2 : 1;
+  }
+
+  // userId -> slot 1 ou 2 (ou null si pas dans la partie)
+  slotForUser(userId: number): 1 | 2 | null
+  {
+    if (this.players[1] === userId) return 1;
+    if (this.players[2] === userId) return 2;
+    return null;
   }
 
   // Retourne l'etat complet a envoyer au front via Socket.io
@@ -77,24 +102,11 @@ export class GameState
       board: this.board,
       currentPlayer: this.currentPlayer,
       players: this.players,
-      variant: this.variant,
       status: this.status,
       winner: this.winner,
       timerP1: this.timerP1,
       timerP2: this.timerP2,
+      moveNumber: this.moveNumber,
     };
-  }
-
-  // Recharge un etat depuis la DB (pour la reconnexion)
-  loadState(data: StateSnapshot): void
-  {
-    this.board = data.board;
-    this.currentPlayer = data.currentPlayer;
-    this.players = data.players;
-    this.variant = data.variant;
-    this.status = data.status;
-    this.winner = data.winner;
-    this.timerP1 = data.timerP1;
-    this.timerP2 = data.timerP2;
   }
 }

@@ -33,6 +33,11 @@ export const users = pgTable("users", {
   gamesWon: integer("games_won").notNull().default(0),
   gamesLost: integer("games_lost").notNull().default(0),
   gamesDrawn: integer("games_drawn").notNull().default(0),
+  // Set the first time the user reaches step 4 of /signup. Once set, the
+  // signup-page gate redirects /signup → / for this user — they can't
+  // re-enter the flow and accidentally overwrite their profile with the
+  // form's defaults. Future profile edits go through /settings (TBD).
+  signupCompletedAt: timestamp("signup_completed_at"),
   createdAt: timestamp("created_at").notNull().defaultNow(),
   updatedAt: timestamp("updated_at").notNull().defaultNow(),
 });
@@ -123,13 +128,14 @@ export const lobbyStatusEnum = pgEnum("lobby_status", [
   "closed",
 ]);
 
-// Format : id, code, creatorId, isPublic, mode, timePerPlayerSeconds, status, createdAt
+// Format : id, code, creatorId, player2Id, isPublic, mode, timePerPlayerSeconds, status, createdAt
 export const lobbies = pgTable("lobbies", {
   id: serial("id").primaryKey(),
   code: text("code").notNull().unique(), // 6 caractères, généré à la création
   creatorId: integer("creator_id")
     .notNull()
     .references(() => users.id, { onDelete: "cascade" }),
+  player2Id: integer("player2_id").references(() => users.id, { onDelete: "set null" }),
   isPublic: boolean("is_public").notNull().default(true),
   mode: gameModeEnum("mode").notNull().default("connect4"),
   timePerPlayerSeconds: integer("time_per_player_seconds").notNull().default(300),

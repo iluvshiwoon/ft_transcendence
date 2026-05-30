@@ -1,5 +1,5 @@
 {
-  "id": "2d4ec11d-6e91-4dff-8642-232e7c4781c4",
+  "id": "581704f9-3c65-45e2-8019-d0d30957feb1",
   "prevId": "00000000-0000-0000-0000-000000000000",
   "version": "7",
   "dialect": "postgresql",
@@ -361,6 +361,12 @@
           "primaryKey": false,
           "notNull": true
         },
+        "player2_id": {
+          "name": "player2_id",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false
+        },
         "is_public": {
           "name": "is_public",
           "type": "boolean",
@@ -412,6 +418,19 @@
             "id"
           ],
           "onDelete": "cascade",
+          "onUpdate": "no action"
+        },
+        "lobbies_player2_id_users_id_fk": {
+          "name": "lobbies_player2_id_users_id_fk",
+          "tableFrom": "lobbies",
+          "tableTo": "users",
+          "columnsFrom": [
+            "player2_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "set null",
           "onUpdate": "no action"
         }
       },
