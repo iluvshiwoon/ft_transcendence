@@ -123,7 +123,11 @@ const pillCls  = "px-3 py-1 rounded-full font-mono text-mono-sm uppercase border
 
         <div class="mt-6 flex flex-col gap-6">
 
-          {/* Avatar — pawn squircle preview + colour picker */}
+          {/* Avatar — squircle preview + colour picker.
+              Label calls it 'Avatar colour' (not 'Pawn colour') so the
+              connection between the swatches below and the squircle to
+              the left is obvious at a glance. Hint text underneath
+              reinforces 'click to change'. */}
           <div class="flex items-center gap-5">
             <span
               aria-hidden="true"
@@ -140,8 +144,8 @@ const pillCls  = "px-3 py-1 rounded-full font-mono text-mono-sm uppercase border
               {me.initial}
             </span>
             <div class="flex flex-col gap-2">
-              <p class={labelCls}>Pawn colour</p>
-              <ul role="radiogroup" aria-label="Pawn colour" data-pills="pawn-skin" class="flex flex-wrap gap-2">
+              <p class={labelCls}>Avatar colour</p>
+              <ul role="radiogroup" aria-label="Avatar colour" data-pills="pawn-skin" class="flex flex-wrap gap-2">
                 {PAWN_COLORS.map((c) => (
                   <li>
                     <button
@@ -154,7 +158,7 @@ const pillCls  = "px-3 py-1 rounded-full font-mono text-mono-sm uppercase border
                       class:list={[
                         "size-8 rounded-full border-2 border-transparent transition-all",
                         "aria-checked:border-foreground aria-checked:scale-110",
-                        "hover:scale-105",
+                        "hover:scale-105 cursor-pointer",
                         "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-foreground",
                         c.swatchClass,
                       ]}
@@ -162,13 +166,16 @@ const pillCls  = "px-3 py-1 rounded-full font-mono text-mono-sm uppercase border
                   </li>
                 ))}
               </ul>
+              <p class="font-mono text-mono-sm uppercase text-muted-foreground">
+                Click a colour to change your avatar
+              </p>
             </div>
           </div>
 
-          {/* Username */}
-          <label class="flex flex-col gap-2">
-            <span class={labelCls}>Username</span>
-            <div class="flex gap-2">
+          {/* Username — separator + label + input + helper-row with Save */}
+          <div class="flex flex-col gap-2 border-t border-border pt-6">
+            <label class="flex flex-col gap-2">
+              <span class={labelCls}>Username</span>
               <input
                 type="text"
                 name="username"
@@ -177,6 +184,11 @@ const pillCls  = "px-3 py-1 rounded-full font-mono text-mono-sm uppercase border
                 autocomplete="off"
                 class={inputCls}
               />
+            </label>
+            <div class="flex items-center justify-between gap-3">
+              <p class="font-mono text-mono-sm uppercase text-muted-foreground">
+                3–30 chars · letters, numbers, underscore
+              </p>
               <button
                 type="button"
                 data-todo-integration="PUT /api/profile { username } — exists, plus availability check via GET /api/users/check-username"
@@ -185,30 +197,29 @@ const pillCls  = "px-3 py-1 rounded-full font-mono text-mono-sm uppercase border
                 Save
               </button>
             </div>
-            <p class="font-mono text-mono-sm uppercase text-muted-foreground">
-              3–30 chars · letters, numbers, underscore
-            </p>
-          </label>
+          </div>
 
-          {/* Bio */}
-          <label class="flex flex-col gap-2">
-            <span class={labelCls}>Bio</span>
-            <textarea
-              name="bio"
-              rows="3"
-              placeholder="A line or two about your style…"
-              class={cn(inputCls, "min-h-[80px] resize-none")}
-            >{me.bio}</textarea>
-            <div class="flex items-center justify-end">
+          {/* Bio — same pattern as username for consistency */}
+          <div class="flex flex-col gap-2 border-t border-border pt-6">
+            <label class="flex flex-col gap-2">
+              <span class={labelCls}>Bio</span>
+              <textarea
+                name="bio"
+                rows="3"
+                placeholder="A line or two about your style…"
+                class={cn(inputCls, "min-h-[80px] resize-none")}
+              >{me.bio}</textarea>
+            </label>
+            <div class="flex items-center justify-end gap-3">
               <button
                 type="button"
                 data-todo-integration="PUT /api/profile { bio } — exists"
                 class={cn(buttonVariants({ variant: "brand-outline", size: "pill" }))}
               >
-                Save bio
+                Save
               </button>
             </div>
-          </label>
+          </div>
 
         </div>
       </section>
