@@ -38,7 +38,7 @@ const me = {
   email:    "test@example.com",
   bio:      "Placeholder bio about the player",
   oauth42Linked: false,
-  pawnSkin:  "pawn-yellow",
+  pawnSkin:  "default",     // matches onboarding (Step3Profile)
   gridSkin:  "default",
   boardVariant: "liquid-glass",
   theme:     "auto" as "light" | "dark" | "auto",
@@ -47,12 +47,15 @@ const me = {
   blockedCount:    0,
 };
 
+// Pawn skin options — kept in sync with onboarding/Step3Profile.tsx.
+// Backend `ALLOWED_PAWN_SKINS = ['default','wine','coral','brick']` accepts
+// these IDs. Don't add options here without updating onboarding + backend
+// in the same pass.
 const PAWN_COLORS = [
-  { id: "pawn-yellow", label: "Yellow", swatchClass: "bg-pawn-yellow" },
-  { id: "pawn-red",    label: "Red",    swatchClass: "bg-pawn-red" },
-  { id: "pawn-wine",   label: "Wine",   swatchClass: "bg-pawn-wine" },
-  { id: "pawn-coral",  label: "Coral",  swatchClass: "bg-pawn-coral" },
-  { id: "pawn-brick",  label: "Brick",  swatchClass: "bg-pawn-brick" },
+  { id: "default", label: "Classic", swatchClass: "bg-pawn-red" },
+  { id: "wine",    label: "Wine",    swatchClass: "bg-pawn-wine"  },
+  { id: "coral",   label: "Coral",   swatchClass: "bg-pawn-coral" },
+  { id: "brick",   label: "Brick",   swatchClass: "bg-pawn-brick" },
 ];
 
 const THEME_OPTIONS = [
@@ -61,10 +64,12 @@ const THEME_OPTIONS = [
   { id: "auto",  label: "Auto"  },
 ];
 
+// Grid skin options — also matched to onboarding (color-name vocabulary,
+// not material names). Backend `ALLOWED_GRID_SKINS = ['default','ink','slate']`.
 const GRID_OPTIONS = [
-  { id: "default", label: "Default" },
-  { id: "wood",    label: "Wood"    },
-  { id: "stone",   label: "Stone"   },
+  { id: "default", label: "Linen", swatchClass: "bg-grid-linen" },
+  { id: "ink",     label: "Ink",   swatchClass: "bg-grid-ink"   },
+  { id: "slate",   label: "Slate", swatchClass: "bg-grid-slate" },
 ];
 
 const BOARD_OPTIONS = [
@@ -123,53 +128,86 @@ const pillCls  = "px-3 py-1 rounded-full font-mono text-mono-sm uppercase border
 
         <div class="mt-6 flex flex-col gap-6">
 
-          {/* Avatar — squircle preview + colour picker.
-              Label calls it 'Avatar colour' (not 'Pawn colour') so the
-              connection between the swatches below and the squircle to
-              the left is obvious at a glance. Hint text underneath
-              reinforces 'click to change'. */}
+          {/* Avatar — neutral squircle (NOT pawn-coloured; the pawn
+              colour picker is its own concern below). The whole
+              squircle is a button: click opens the OS file picker via
+              the hidden input. Hover lifts a ring + the camera badge,
+              hint text underneath reinforces 'click on the picture or
+              use the button'. Upload doesn't go anywhere yet — backend
+              endpoint TBD. */}
           <div class="flex items-center gap-5">
-            <span
-              aria-hidden="true"
-              data-avatar-preview
-              class:list={[
-                "flex size-20 shrink-0 items-center justify-center rounded-2xl border border-border font-display italic text-4xl text-background",
-                me.pawnSkin === "pawn-yellow" && "bg-pawn-yellow",
-                me.pawnSkin === "pawn-red"    && "bg-pawn-red",
-                me.pawnSkin === "pawn-wine"   && "bg-pawn-wine",
-                me.pawnSkin === "pawn-coral"  && "bg-pawn-coral",
-                me.pawnSkin === "pawn-brick"  && "bg-pawn-brick",
-              ]}
+            <button
+              type="button"
+              data-avatar-trigger
+              data-todo-integration="POST /api/profile/avatar — backend file upload TBD"
+              aria-label="Change avatar"
+              title="Change avatar"
+              class="group relative flex size-20 shrink-0 items-center justify-center rounded-2xl border border-border bg-foreground transition-all hover:ring-2 hover:ring-foreground hover:ring-offset-2 hover:ring-offset-surface active:scale-[0.97] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-foreground focus-visible:ring-offset-2 focus-visible:ring-offset-surface"
             >
-              {me.initial}
-            </span>
+              <span aria-hidden="true" class="font-display italic text-4xl text-background">
+                {me.initial}
+              </span>
+              {/* Camera badge — overlay at the bottom-right, clearly
+                  signals 'this is editable'. */}
+              <span
+                aria-hidden="true"
+                class="absolute -right-1 -bottom-1 flex size-7 items-center justify-center rounded-full border border-border bg-surface text-foreground shadow-sm transition-transform group-hover:scale-110"
+              >
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="size-3.5">
+                  <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z" />
+                  <circle cx="12" cy="13" r="4" />
+                </svg>
+              </span>
+            </button>
             <div class="flex flex-col gap-2">
-              <p class={labelCls}>Avatar colour</p>
-              <ul role="radiogroup" aria-label="Avatar colour" data-pills="pawn-skin" class="flex flex-wrap gap-2">
-                {PAWN_COLORS.map((c) => (
-                  <li>
-                    <button
-                      type="button"
-                      role="radio"
-                      aria-checked={c.id === me.pawnSkin ? "true" : "false"}
-                      aria-label={c.label}
-                      title={c.label}
-                      data-value={c.id}
-                      class:list={[
-                        "size-8 rounded-full border-2 border-transparent transition-all",
-                        "aria-checked:border-foreground aria-checked:scale-110",
-                        "hover:scale-105 cursor-pointer",
-                        "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-foreground",
-                        c.swatchClass,
-                      ]}
-                    />
-                  </li>
-                ))}
-              </ul>
+              <p class={labelCls}>Avatar</p>
+              <label
+                class={cn(buttonVariants({ variant: "brand-outline", size: "pill" }), "cursor-pointer")}
+              >
+                Upload picture
+                <input
+                  type="file"
+                  accept="image/png,image/jpeg,image/gif"
+                  data-avatar-input
+                  data-todo-integration="POST /api/profile/avatar — backend file upload TBD"
+                  class="sr-only"
+                />
+              </label>
               <p class="font-mono text-mono-sm uppercase text-muted-foreground">
-                Click a colour to change your avatar
+                PNG, JPEG, GIF · up to 2 MB
               </p>
             </div>
+          </div>
+
+          {/* Pawn colour — separate block. This sets the in-game piece
+              colour, NOT the avatar. Same options as onboarding so a
+              user's choice at signup carries through cleanly. */}
+          <div class="flex flex-col gap-2 border-t border-border pt-6">
+            <p class={labelCls}>Pawn colour</p>
+            <p class="font-sans text-sm text-muted-foreground">
+              Your in-game piece on the board.
+            </p>
+            <ul role="radiogroup" aria-label="Pawn colour" data-pills="pawn-skin" class="mt-1 flex flex-wrap gap-2">
+              {PAWN_COLORS.map((c) => (
+                <li>
+                  <button
+                    type="button"
+                    role="radio"
+                    aria-checked={c.id === me.pawnSkin ? "true" : "false"}
+                    aria-label={c.label}
+                    title={c.label}
+                    data-value={c.id}
+                    class:list={[
+                      "size-8 rounded-full border-2 border-transparent transition-all cursor-pointer",
+                      "aria-checked:border-foreground aria-checked:scale-110",
+                      "hover:scale-105",
+                      "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-foreground",
+                      c.swatchClass,
+                    ]}
+                  />
+                </li>
+              ))}
+            </ul>
           </div>
 
           {/* Username — separator + label + input + helper-row with Save */}
@@ -463,9 +501,8 @@ const pillCls  = "px-3 py-1 rounded-full font-mono text-mono-sm uppercase border
   </main>
 
   {/* Inline pill behaviour — same pattern as /play and /profile.
-      Click toggles aria-checked within each radiogroup. The avatar
-      preview also listens to the pawn-skin radiogroup so picking a
-      colour updates the squircle in real time. */}
+      Click toggles aria-checked within each radiogroup. Avatar trigger
+      opens the hidden file input. */}
   <script>
     function wirePillGroup(group: HTMLElement) {
       const pills = Array.from(group.querySelectorAll<HTMLButtonElement>("[role='radio']"));
@@ -477,18 +514,20 @@ const pillCls  = "px-3 py-1 rounded-full font-mono text-mono-sm uppercase border
     }
     document.querySelectorAll<HTMLElement>("[data-pills]").forEach(wirePillGroup);
 
-    // Avatar preview — when pawn-skin pill changes, swap the bg-pawn-* class
-    // on the squircle so the user sees the colour applied immediately.
-    const skinGroup = document.querySelector<HTMLElement>('[data-pills="pawn-skin"]');
-    const avatar    = document.querySelector<HTMLElement>("[data-avatar-preview]");
-    if (skinGroup && avatar) {
-      const PAWN_BG = ["bg-pawn-yellow", "bg-pawn-red", "bg-pawn-wine", "bg-pawn-coral", "bg-pawn-brick"];
-      skinGroup.querySelectorAll<HTMLButtonElement>("[role='radio']").forEach((pill) => {
-        pill.addEventListener("click", () => {
-          PAWN_BG.forEach((cls) => avatar.classList.remove(cls));
-          const next = pill.dataset.value;
-          if (next) avatar.classList.add(`bg-${next}`);
-        });
+    // Avatar squircle is a button — click opens the hidden file input.
+    // Real upload requires POST /api/profile/avatar (backend TBD).
+    // For v1 we just capture the selected file and log it; nothing
+    // posts anywhere yet.
+    const trigger = document.querySelector<HTMLButtonElement>("[data-avatar-trigger]");
+    const fileIn  = document.querySelector<HTMLInputElement>("[data-avatar-input]");
+    if (trigger && fileIn) {
+      trigger.addEventListener("click", () => fileIn.click());
+      fileIn.addEventListener("change", () => {
+        const f = fileIn.files?.[0];
+        if (f) {
+          // eslint-disable-next-line no-console
+          console.log("[avatar mock] picked file:", f.name, f.type, `${(f.size / 1024).toFixed(1)} kB`);
+        }
       });
     }
   </script>
