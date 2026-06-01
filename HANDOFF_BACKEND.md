@@ -1,5 +1,18 @@
 # Handoff backend — page `/profile`
 
+État au 2026-06-01, après merge de `kgriset_landing_wire` dans `main` :
+
+- ✅ **§3.2 livré** sur `main` (commits `ec928dd`→`48f0e16` + `554fc6f`
+  + `ab9825c` du `kgriset_landing_wire`). Schéma Elo, application dans
+  `gameManager.finishGame`, endpoint public `/api/leaderboard?limit=N`,
+  `Title` côté front, leaderboard store + drop des `MOCK_ENTRIES`, seed
+  13 users (4 baseline + 9 high-rated), auth gates sur les 5 pages
+  authed, et carry-over du score anonyme à travers le flow
+  `/signup?step=1..4` (Step1Save → `localStorage` → Step4
+  SignupCompleteTracker → `POST /api/auth/signup-complete` avec
+  `initialRating` optionnel, atomic et idempotent).
+- §3.1, §3.3, §3.4, §3.5, §3.6, §3.7, §3.9, §3.10, §3.12 : à faire.
+
 État au 2026-05-29, après merge de `kgriset_landing` dans `main`, import
 de `profile.astro` (Adam) puis refonte UI sur `kgriset_profile_review` :
 
@@ -78,7 +91,7 @@ Même règle que `/users/:id` : si `isDeleted`, on renvoie `username: "Joueur su
 
 ---
 
-### 3.2 — Rating Elo + rang + titre
+### 3.2 — Rating Elo + rang + titre  ✅ FAIT (kgriset_landing_wire, merge 925f36f)
 
 **Pourquoi.** La page affiche `Rating 2854`, `Rank #47`, titre `Grandmaster`.
 Rien de tout ça n'existe en DB.
@@ -143,6 +156,58 @@ le lire. Le slot UI est prêt, il attend juste le champ.
 
 **Effort estimé.** Migration courte + ~30 lignes dans `gameManager` +
 ~10 lignes dans `users.ts` + 2 lignes dans `auth.ts` (route `/me`).
+
+**Statut (juin 2026).** ✅ Livré sur `main` via la branche
+`kgriset_landing_wire` (merge commit `925f36f`). Décomposition réelle :
+
+- **Schéma.** Migration `0002_sad_whizzer.sql` ajoute `users.rating` et
+  `users.peak_rating` (toutes deux `integer NOT NULL DEFAULT 1000`).
+- **Math Elo.** `apps/server/src/game/elo.ts` — `eloDelta`,
+  `phantomRatingForDifficulty` (easy=800, medium=1200, hard=1800),
+  `titleForRating`, types `AiDifficulty` / `GameOutcome` / `Title`. 14
+  cas vitest dans `tests/game/elo.test.ts`.
+- **Application dans `gameManager.finishGame()`.** Méthode privée
+  `applyEloForPlayer` appelée une fois par joueur avec le score dérivé
+  de `s.winner` (1=win, 0.5=draw, 0=loss). Atomicité via
+  `sql\`users.rating + delta\`` + `GREATEST(peak_rating, …)`.
+- **Rang + titre côté API.** `apps/server/src/lib/rank.ts` —
+  `getUserRank(rating, peakRating, userId)` ; même formule utilisée par
+  le endpoint leaderboard pour garantir que le rang `/me` matche la
+  position sur le board. `titleForRating` est la même fonction
+  côté TS ; le SQL du leaderboard duplique la même table de paliers
+  via un `CASE` (les deux sont gardés en sync par les tests).
+- **Endpoints étendus.** `GET /api/auth/me`, `GET /api/users/:id`,
+  `GET /api/profile` renvoient maintenant `rating`, `peakRating`,
+  `rank`, `title`. `CurrentUser` côté front étendu en conséquence.
+- **Endpoint nouveau (pas listé dans le handoff d'origine).**
+  `GET /api/leaderboard?limit=N` (public, default 6, max 50, anonyme).
+  Réponse : `{ entries: [{ rank, username, rating, peakRating,
+  winRate, title }] }`. 11 cas vitest dans
+  `tests/leaderboard.test.ts`. Le landing page consomme cet endpoint
+  via le nouveau `apps/web/src/lib/leaderboard-store.ts` (singleton
+  `useSyncExternalStore` parallèle à `play-store.ts`).
+- **Seed.** `apps/server/scripts/seed.ts` : 4 baseline users (alice,
+  bob, charlie, diana) + 9 high-rated (QuantumDrop 2854, Sarah_w 2710,
+  BotSlayer99 2699, GridLock_ 2569, A_connect 2349, Pivot_ 2210,
+  FourFingers 2080, DiagonalDan 1980, RookieRed 1654) avec
+  `gamesPlayed/Won/Lost/Drawn` cohérents. 23 historical games pour
+  peupler l'onglet Stats des profils mock.
+- **Web UI.** `MOCK_ENTRIES` retiré de `Leaderboard.tsx` et
+  `EndGameOverlay.tsx`. `TopNav.astro` affiche `{user.title} ·
+  {user.rating}`. 6 entrées au board (était 5 dans le mock),
+  `ROW_OPACITY` étendu à 6 paliers.
+- **Bug fixes inclus dans le même merge.** 5 pages authed
+  (`/play`, `/play/ai/[id]`, `/play/m/[id]`, `/profile`, `/settings`)
+  gated derrière `isAuthenticated()` avec redirection vers
+  `/signup?step=1`. Le score anonyme de la démo du landing est
+  persisté en `localStorage` à Step1Save puis forward à
+  `POST /api/auth/signup-complete` (nouveau paramètre optionnel
+  `initialRating`, atomic, idempotent — n'écrase que les rows encore
+  à `rating=1000`).
+
+**Vérifications.** `pnpm --filter server exec tsc --noEmit` clean,
+`pnpm --filter web build` clean. Vitest non disponible dans le lockfile
+(pre-existing) — à installer séparément.
 
 ---
 
@@ -573,8 +638,9 @@ handler JS qui fait `fetch(POST /api/auth/logout)` puis
 1. **Merger `tim` dans `main`.** Pré-requis pour 3.2, 3.3, 3.4, 3.5, 3.9.
 2. **3.1 — `/users/by-username/:username` + `createdAt`.** Petit, débloque
    les URLs profil.
-3. **3.2 — Rating Elo + `peak_rating` + rang + titre.** Migration courte.
-   Pré-requis pour 3.3, 3.5, 3.9.
+3. **3.2 — Rating Elo + `peak_rating` + rang + titre.** ✅ FAIT
+   (kgriset_landing_wire, merge `925f36f`). Était migration courte.
+   Pré-requis pour 3.3, 3.5, 3.9 — maintenant levé.
 4. **3.3 — Historique parties (`/users/:id/games`).** Dépend de 3.2 pour
    `opponent.rating`. Sert l'onglet Overview (Recent games).
 5. **3.9 — Stats agrégés (`/users/:id/stats`).** Dépend de 3.2 + 3.3.
