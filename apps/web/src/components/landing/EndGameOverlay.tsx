@@ -22,15 +22,21 @@ import { useSyncExternalStore } from "react";
 
 import { cn } from "~/lib/utils";
 import { playStore } from "~/lib/play-store";
-import { MOCK_ENTRIES } from "./Leaderboard";
+import { leaderboardStore } from "~/lib/leaderboard-store";
 
 /**
- * Compute the user's rank against MOCK_ENTRIES given their score.
- * Returns 1..6 (1 = top, 6 = below all 5 mock entries).
+ * Compute the user's rank against the live leaderboard entries.
+ * Returns 1..N+1 (1 = top of the board, N+1 = below all entries).
+ * If the leaderboard hasn't loaded yet, we can't show a rank — return
+ * null and let the card render without the rank line.
  */
-function computeRank(score: number): number {
+function computeRank(
+  score: number,
+  entries: { rating: number }[],
+): number | null {
+  if (entries.length === 0) return null;
   let rank = 1;
-  for (const e of MOCK_ENTRIES) {
+  for (const e of entries) {
     if (score >= e.rating) break;
     rank++;
   }
@@ -40,7 +46,7 @@ function computeRank(score: number): number {
 interface EndGameCardProps {
   outcome: "won" | "lost" | "draw";
   score: number;
-  rank: number;
+  rank: number | null;
   authed: boolean;
   onSignup: () => void;
   onReplay: () => void;
@@ -112,9 +118,15 @@ function EndGameCard({ outcome, score, rank, authed, onSignup, onReplay }: EndGa
           {score}
         </p>
         <p className="mt-1 font-mono text-mono-sm text-muted-foreground">
-          Rank{" "}
-          <span className="font-semibold tabular-nums text-foreground">#{rank}</span>{" "}
-          on the leaderboard
+          {rank !== null ? (
+            <>
+              Rank{" "}
+              <span className="font-semibold tabular-nums text-foreground">#{rank}</span>{" "}
+              on the leaderboard
+            </>
+          ) : (
+            <>Loading leaderboard…</>
+          )}
         </p>
       </div>
 
@@ -194,10 +206,16 @@ export function EndGameOverlay({ authed = false }: EndGameOverlayProps) {
     playStore.getSnapshot,
   );
 
+  const liveSnap = useSyncExternalStore(
+    leaderboardStore.subscribe,
+    leaderboardStore.getSnapshot,
+    leaderboardStore.getSnapshot,
+  );
+
   if (snap.endGamePhase === "idle" || !snap.gameEndState) return null;
 
   const score = snap.gameScore ?? 0;
-  const rank = computeRank(score);
+  const rank = computeRank(score, liveSnap.entries);
 
   const handleSignup = () => {
     const params = new URLSearchParams({

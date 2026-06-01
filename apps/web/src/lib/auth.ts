@@ -16,6 +16,13 @@ interface AstroLike {
   cookies: { get(name: string): { value?: string } | undefined };
 }
 
+export type Title =
+  | "Beginner"
+  | "Apprentice"
+  | "Expert"
+  | "Master"
+  | "Grandmaster";
+
 export interface CurrentUser {
   id: number;
   email: string;
@@ -24,6 +31,14 @@ export interface CurrentUser {
   bio: string | null;
   /** ISO timestamp; non-null once the user reached /signup?step=4. */
   signupCompletedAt: string | null;
+  /** Current Elo rating (HANDOFF §3.2). Default 1000 for new users. */
+  rating: number;
+  /** Highest rating ever achieved. */
+  peakRating: number;
+  /** 1-based global rank, matches the /api/leaderboard ordering. */
+  rank: number;
+  /** Derived from `rating` (Beginner/Apprentice/Expert/Master/Grandmaster). */
+  title: Title;
 }
 
 /** Backend URL — `http://server:3000` inside compose, `localhost:3000` for `make dev`. */
