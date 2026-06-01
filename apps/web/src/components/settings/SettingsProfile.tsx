@@ -1,0 +1,436 @@
+/**
+ * SettingsProfile — Profile card of the /settings page.
+ *
+ * Sections (top to bottom):
+ *   1. Avatar       — file upload via POST /api/profile/avatar
+ *   2. Pawn colour  — auto-save radio pills, PUT /api/profile { pawnSkin }
+ *   3. Username     — explicit Save, PUT /api/profile { username }
+ *                     with a live availability check via
+ *                     GET /api/users/check-username (debounced)
+ *   4. Bio          — explicit Save, PUT /api/profile { bio }
+ *
+ * Each section surfaces its own status (idle / saving / saved / error)
+ * inline so a failure on one doesn't poison the others. The page-level
+ * concern (auth gate) is handled in settings.astro before mount.
+ *
+ * The component is purely client-side — the initial state is hydrated
+ * from the SSR `initial` prop. No fetch on mount; the user has to
+ * interact to trigger a request.
+ */
+
+import { useId, useRef, useState, useTransition } from "react";
+import { AlertBox } from "~/components/ui/alert-box";
+import { Button } from "~/components/ui/button";
+import { Input } from "~/components/ui/input";
+import { Label } from "~/components/ui/label";
+import { cn } from "~/lib/utils";
+import {
+  ProfileApiError,
+  checkUsername,
+  updateProfile,
+  uploadAvatar,
+  type ProfileMe,
+} from "~/lib/api/profile";
+
+// Backend's allow-list. Mirrored in apps/server/src/routes/users.ts:33-34
+// and Step3Profile.tsx — if you add a skin there, add it here too.
+const PAWN_SKINS = [
+  { id: "default", label: "Classic", swatchClass: "bg-pawn-red" },
+  { id: "wine",    label: "Wine",    swatchClass: "bg-pawn-wine"  },
+  { id: "coral",   label: "Coral",   swatchClass: "bg-pawn-coral" },
+  { id: "brick",   label: "Brick",   swatchClass: "bg-pawn-brick" },
+] as const;
+
+const BIO_MAX = 160;
+const USERNAME_RE = /^[a-zA-Z0-9_]{3,30}$/;
+
+type Status = "idle" | "saving" | "saved" | "error";
+
+interface SettingsProfileProps {
+  initial: ProfileMe;
+}
+
+export function SettingsProfile({ initial }: SettingsProfileProps) {
+  // Local copies of the server's state. Updated optimistically on save.
+  const [avatarUrl, setAvatarUrl] = useState<string | null>(initial.avatarUrl);
+  const [pawnSkin, setPawnSkin] = useState<string>(initial.pawnSkin);
+
+  return (
+    <section
+      aria-labelledby="settings-profile-heading"
+      className={cn("rounded-xl border border-border bg-surface text-surface-foreground", "page-reveal p-6 md:p-8")}
+      style={{ "--reveal-delay": "0.05s" } as React.CSSProperties}
+    >
+      <h2 id="settings-profile-heading" className="font-mono text-mono-md uppercase text-foreground">
+        Profile
+      </h2>
+
+      <div className="mt-6 flex flex-col gap-6">
+        <AvatarBlock
+          avatarUrl={avatarUrl}
+          username={initial.username}
+          onUploaded={(url) => setAvatarUrl(url)}
+        />
+        <PawnSkinBlock
+          value={pawnSkin}
+          onChange={(next) => {
+            const prev = pawnSkin;
+            setPawnSkin(next); // optimistic
+            void updateProfile({ pawnSkin: next }).catch((e: unknown) => {
+              setPawnSkin(prev);
+              const msg = e instanceof ProfileApiError ? e.message : "Save failed";
+              window.alert(`Pawn colour: ${msg}`);
+            });
+          }}
+        />
+        <UsernameBlock initialUsername={initial.username} />
+        <BioBlock initialBio={initial.bio ?? ""} />
+      </div>
+    </section>
+  );
+}
+
+// ─── Avatar ────────────────────────────────────────────────────────────
+
+function AvatarBlock({
+  avatarUrl,
+  username,
+  onUploaded,
+}: {
+  avatarUrl: string | null;
+  username: string;
+  onUploaded: (url: string) => void;
+}) {
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const [status, setStatus] = useState<Status>("idle");
+  const [error, setError] = useState<string | null>(null);
+  const [isPending, startTransition] = useTransition();
+
+  const initial = (username[0] ?? "?").toUpperCase();
+
+  function pickFile() {
+    fileInputRef.current?.click();
+  }
+
+  function onFileChange(event: React.ChangeEvent<HTMLInputElement>) {
+    const file = event.target.files?.[0];
+    if (!file) return;
+    setStatus("saving");
+    setError(null);
+    startTransition(async () => {
+      try {
+        const { avatarUrl } = await uploadAvatar(file);
+        onUploaded(avatarUrl);
+        setStatus("saved");
+        // Reset the input so picking the same file again still triggers change.
+        if (fileInputRef.current) fileInputRef.current.value = "";
+        setTimeout(() => setStatus("idle"), 1500);
+      } catch (e) {
+        const msg = e instanceof ProfileApiError ? e.message : "Upload failed";
+        setError(msg);
+        setStatus("error");
+      }
+    });
+  }
+
+  return (
+    <div className="flex items-center gap-5">
+      <button
+        type="button"
+        onClick={pickFile}
+        disabled={isPending}
+        aria-label="Change avatar"
+        title="Change avatar"
+        className="group relative flex size-20 shrink-0 items-center justify-center overflow-hidden rounded-2xl border border-border bg-foreground transition-all hover:ring-2 hover:ring-foreground hover:ring-offset-2 hover:ring-offset-surface active:scale-[0.97] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-foreground focus-visible:ring-offset-2 focus-visible:ring-offset-surface disabled:opacity-50"
+      >
+        {avatarUrl ? (
+          <img
+            src={avatarUrl}
+            alt=""
+            className="absolute inset-0 size-full object-cover"
+          />
+        ) : (
+          <span aria-hidden="true" className="font-display italic text-4xl text-background">
+            {initial}
+          </span>
+        )}
+        <span
+          aria-hidden="true"
+          className="absolute -right-1 -bottom-1 flex size-7 items-center justify-center rounded-full border border-border bg-surface text-foreground shadow-sm transition-transform group-hover:scale-110"
+        >
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" className="size-3.5">
+            <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z" />
+            <circle cx="12" cy="13" r="4" />
+          </svg>
+        </span>
+      </button>
+      <input
+        ref={fileInputRef}
+        type="file"
+        accept="image/jpeg,image/png,image/webp"
+        onChange={onFileChange}
+        className="sr-only"
+      />
+      <div className="flex flex-col gap-2">
+        <p className="font-mono text-mono-sm uppercase text-muted-foreground">Avatar</p>
+        <Button
+          type="button"
+          variant="brand-outline"
+          size="pill"
+          onClick={pickFile}
+          disabled={isPending}
+        >
+          {isPending ? "Uploading…" : "Upload picture"}
+        </Button>
+        <p className="font-mono text-mono-sm uppercase text-muted-foreground">
+          {status === "saved"
+            ? "Saved"
+            : status === "saving"
+            ? "Uploading…"
+            : "PNG, JPEG, WebP · up to 2 MB"}
+        </p>
+        {status === "error" && error ? <AlertBox>{error}</AlertBox> : null}
+      </div>
+    </div>
+  );
+}
+
+// ─── Pawn colour (auto-save) ──────────────────────────────────────────
+
+function PawnSkinBlock({
+  value,
+  onChange,
+}: {
+  value: string;
+  onChange: (next: string) => void;
+}) {
+  return (
+    <div className="flex flex-col gap-2 border-t border-border pt-6">
+      <p className="font-mono text-mono-sm uppercase text-muted-foreground">Pawn colour</p>
+      <p className="font-sans text-sm text-muted-foreground">
+        Your in-game piece on the board.
+      </p>
+      <ul role="radiogroup" aria-label="Pawn colour" className="mt-1 flex flex-wrap gap-2">
+        {PAWN_SKINS.map((skin) => (
+          <li key={skin.id}>
+            <button
+              type="button"
+              role="radio"
+              aria-checked={value === skin.id ? "true" : "false"}
+              aria-label={skin.label}
+              title={skin.label}
+              data-value={skin.id}
+              onClick={() => value !== skin.id && onChange(skin.id)}
+              className={cn(
+                "size-8 rounded-full border-2 border-transparent transition-all cursor-pointer",
+                "aria-checked:border-foreground aria-checked:scale-110",
+                "hover:scale-105",
+                "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-foreground",
+                skin.swatchClass,
+              )}
+            />
+          </li>
+        ))}
+      </ul>
+    </div>
+  );
+}
+
+// ─── Username (Save + live availability check) ────────────────────────
+
+function UsernameBlock({ initialUsername }: { initialUsername: string }) {
+  const inputId = useId();
+  const [value, setValue] = useState(initialUsername);
+  const [status, setStatus] = useState<Status>("idle");
+  const [error, setError] = useState<string | null>(null);
+  const [availability, setAvailability] = useState<
+    "unknown" | "checking" | "available" | "taken" | "invalid"
+  >("unknown");
+  const [isPending, startTransition] = useTransition();
+  const isDirty = value !== initialUsername;
+  const isValid = USERNAME_RE.test(value);
+
+  function handleSave() {
+    if (!isDirty || !isValid) return;
+    setStatus("saving");
+    setError(null);
+    startTransition(async () => {
+      try {
+        await updateProfile({ username: value });
+        setStatus("saved");
+        setTimeout(() => setStatus("idle"), 1500);
+        // After save, the page is stale on username — force a hard reload
+        // so the TopNav's username + the /profile URL pick up the change.
+        // (The cookie hasn't changed; a `window.location.reload()` is enough.)
+        setTimeout(() => window.location.reload(), 600);
+      } catch (e) {
+        const code = e instanceof ProfileApiError ? e.code : "INTERNAL";
+        const msg =
+          code === "USERNAME_TAKEN"
+            ? "That username is already taken."
+            : code === "INVALID_USERNAME"
+            ? "3–30 chars · letters, numbers, underscore."
+            : e instanceof ProfileApiError
+            ? e.message
+            : "Save failed";
+        setError(msg);
+        setStatus("error");
+      }
+    });
+  }
+
+  // Lightweight debounce for the availability check. We only check when
+  // the value is well-formed and different from the saved one.
+  const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  function onChange(next: string) {
+    setValue(next);
+    setStatus("idle");
+    setError(null);
+    if (debounceRef.current) clearTimeout(debounceRef.current);
+    if (next === initialUsername) {
+      setAvailability("unknown");
+      return;
+    }
+    if (!USERNAME_RE.test(next)) {
+      setAvailability("invalid");
+      return;
+    }
+    setAvailability("checking");
+    debounceRef.current = setTimeout(() => {
+      checkUsername(next)
+        .then((r) => setAvailability(r.available ? "available" : "taken"))
+        .catch(() => setAvailability("unknown"));
+    }, 400);
+  }
+
+  const availabilityLabel: Record<typeof availability, string> = {
+    unknown:   "3–30 chars · letters, numbers, underscore",
+    checking:  "Checking…",
+    available: "Available ✓",
+    taken:     "Already taken",
+    invalid:   "Invalid format",
+  };
+  const availabilityClass = {
+    unknown:   "text-muted-foreground",
+    checking:  "text-muted-foreground",
+    available: "text-pawn-yellow",
+    taken:     "text-destructive",
+    invalid:   "text-destructive",
+  }[availability];
+
+  return (
+    <div className="flex flex-col gap-2 border-t border-border pt-6">
+      <Label htmlFor={inputId}>Username</Label>
+      <Input
+        id={inputId}
+        type="text"
+        name="username"
+        value={value}
+        autoComplete="off"
+        onChange={(e) => onChange(e.target.value)}
+        aria-invalid={availability === "taken" || availability === "invalid" ? true : undefined}
+        aria-describedby={`${inputId}-hint`}
+      />
+      <div className="flex items-center justify-between gap-3">
+        <p
+          id={`${inputId}-hint`}
+          className={cn("font-mono text-mono-sm uppercase", availabilityClass)}
+        >
+          {status === "saved" ? "Saved" : status === "saving" ? "Saving…" : availabilityLabel[availability]}
+        </p>
+        <Button
+          type="button"
+          variant="brand-outline"
+          size="pill"
+          onClick={handleSave}
+          disabled={!isDirty || !isValid || isPending}
+          className="shrink-0"
+        >
+          {status === "saving" ? "Saving…" : "Save"}
+        </Button>
+      </div>
+      {status === "error" && error ? <AlertBox>{error}</AlertBox> : null}
+    </div>
+  );
+}
+
+// ─── Bio (Save) ───────────────────────────────────────────────────────
+
+function BioBlock({ initialBio }: { initialBio: string }) {
+  const textareaId = useId();
+  const [value, setValue] = useState(initialBio);
+  const [status, setStatus] = useState<Status>("idle");
+  const [error, setError] = useState<string | null>(null);
+  const [isPending, startTransition] = useTransition();
+  const isDirty = value !== initialBio;
+  const tooLong = value.length > BIO_MAX;
+
+  function handleSave() {
+    if (!isDirty || tooLong) return;
+    setStatus("saving");
+    setError(null);
+    startTransition(async () => {
+      try {
+        await updateProfile({ bio: value });
+        setStatus("saved");
+        setTimeout(() => setStatus("idle"), 1500);
+      } catch (e) {
+        const msg = e instanceof ProfileApiError ? e.message : "Save failed";
+        setError(msg);
+        setStatus("error");
+      }
+    });
+  }
+
+  return (
+    <div className="flex flex-col gap-2 border-t border-border pt-6">
+      <Label htmlFor={textareaId}>Bio</Label>
+      <textarea
+        id={textareaId}
+        name="bio"
+        rows={3}
+        value={value}
+        onChange={(e) => {
+          setValue(e.target.value);
+          setStatus("idle");
+          setError(null);
+        }}
+        placeholder="A line or two about your style…"
+        className={cn(
+          "w-full rounded-md border border-border bg-input px-3 py-2 font-sans text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-foreground",
+          "min-h-[80px] resize-none",
+          tooLong ? "border-destructive" : "",
+        )}
+        aria-invalid={tooLong ? true : undefined}
+        aria-describedby={tooLong ? `${textareaId}-error` : undefined}
+      />
+      <div className="flex items-center justify-between gap-3">
+        <p
+          id={`${textareaId}-error`}
+          className={cn(
+            "font-mono text-mono-sm uppercase",
+            tooLong ? "text-destructive" : "text-muted-foreground",
+          )}
+        >
+          {tooLong
+            ? `${value.length} / ${BIO_MAX} — too long`
+            : status === "saved"
+            ? "Saved"
+            : status === "saving"
+            ? "Saving…"
+            : `${value.length} / ${BIO_MAX}`}
+        </p>
+        <Button
+          type="button"
+          variant="brand-outline"
+          size="pill"
+          onClick={handleSave}
+          disabled={!isDirty || tooLong || isPending}
+        >
+          {status === "saving" ? "Saving…" : "Save"}
+        </Button>
+      </div>
+      {status === "error" && error ? <AlertBox>{error}</AlertBox> : null}
+    </div>
+  );
+}

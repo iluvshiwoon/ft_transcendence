@@ -111,6 +111,19 @@ export function fetchMyProfile(): Promise<ProfileMe> {
   return requestJson<ProfileMe>("/api/profile", { method: "GET" });
 }
 
+export function checkUsername(
+  q: string,
+): Promise<{ available: boolean }> {
+  // Public endpoint, used by both the signup flow and the settings page's
+  // live availability check. Backend returns { available: false } for any
+  // malformed input — so we only branch on res.ok (network) and treat the
+  // body as the source of truth for the actual availability.
+  return requestJson<{ available: boolean }>(
+    `/api/users/check-username?q=${encodeURIComponent(q)}`,
+    { method: "GET" },
+  );
+}
+
 // ─── Update (username, bio, skins) ────────────────────────────────────
 
 export function updateProfile(
