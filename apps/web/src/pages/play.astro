@@ -1,34 +1,450 @@
 ---
 /**
- * /play — main lobby / dashboard for authenticated users.
+ * /play — lobby (authed home).
  *
- * Anonymous (signed-out) users play on the landing page, where the demo
- * loop runs against the AI with a server-authoritative anonymous session.
- * /play is the post-signup destination — multiplayer, friends, lobbies,
- * stats — and requires an account.
+ * The user lands here after sign-in. Primary action is "play a game now",
+ * with a secondary surface for resuming in-progress games.
  *
- * Access control: unauthenticated requests redirect to /signup?step=1.
- * Returning users can navigate from there to the (future) /login page.
+ * Visual language matches /profile: cardCls surfaces, font-display italic
+ * for emotional headers, font-mono uppercase for HUD labels, pawn-yellow /
+ * pawn-red dots for game outcomes.
  *
- * Currently a stub. Will be filled in once Tim's lobby module + friends
- * features ship.
+ * v1 sections (this file): Quick Play CTAs + Resume strip. Deferred: any
+ * lobby-only surface that earns its place (public lobbies, daily challenge,
+ * activity ticker). Friends online + Recent results were tried and removed
+ * because they were just slim mirrors of /profile — see HANDOFF_BACKEND.md
+ * for the v2 surfaces.
+ *
+ * Auth: matched /profile.astro for now (no redirect) so the page is
+ * testable while data is mocked. TODO: restore the
+ *   if (!(await isAuthenticated(Astro))) return Astro.redirect("/signup?step=1");
+ * gate once real backend reads land (§3.4 in HANDOFF_BACKEND.md).
  */
 import RootLayout from "~/layouts/RootLayout.astro";
-import { isAuthenticated } from "~/lib/auth";
+import { Button, buttonVariants } from "~/components/ui/button";
+import { cn } from "~/lib/utils";
 
-if (!(await isAuthenticated(Astro))) {
-  return Astro.redirect("/signup?step=1");
+// ─── Mock data (replaced by backend reads in later phases) ──────────────────
+
+type Difficulty = "easy" | "medium" | "hard";
+type TimeControl = { id: "bullet" | "blitz" | "daily"; label: string; duration: string; seconds: 300 | 600 | 3600 };
+
+const DIFFICULTIES: { id: Difficulty; label: string }[] = [
+  { id: "easy",   label: "Easy"   },
+  { id: "medium", label: "Medium" },
+  { id: "hard",   label: "Hard"   },
+];
+
+const TIME_CONTROLS: TimeControl[] = [
+  { id: "bullet", label: "Bullet", duration: "3 min",  seconds: 300  },
+  { id: "blitz",  label: "Blitz",  duration: "10 min", seconds: 600  },
+  { id: "daily",  label: "Daily",  duration: "60 min", seconds: 3600 },
+];
+
+// Defaults — when a settings page lands these'll come from the user's prefs.
+const defaultDifficulty: Difficulty = "medium";
+const defaultTimeControl = "blitz";
+
+// ─── Active games (resume strip) ────────────────────────────────────────────
+// Replaced by GET /api/users/me/games/active (HANDOFF §3.4) once it ships.
+
+interface ActiveGame {
+  id: number;
+  yourTurn: boolean;
+  moves: number;
+  clock: string;                                // mm:ss or hh:mm:ss formatted
+  timeControl: "Bullet" | "Blitz" | "Daily";
+  opponent: {
+    username: string;
+    initial: string;
+    rating: number | null;                      // null for AI
+    isAi: boolean;
+    aiDifficulty?: "easy" | "medium" | "hard";
+  };
 }
+
+const activeGames: ActiveGame[] = [
+  // ─── Your turn (sorted by clock urgency, most-time-left first) ───────────
+
+  // Daily 60-min — comfortable clocks
+  {
+    id: 101, yourTurn: true,  moves: 14, clock: "51:33", timeControl: "Daily",
+    opponent: { username: "GridLock_",   initial: "G", rating: 2569, isAi: false },
+  },
+  {
+    id: 102, yourTurn: true,  moves: 14, clock: "45:12", timeControl: "Daily",
+    opponent: { username: "Sarah_w",     initial: "S", rating: 2710, isAi: false },
+  },
+  {
+    id: 103, yourTurn: true,  moves: 12, clock: "38:02", timeControl: "Daily",
+    opponent: { username: "AI · hard",   initial: "✦", rating: null, isAi: true, aiDifficulty: "hard" },
+  },
+  {
+    id: 104, yourTurn: true,  moves:  4, clock: "22:08", timeControl: "Daily",
+    opponent: { username: "ChessLover42",initial: "C", rating: 1850, isAi: false },
+  },
+
+  // Blitz 10-min
+  {
+    id: 105, yourTurn: true,  moves:  2, clock: "9:47",  timeControl: "Blitz",
+    opponent: { username: "RookieRed",   initial: "R", rating: 1654, isAi: false },
+  },
+  {
+    id: 106, yourTurn: true,  moves:  8, clock: "6:33",  timeControl: "Blitz",
+    opponent: { username: "NeuralNet",   initial: "N", rating: 1745, isAi: false },
+  },
+
+  // Bullet 3-min — tight clocks, urgent
+  {
+    id: 107, yourTurn: true,  moves:  7, clock: "1:42",  timeControl: "Bullet",
+    opponent: { username: "AI · medium", initial: "✦", rating: null, isAi: true, aiDifficulty: "medium" },
+  },
+  {
+    id: 108, yourTurn: true,  moves:  5, clock: "1:12",  timeControl: "Bullet",
+    opponent: { username: "QuantumDrop", initial: "Q", rating: 2890, isAi: false },
+  },
+  {
+    id: 109, yourTurn: true,  moves: 16, clock: "0:42",  timeControl: "Bullet",
+    opponent: { username: "FourFingers", initial: "F", rating: 2080, isAi: false },
+  },
+
+  // ─── Waiting (opponent's turn, sorted by clock urgency too) ──────────────
+
+  {
+    id: 110, yourTurn: false, moves: 23, clock: "33:15", timeControl: "Daily",
+    opponent: { username: "SpinDoctor",  initial: "S", rating: 2401, isAi: false },
+  },
+  {
+    id: 111, yourTurn: false, moves: 19, clock: "14:30", timeControl: "Daily",
+    opponent: { username: "DiagonalDan", initial: "D", rating: 1980, isAi: false },
+  },
+  {
+    id: 112, yourTurn: false, moves:  9, clock: "7:18",  timeControl: "Blitz",
+    opponent: { username: "BotSlayer99", initial: "B", rating: 2699, isAi: false },
+  },
+  {
+    id: 113, yourTurn: false, moves: 18, clock: "4:55",  timeControl: "Blitz",
+    opponent: { username: "Pivot_",      initial: "P", rating: 2210, isAi: false },
+  },
+  {
+    id: 114, yourTurn: false, moves: 22, clock: "2:11",  timeControl: "Blitz",
+    opponent: { username: "A_connect",   initial: "A", rating: 2349, isAi: false },
+  },
+  {
+    id: 115, yourTurn: false, moves: 11, clock: "0:28",  timeControl: "Bullet",
+    opponent: { username: "AI · easy",   initial: "✦", rating: null, isAi: true, aiDifficulty: "easy" },
+  },
+];
+
+// ─── Future lobby-only surfaces (intentionally omitted from v1) ─────────────
+// Friends online and Recent games used to live here as side-by-side cards
+// but they were just slim mirrors of /profile (Friends tab + Overview tab),
+// not lobby-specific value. Replaced by upcoming surfaces that *only* the
+// lobby would carry — see HANDOFF_BACKEND.md for the spec:
+//   - Public lobbies "Quick join" feed (uses Tim's GET /api/lobbies)
+//   - Daily challenge / weekly missions
+//   - Live activity ticker (recent finishes by friends, etc.)
+// Add them back as standalone sections only when the backend that earns
+// their place is ready.
+
+// Shared card style (same as /profile).
+const cardCls = "rounded-xl border border-border bg-surface text-surface-foreground";
 ---
 
-<RootLayout title="4thewin — Play" description="Play page (under construction).">
+<RootLayout
+  title="4thewin — Play"
+  description="Quick game vs the AI, or challenge a friend."
+>
   <main
     id="main"
-    class="mx-auto flex w-full max-w-3xl flex-col items-center justify-center gap-3 px-margin-mobile pt-32 pb-12 md:px-margin-desktop"
+    class="mx-auto w-full max-w-7xl px-margin-mobile pt-28 pb-16 md:px-margin-desktop md:pt-32"
   >
-    <p class="font-mono text-mono-sm uppercase text-muted-foreground">Play</p>
-    <h1 class="font-display italic font-light tracking-wide text-3xl md:text-4xl text-foreground leading-none">
-      Coming soon
-    </h1>
+    {/* =========================================================
+        QUICK PLAY CTAs — the hero of the lobby.
+        Two cards, equal weight. Card structure (matches the Stats
+        time-control cards in /profile):
+          - mono uppercase header (functional voice, not display italic
+            — same language as BULLET / BLITZ / DAILY)
+          - optional one-line font-sans subtitle
+          - inline controls (pills) — varies per card
+          - primary CTA pinned to the bottom via mt-auto so both cards
+            share an identical vertical skeleton even when their
+            middle-content differs
+        ========================================================= */}
+    <section
+      aria-label="Quick play"
+      class="page-reveal grid grid-cols-1 gap-gutter md:grid-cols-2"
+      style="--reveal-delay: 0s"
+      data-quickplay
+    >
+      {/* ── Play AI card ─────────────────────────────────────── */}
+      <article class={cn(cardCls, "flex flex-col gap-5 p-5")}>
+        <header class="flex items-baseline justify-between gap-3">
+          <p class="font-mono text-mono-md uppercase text-foreground">
+            Vs AI
+          </p>
+          <p class="font-mono text-mono-sm uppercase text-muted-foreground">
+            Quick
+          </p>
+        </header>
+
+        {/* Inline pills: difficulty + time control. Click sets aria-checked
+            via inline script; aria-checked drives styling. */}
+        <div class="flex flex-col gap-3">
+          <div>
+            <p class="font-mono text-mono-sm uppercase text-muted-foreground">Difficulty</p>
+            <ul role="radiogroup" aria-label="AI difficulty" data-pills="ai-difficulty" class="mt-2 flex flex-wrap gap-2">
+              {DIFFICULTIES.map((d) => (
+                <li>
+                  <button
+                    type="button"
+                    role="radio"
+                    aria-checked={d.id === defaultDifficulty ? "true" : "false"}
+                    data-value={d.id}
+                    class:list={[
+                      "px-3 py-1 rounded-full font-mono text-mono-sm uppercase",
+                      "border border-border bg-muted text-muted-foreground",
+                      "transition-colors",
+                      "hover:border-foreground hover:bg-foreground/20 hover:text-foreground",
+                      "aria-checked:border-foreground aria-checked:bg-foreground aria-checked:text-background",
+                      "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-foreground",
+                    ]}
+                  >
+                    {d.label}
+                  </button>
+                </li>
+              ))}
+            </ul>
+          </div>
+
+          <div>
+            <p class="font-mono text-mono-sm uppercase text-muted-foreground">Time control</p>
+            <ul role="radiogroup" aria-label="Time control" data-pills="ai-time" class="mt-2 flex flex-wrap gap-2">
+              {TIME_CONTROLS.map((tc) => (
+                <li>
+                  <button
+                    type="button"
+                    role="radio"
+                    aria-checked={tc.id === defaultTimeControl ? "true" : "false"}
+                    data-value={tc.id}
+                    data-seconds={tc.seconds}
+                    class:list={[
+                      "px-3 py-1 rounded-full font-mono text-mono-sm uppercase tabular-nums",
+                      "border border-border bg-muted text-muted-foreground",
+                      "transition-colors",
+                      "hover:border-foreground hover:bg-foreground/20 hover:text-foreground",
+                      "aria-checked:border-foreground aria-checked:bg-foreground aria-checked:text-background",
+                      "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-foreground",
+                    ]}
+                  >
+                    {tc.duration}
+                  </button>
+                </li>
+              ))}
+            </ul>
+          </div>
+        </div>
+
+        {/* Primary action — pinned to bottom of card via mt-auto */}
+        <a
+          href="/play/ai/test"
+          data-todo-integration="POST /api/games/ai — Tim's endpoint, exists post-rebase; replace href with real gameId once wired"
+          data-play-ai-start
+          class={cn(buttonVariants({ variant: "brand-filled", size: "pill" }), "mt-auto w-full justify-center gap-1.5")}
+        >
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="size-3.5" aria-hidden="true">
+            <path d="M5 3l14 9-14 9V3z" />
+          </svg>
+          Start game
+        </a>
+      </article>
+
+      {/* ── Challenge card ───────────────────────────────────── */}
+      <article class={cn(cardCls, "flex flex-col gap-5 p-5")}>
+        <header class="flex items-baseline justify-between gap-3">
+          <p class="font-mono text-mono-md uppercase text-foreground">
+            Vs a friend
+          </p>
+          <p class="font-mono text-mono-sm uppercase text-muted-foreground">
+            Multiplayer
+          </p>
+        </header>
+
+        <p class="font-sans text-sm text-muted-foreground">
+          Send a private invite, or queue for a random opponent.
+        </p>
+
+        {/* Time control — mirrors the AI card so both modes share parallel
+            structure. The chosen time control is sent with POST /api/lobbies
+            (when the Challenge a friend button is wired) or the future
+            POST /api/match/queue. */}
+        <div>
+          <p class="font-mono text-mono-sm uppercase text-muted-foreground">Time control</p>
+          <ul role="radiogroup" aria-label="Time control" data-pills="multi-time" class="mt-2 flex flex-wrap gap-2">
+            {TIME_CONTROLS.map((tc) => (
+              <li>
+                <button
+                  type="button"
+                  role="radio"
+                  aria-checked={tc.id === defaultTimeControl ? "true" : "false"}
+                  data-value={tc.id}
+                  data-seconds={tc.seconds}
+                  class:list={[
+                    "px-3 py-1 rounded-full font-mono text-mono-sm uppercase tabular-nums",
+                    "border border-border bg-muted text-muted-foreground",
+                    "transition-colors",
+                    "hover:border-foreground hover:bg-foreground/20 hover:text-foreground",
+                    "aria-checked:border-foreground aria-checked:bg-foreground aria-checked:text-background",
+                    "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-foreground",
+                  ]}
+                >
+                  {tc.duration}
+                </button>
+              </li>
+            ))}
+          </ul>
+        </div>
+
+        {/* Two action rows — primary at the bottom (Challenge), secondary
+            above (Find match, disabled v1 → HANDOFF §3.10). */}
+        <div class="mt-auto flex flex-col gap-3">
+          <button
+            type="button"
+            disabled
+            title="Matchmaking queue — coming soon (HANDOFF §3.10)"
+            class={cn(
+              buttonVariants({ variant: "brand-outline", size: "pill" }),
+              "w-full justify-center disabled:opacity-50 disabled:cursor-not-allowed",
+            )}
+          >
+            Find match · soon
+          </button>
+
+          <a
+            href="/play/m/test"
+            data-todo-integration="POST /api/lobbies — Tim's endpoint, exists post-rebase; replace href with real gameId once wired"
+            class={cn(buttonVariants({ variant: "brand-filled", size: "pill" }), "w-full justify-center gap-1.5")}
+          >
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="size-3.5" aria-hidden="true">
+              <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2" />
+              <circle cx="9" cy="7" r="4" />
+              <line x1="19" y1="8" x2="19" y2="14" />
+              <line x1="22" y1="11" x2="16" y2="11" />
+            </svg>
+            Challenge a friend
+          </a>
+        </div>
+      </article>
+    </section>
+
+    {/* =========================================================
+        RESUME STRIP — list of active games. Empty card when none.
+        Pattern mirrors the Daily Games sidebar in /profile (overview
+        tab): same card surface, same row layout (avatar + identity on
+        the left, status + clock on the right). Sorted by your-turn
+        first, then by clock urgency (server-side eventually; mock data
+        is hand-ordered for now).
+        ========================================================= */}
+    <section
+      aria-label="Active games"
+      class={cn(cardCls, "page-reveal mt-gutter p-5")}
+      style="--reveal-delay: 0.1s"
+    >
+      <header class="flex items-baseline justify-between gap-3">
+        <h2 class="font-mono text-mono-md uppercase text-foreground">
+          Resume
+        </h2>
+        <p class="font-mono text-mono-sm uppercase text-muted-foreground tabular-nums">
+          {activeGames.length} active
+        </p>
+      </header>
+
+      {activeGames.length === 0 ? (
+        /* Empty state — keep the card visible (per spec), just swap the
+           list for a centered prompt. Same card surface so the layout
+           doesn't jump when games come/go. */
+        <div class="mt-5 flex flex-col items-center gap-2 py-6 text-center">
+          <p class="font-display italic text-2xl text-muted-foreground">
+            No active games.
+          </p>
+          <p class="font-mono text-mono-sm uppercase text-muted-foreground">
+            Start one with the cards above.
+          </p>
+        </div>
+      ) : (
+        <ul class="mt-5 flex flex-col gap-3">
+          {activeGames.map((g) => (
+            <li>
+              <a
+                href={`/play/${g.opponent.isAi ? "ai" : "m"}/${g.id}`}
+                data-todo-integration="GET /api/games/:id — Tim's endpoint, exists post-rebase"
+                class:list={[
+                  "group flex items-center justify-between gap-3",
+                  "rounded-lg border border-border bg-muted px-4 py-3",
+                  "transition-colors hover:border-foreground hover:bg-surface",
+                ]}
+              >
+                <div class="flex min-w-0 items-center gap-3">
+                  {/* Avatar — same squircle pattern as friends list */}
+                  <span
+                    aria-hidden="true"
+                    class="flex size-9 shrink-0 items-center justify-center rounded-md border border-border bg-surface font-display italic text-base text-foreground"
+                  >
+                    {g.opponent.initial}
+                  </span>
+                  <div class="flex min-w-0 flex-col">
+                    <span class="truncate font-sans text-sm font-semibold text-foreground">
+                      vs {g.opponent.username}
+                      {g.opponent.rating !== null && (
+                        <span class="ml-1 font-mono text-mono-sm tabular-nums text-muted-foreground">
+                          ({g.opponent.rating})
+                        </span>
+                      )}
+                    </span>
+                    <span class="font-mono text-mono-sm uppercase text-muted-foreground">
+                      {g.timeControl} · Move {g.moves}
+                    </span>
+                  </div>
+                </div>
+
+                <div class="flex shrink-0 flex-col items-end gap-0.5">
+                  <span
+                    class:list={[
+                      "font-mono text-mono-sm uppercase",
+                      g.yourTurn ? "text-accent" : "text-muted-foreground",
+                    ]}
+                  >
+                    {g.yourTurn ? "Your turn" : "Waiting"}
+                  </span>
+                  <span class="font-mono text-mono-md tabular-nums text-foreground">
+                    {g.clock}
+                  </span>
+                </div>
+              </a>
+            </li>
+          ))}
+        </ul>
+      )}
+    </section>
   </main>
+
+  {/* =========================================================
+      Inline behaviour — radio-pill state for the AI card.
+      Tiny vanilla JS, no React island. The pills toggle aria-checked
+      on click; CSS attribute selectors handle the visual change.
+      Phase 2 will read these data-value attributes when wiring the
+      Start button to POST /api/games/ai.
+      ========================================================= */}
+  <script>
+    function wirePillGroup(group: HTMLElement) {
+      const pills = Array.from(group.querySelectorAll<HTMLButtonElement>("[role='radio']"));
+      pills.forEach((pill) => {
+        pill.addEventListener("click", () => {
+          pills.forEach((p) => p.setAttribute("aria-checked", p === pill ? "true" : "false"));
+        });
+      });
+    }
+
+    document.querySelectorAll<HTMLElement>("[data-pills]").forEach(wirePillGroup);
+  </script>
 </RootLayout>

@@ -7,32 +7,51 @@
  *     [skip-to-content link]
  *     <TopNav />            (floating pill, fixed)
  *     <slot />              (page content)
- *     <SiteFooter />
+ *     <SiteFooter />        (only when showFooter prop is true —
+ *                            marketing + onboarding pages only)
  *   </body>
  *
- * The body is flex column + min-h-svh so the footer stays at the bottom
- * even when a page's content is short.
+ * The body is flex column + min-h-svh so the footer (when shown) stays at
+ * the bottom even when a page's content is short. App-shell pages
+ * (/profile, /play, …) opt out of the footer entirely.
  */
 import "~/styles/globals.css";
 import TopNav from "~/components/TopNav.astro";
 import SiteFooter from "~/components/SiteFooter.astro";
-import { isAuthenticated } from "~/lib/auth";
+import { getCurrentUser } from "~/lib/auth";
 
 interface Props {
   title?: string;
   description?: string;
+  /**
+   * Render <SiteFooter />? Footer carries marketing-shell links
+   * (About / How to play / Privacy / Terms) that are only relevant on
+   * marketing + onboarding pages — not inside the app shell. Default
+   * false; opt in from index.astro / login.astro / signup.astro.
+   */
+  showFooter?: boolean;
+  /**
+   * Render <TopNav />? Defaults to true. App-shell pages that own their
+   * own chrome (e.g. /profile while we figure out the authed-variant
+   * TopNav) can opt out.
+   */
+  showTopNav?: boolean;
 }
 
 const {
   title = "4thewin",
   description = "Connect 4, but smarter. Play the AI in your browser.",
+  showFooter = false,
+  showTopNav = true,
 } = Astro.props;
 
 const canonicalUrl = new URL(Astro.url.pathname, Astro.site ?? "http://localhost:4321").toString();
 
 // One backend call per request to drive the TopNav's authed/anon variant.
+// We fetch the full user (not just a boolean) so the topnav can render the
+// avatar squircle + initial without an extra round-trip on the client.
 // Adds ~5ms compose-internal. See apps/web/docs/authed-nav-roadmap.md.
-const authed = await isAuthenticated(Astro);
+const user = await getCurrentUser(Astro);
 ---
 
 <!doctype html>
@@ -73,9 +92,24 @@ const authed = await isAuthenticated(Astro);
       (function () {
         function setTheme(theme) {
           var root = document.documentElement;
+          // Strip every transition for the duration of this paint.
+          // Without this, body bg / pawn shadows / scrollbars snap
+          // instantly while elements with transition-colors slowly fade
+          // through gray — visible 'shimmer'. With it, the whole page
+          // changes mode in one frame (matches GitHub / Linear / Slack).
+          // Re-enabled on the next animation frame so user-initiated
+          // hover transitions resume working immediately afterwards.
+          root.classList.add("disable-transitions");
           root.classList.remove("light", "dark");
           root.classList.add(theme);
           root.style.colorScheme = theme;
+          // Force a reflow so the browser commits the no-transition state
+          // before any color changes paint, then drop the class.
+          // eslint-disable-next-line no-unused-expressions
+          void root.offsetHeight;
+          requestAnimationFrame(function () {
+            root.classList.remove("disable-transitions");
+          });
         }
 
         // Initial theme: localStorage → prefers-color-scheme → "light".
@@ -117,11 +151,11 @@ const authed = await isAuthenticated(Astro);
     >
       Skip to content
     </a>
-    <TopNav authed={authed} />
-    <div class="flex flex-1 flex-col">
+    {showTopNav && <TopNav user={user} />}
+    <div class="flex flex-1 flex-col md:min-h-0 md:overflow-y-auto">
       <slot />
     </div>
-    <SiteFooter />
+    {showFooter && <SiteFooter />}
 
     {/* DEV: 8-column grid overlay — toggle via the button below.
         Hidden by default; shown when <html> has the .grid-on class
@@ -165,6 +199,36 @@ const authed = await isAuthenticated(Astro);
             localStorage.setItem("grid-overlay", on ? "on" : "off");
           } catch (e) {}
         });
+      })();
+    </script>
+
+    {/*
+      TopNav scroll-hide.
+
+      The pill is fixed and we want it to slide up + fade out once the
+      user has scrolled past a small threshold, regardless of which
+      element is doing the scrolling:
+        - mobile: body min-h-svh, document/window scrolls
+        - desktop: body md:h-svh + md:overflow-hidden, slot wrapper scrolls
+
+      We attach a scroll listener to both window and the slot wrapper;
+      whichever fires drives the same body.is-scrolled toggle. CSS in
+      globals.css does the visual work.
+    */}
+    <script is:inline>
+      (function () {
+        var THRESHOLD = 32;
+        var slot = document.querySelector("body > div.flex.flex-1");
+        var body = document.body;
+
+        function onScroll() {
+          var y = (slot && slot.scrollTop) || window.scrollY || 0;
+          body.classList.toggle("is-scrolled", y > THRESHOLD);
+        }
+
+        window.addEventListener("scroll", onScroll, { passive: true });
+        if (slot) slot.addEventListener("scroll", onScroll, { passive: true });
+        onScroll();
       })();
     </script>
   </body>

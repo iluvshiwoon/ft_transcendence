@@ -1,0 +1,534 @@
+---
+/**
+ * /settings — user preferences (authed).
+ *
+ * Single scrollable page with four cards stacked: Profile · Appearance ·
+ * Account · Privacy. Settings tend to be infrequent edits — no tabs
+ * needed, scroll is the natural navigation.
+ *
+ * Save semantics for v1:
+ *   - Auto-save (in real wiring): theme, pawn skin, grid skin, board
+ *     variant, privacy radios. Toggle in UI = applied immediately.
+ *   - Explicit save: username (with availability check), bio, email
+ *     (with re-auth), password (with re-auth).
+ *
+ * Mock-only: every form is local-only. Save buttons are href="#"
+ * placeholders. The pill / swatch radios toggle via aria-checked
+ * (same inline-JS pattern as /play and /profile tabs).
+ *
+ * Auth: matches /play and /profile — no redirect while data is mocked.
+ * TODO: gate behind isAuthenticated() once real settings wire up.
+ *
+ * Backend status (see HANDOFF_BACKEND.md):
+ *   - PUT /api/profile (exists) covers username / bio / pawnSkin / gridSkin
+ *   - PUT /api/profile/email + /password (exist) for re-auth flows
+ *   - Privacy fields need new schema columns — UI built ahead of backend
+ *     so the experience can be reviewed without blocking the migration
+ */
+import RootLayout from "~/layouts/RootLayout.astro";
+import { Button, buttonVariants } from "~/components/ui/button";
+import { cn } from "~/lib/utils";
+
+// ─── Mock current user / preferences ────────────────────────────────────────
+// Replaced by GET /api/profile + new privacy fields once they ship.
+
+const me = {
+  username: "TestUser",
+  initial:  "T",
+  email:    "test@example.com",
+  bio:      "Placeholder bio about the player",
+  oauth42Linked: false,
+  pawnSkin:  "default",     // matches onboarding (Step3Profile)
+  gridSkin:  "default",
+  boardVariant: "liquid-glass",
+  theme:     "auto" as "light" | "dark" | "auto",
+  whoCanChallenge: "everyone" as "everyone" | "friends" | "nobody",
+  whoCanDM:        "friends"  as "everyone" | "friends" | "nobody",
+  blockedCount:    0,
+};
+
+// Pawn skin options — kept in sync with onboarding/Step3Profile.tsx.
+// Backend `ALLOWED_PAWN_SKINS = ['default','wine','coral','brick']` accepts
+// these IDs. Don't add options here without updating onboarding + backend
+// in the same pass.
+const PAWN_COLORS = [
+  { id: "default", label: "Classic", swatchClass: "bg-pawn-red" },
+  { id: "wine",    label: "Wine",    swatchClass: "bg-pawn-wine"  },
+  { id: "coral",   label: "Coral",   swatchClass: "bg-pawn-coral" },
+  { id: "brick",   label: "Brick",   swatchClass: "bg-pawn-brick" },
+];
+
+const THEME_OPTIONS = [
+  { id: "light", label: "Light" },
+  { id: "dark",  label: "Dark"  },
+  { id: "auto",  label: "Auto"  },
+];
+
+// Grid skin options — also matched to onboarding (color-name vocabulary,
+// not material names). Backend `ALLOWED_GRID_SKINS = ['default','ink','slate']`.
+const GRID_OPTIONS = [
+  { id: "default", label: "Linen", swatchClass: "bg-grid-linen" },
+  { id: "ink",     label: "Ink",   swatchClass: "bg-grid-ink"   },
+  { id: "slate",   label: "Slate", swatchClass: "bg-grid-slate" },
+];
+
+const BOARD_OPTIONS = [
+  { id: "liquid-glass", label: "Liquid glass" },
+  { id: "default",      label: "Default"      },
+  { id: "raised",       label: "Raised"       },
+  { id: "wood",         label: "Wood"         },
+  { id: "glass",        label: "Glass"        },
+  { id: "recessed",     label: "Recessed"     },
+];
+
+const PRIVACY_OPTIONS = [
+  { id: "everyone", label: "Everyone" },
+  { id: "friends",  label: "Friends"  },
+  { id: "nobody",   label: "Nobody"   },
+];
+
+const cardCls = "rounded-xl border border-border bg-surface text-surface-foreground";
+const labelCls = "font-mono text-mono-sm uppercase text-muted-foreground";
+const inputCls = "w-full rounded-md border border-border bg-input px-3 py-2 font-sans text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-foreground";
+const pillCls  = "px-3 py-1 rounded-full font-mono text-mono-sm uppercase border border-border bg-muted text-muted-foreground transition-colors hover:border-foreground hover:bg-foreground/20 hover:text-foreground aria-checked:border-foreground aria-checked:bg-foreground aria-checked:text-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-foreground";
+---
+
+<RootLayout
+  title="Settings — 4thewin"
+  description="Customize your profile, appearance, and account."
+>
+  <main
+    id="main"
+    class="mx-auto w-full max-w-3xl px-margin-mobile pt-28 pb-16 md:px-margin-desktop md:pt-32"
+  >
+    <header class="page-reveal mb-8">
+      <p class="font-mono text-mono-sm uppercase text-muted-foreground">
+        Settings
+      </p>
+      <h1 class="mt-1 font-display italic text-4xl tracking-tight md:text-5xl">
+        Customize
+      </h1>
+      <p class="mt-2 font-sans text-base text-muted-foreground">
+        Profile, appearance, account, privacy. Changes save automatically
+        unless a Save button says otherwise.
+      </p>
+    </header>
+
+    <div class="flex flex-col gap-gutter">
+
+      {/* ─── Profile ───────────────────────────────────────── */}
+      <section
+        aria-labelledby="settings-profile-heading"
+        class={cn(cardCls, "page-reveal p-6 md:p-8")}
+        style="--reveal-delay: 0.05s"
+      >
+        <h2 id="settings-profile-heading" class="font-mono text-mono-md uppercase text-foreground">
+          Profile
+        </h2>
+
+        <div class="mt-6 flex flex-col gap-6">
+
+          {/* Avatar — neutral squircle (NOT pawn-coloured; the pawn
+              colour picker is its own concern below). The whole
+              squircle is a button: click opens the OS file picker via
+              the hidden input. Hover lifts a ring + the camera badge,
+              hint text underneath reinforces 'click on the picture or
+              use the button'. Upload doesn't go anywhere yet — backend
+              endpoint TBD. */}
+          <div class="flex items-center gap-5">
+            <button
+              type="button"
+              data-avatar-trigger
+              data-todo-integration="POST /api/profile/avatar — backend file upload TBD"
+              aria-label="Change avatar"
+              title="Change avatar"
+              class="group relative flex size-20 shrink-0 items-center justify-center rounded-2xl border border-border bg-foreground transition-all hover:ring-2 hover:ring-foreground hover:ring-offset-2 hover:ring-offset-surface active:scale-[0.97] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-foreground focus-visible:ring-offset-2 focus-visible:ring-offset-surface"
+            >
+              <span aria-hidden="true" class="font-display italic text-4xl text-background">
+                {me.initial}
+              </span>
+              {/* Camera badge — overlay at the bottom-right, clearly
+                  signals 'this is editable'. */}
+              <span
+                aria-hidden="true"
+                class="absolute -right-1 -bottom-1 flex size-7 items-center justify-center rounded-full border border-border bg-surface text-foreground shadow-sm transition-transform group-hover:scale-110"
+              >
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="size-3.5">
+                  <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z" />
+                  <circle cx="12" cy="13" r="4" />
+                </svg>
+              </span>
+            </button>
+            <div class="flex flex-col gap-2">
+              <p class={labelCls}>Avatar</p>
+              <label
+                class={cn(buttonVariants({ variant: "brand-outline", size: "pill" }), "cursor-pointer")}
+              >
+                Upload picture
+                <input
+                  type="file"
+                  accept="image/png,image/jpeg,image/gif"
+                  data-avatar-input
+                  data-todo-integration="POST /api/profile/avatar — backend file upload TBD"
+                  class="sr-only"
+                />
+              </label>
+              <p class="font-mono text-mono-sm uppercase text-muted-foreground">
+                PNG, JPEG, GIF · up to 2 MB
+              </p>
+            </div>
+          </div>
+
+          {/* Pawn colour — separate block. This sets the in-game piece
+              colour, NOT the avatar. Same options as onboarding so a
+              user's choice at signup carries through cleanly. */}
+          <div class="flex flex-col gap-2 border-t border-border pt-6">
+            <p class={labelCls}>Pawn colour</p>
+            <p class="font-sans text-sm text-muted-foreground">
+              Your in-game piece on the board.
+            </p>
+            <ul role="radiogroup" aria-label="Pawn colour" data-pills="pawn-skin" class="mt-1 flex flex-wrap gap-2">
+              {PAWN_COLORS.map((c) => (
+                <li>
+                  <button
+                    type="button"
+                    role="radio"
+                    aria-checked={c.id === me.pawnSkin ? "true" : "false"}
+                    aria-label={c.label}
+                    title={c.label}
+                    data-value={c.id}
+                    class:list={[
+                      "size-8 rounded-full border-2 border-transparent transition-all cursor-pointer",
+                      "aria-checked:border-foreground aria-checked:scale-110",
+                      "hover:scale-105",
+                      "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-foreground",
+                      c.swatchClass,
+                    ]}
+                  />
+                </li>
+              ))}
+            </ul>
+          </div>
+
+          {/* Username — separator + label + input + helper-row with Save */}
+          <div class="flex flex-col gap-2 border-t border-border pt-6">
+            <label class="flex flex-col gap-2">
+              <span class={labelCls}>Username</span>
+              <input
+                type="text"
+                name="username"
+                value={me.username}
+                placeholder="username"
+                autocomplete="off"
+                class={inputCls}
+              />
+            </label>
+            <div class="flex items-center justify-between gap-3">
+              <p class="font-mono text-mono-sm uppercase text-muted-foreground">
+                3–30 chars · letters, numbers, underscore
+              </p>
+              <button
+                type="button"
+                data-todo-integration="PUT /api/profile { username } — exists, plus availability check via GET /api/users/check-username"
+                class={cn(buttonVariants({ variant: "brand-outline", size: "pill" }), "shrink-0")}
+              >
+                Save
+              </button>
+            </div>
+          </div>
+
+          {/* Bio — same pattern as username for consistency */}
+          <div class="flex flex-col gap-2 border-t border-border pt-6">
+            <label class="flex flex-col gap-2">
+              <span class={labelCls}>Bio</span>
+              <textarea
+                name="bio"
+                rows="3"
+                placeholder="A line or two about your style…"
+                class={cn(inputCls, "min-h-[80px] resize-none")}
+              >{me.bio}</textarea>
+            </label>
+            <div class="flex items-center justify-end gap-3">
+              <button
+                type="button"
+                data-todo-integration="PUT /api/profile { bio } — exists"
+                class={cn(buttonVariants({ variant: "brand-outline", size: "pill" }))}
+              >
+                Save
+              </button>
+            </div>
+          </div>
+
+        </div>
+      </section>
+
+      {/* ─── Appearance ────────────────────────────────────── */}
+      <section
+        aria-labelledby="settings-appearance-heading"
+        class={cn(cardCls, "page-reveal p-6 md:p-8")}
+        style="--reveal-delay: 0.1s"
+      >
+        <h2 id="settings-appearance-heading" class="font-mono text-mono-md uppercase text-foreground">
+          Appearance
+        </h2>
+
+        <div class="mt-6 flex flex-col gap-6">
+
+          {/* Theme */}
+          <div class="flex flex-col gap-2">
+            <p class={labelCls}>Theme</p>
+            <ul role="radiogroup" aria-label="Theme" data-pills="theme" class="flex flex-wrap gap-2">
+              {THEME_OPTIONS.map((opt) => (
+                <li>
+                  <button
+                    type="button"
+                    role="radio"
+                    aria-checked={opt.id === me.theme ? "true" : "false"}
+                    data-value={opt.id}
+                    class={pillCls}
+                  >
+                    {opt.label}
+                  </button>
+                </li>
+              ))}
+            </ul>
+            <p class="font-mono text-mono-sm uppercase text-muted-foreground">
+              Auto follows your system preference
+            </p>
+          </div>
+
+          {/* Grid skin */}
+          <div class="flex flex-col gap-2">
+            <p class={labelCls}>Grid skin</p>
+            <ul role="radiogroup" aria-label="Grid skin" data-pills="grid-skin" class="flex flex-wrap gap-2">
+              {GRID_OPTIONS.map((opt) => (
+                <li>
+                  <button
+                    type="button"
+                    role="radio"
+                    aria-checked={opt.id === me.gridSkin ? "true" : "false"}
+                    data-value={opt.id}
+                    class={pillCls}
+                  >
+                    {opt.label}
+                  </button>
+                </li>
+              ))}
+            </ul>
+          </div>
+
+          {/* Board variant */}
+          <div class="flex flex-col gap-2">
+            <p class={labelCls}>Board variant</p>
+            <ul role="radiogroup" aria-label="Board variant" data-pills="board-variant" class="flex flex-wrap gap-2">
+              {BOARD_OPTIONS.map((opt) => (
+                <li>
+                  <button
+                    type="button"
+                    role="radio"
+                    aria-checked={opt.id === me.boardVariant ? "true" : "false"}
+                    data-value={opt.id}
+                    class={pillCls}
+                  >
+                    {opt.label}
+                  </button>
+                </li>
+              ))}
+            </ul>
+          </div>
+
+        </div>
+      </section>
+
+      {/* ─── Account ───────────────────────────────────────── */}
+      <section
+        aria-labelledby="settings-account-heading"
+        class={cn(cardCls, "page-reveal p-6 md:p-8")}
+        style="--reveal-delay: 0.15s"
+      >
+        <h2 id="settings-account-heading" class="font-mono text-mono-md uppercase text-foreground">
+          Account
+        </h2>
+
+        <div class="mt-6 flex flex-col gap-6">
+
+          {/* Email */}
+          <div class="flex items-center justify-between gap-4">
+            <div class="min-w-0">
+              <p class={labelCls}>Email</p>
+              <p class="mt-1 truncate font-sans text-sm text-foreground">{me.email}</p>
+            </div>
+            <a
+              href="#"
+              data-todo-integration="PUT /api/profile/email — re-auth required"
+              class={cn(buttonVariants({ variant: "brand-outline", size: "pill" }), "shrink-0")}
+            >
+              Change
+            </a>
+          </div>
+
+          {/* Password */}
+          <div class="flex items-center justify-between gap-4 border-t border-border pt-6">
+            <div class="min-w-0">
+              <p class={labelCls}>Password</p>
+              <p class="mt-1 font-mono text-mono-sm uppercase text-muted-foreground">
+                Last changed · unknown
+              </p>
+            </div>
+            <a
+              href="#"
+              data-todo-integration="PUT /api/profile/password — re-auth required"
+              class={cn(buttonVariants({ variant: "brand-outline", size: "pill" }), "shrink-0")}
+            >
+              Change
+            </a>
+          </div>
+
+          {/* 42 OAuth */}
+          <div class="flex items-center justify-between gap-4 border-t border-border pt-6">
+            <div class="min-w-0">
+              <p class={labelCls}>42 account</p>
+              <p class="mt-1 font-sans text-sm text-foreground">
+                {me.oauth42Linked ? "Linked" : "Not linked"}
+              </p>
+            </div>
+            <a
+              href="#"
+              data-todo-integration="OAuth flow exists; new endpoint to UNLINK if desired"
+              class={cn(buttonVariants({ variant: "brand-outline", size: "pill" }), "shrink-0")}
+            >
+              {me.oauth42Linked ? "Unlink" : "Link"}
+            </a>
+          </div>
+
+          {/* Delete account — destructive, clearly separated */}
+          <div class="flex items-center justify-between gap-4 border-t border-border pt-6">
+            <div class="min-w-0">
+              <p class={labelCls}>Delete account</p>
+              <p class="mt-1 font-sans text-sm text-muted-foreground">
+                Permanently remove your account and game history. This can't be undone.
+              </p>
+            </div>
+            <button
+              type="button"
+              data-todo-integration="DELETE /api/profile (or /api/account) — needs backend"
+              class="shrink-0 rounded-full border-2 border-accent bg-transparent px-5 py-1.5 font-mono text-mono-sm uppercase text-accent transition-colors hover:bg-accent hover:text-accent-foreground active:scale-[0.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent"
+            >
+              Delete
+            </button>
+          </div>
+
+        </div>
+      </section>
+
+      {/* ─── Privacy ───────────────────────────────────────── */}
+      <section
+        aria-labelledby="settings-privacy-heading"
+        class={cn(cardCls, "page-reveal p-6 md:p-8")}
+        style="--reveal-delay: 0.2s"
+      >
+        <h2 id="settings-privacy-heading" class="font-mono text-mono-md uppercase text-foreground">
+          Privacy
+        </h2>
+        <p class="mt-2 font-sans text-sm text-muted-foreground">
+          Backend support pending — see HANDOFF_BACKEND.md. UI built ahead
+          so the flow can be reviewed.
+        </p>
+
+        <div class="mt-6 flex flex-col gap-6">
+
+          {/* Who can challenge */}
+          <div class="flex flex-col gap-2">
+            <p class={labelCls}>Who can challenge me</p>
+            <ul role="radiogroup" aria-label="Who can challenge" data-pills="who-challenge" class="flex flex-wrap gap-2">
+              {PRIVACY_OPTIONS.map((opt) => (
+                <li>
+                  <button
+                    type="button"
+                    role="radio"
+                    aria-checked={opt.id === me.whoCanChallenge ? "true" : "false"}
+                    data-value={opt.id}
+                    class={pillCls}
+                  >
+                    {opt.label}
+                  </button>
+                </li>
+              ))}
+            </ul>
+          </div>
+
+          {/* Who can DM */}
+          <div class="flex flex-col gap-2">
+            <p class={labelCls}>Who can DM me</p>
+            <ul role="radiogroup" aria-label="Who can DM" data-pills="who-dm" class="flex flex-wrap gap-2">
+              {PRIVACY_OPTIONS.map((opt) => (
+                <li>
+                  <button
+                    type="button"
+                    role="radio"
+                    aria-checked={opt.id === me.whoCanDM ? "true" : "false"}
+                    data-value={opt.id}
+                    class={pillCls}
+                  >
+                    {opt.label}
+                  </button>
+                </li>
+              ))}
+            </ul>
+          </div>
+
+          {/* Block list */}
+          <div class="flex items-center justify-between gap-4 border-t border-border pt-6">
+            <div class="min-w-0">
+              <p class={labelCls}>Block list</p>
+              <p class="mt-1 font-sans text-sm text-foreground">
+                {me.blockedCount === 0 ? "No users blocked" : `${me.blockedCount} user${me.blockedCount === 1 ? "" : "s"} blocked`}
+              </p>
+            </div>
+            <a
+              href="#"
+              data-todo-integration="GET/PUT /api/blocked — needs backend"
+              class={cn(buttonVariants({ variant: "brand-outline", size: "pill" }), "shrink-0")}
+            >
+              Manage
+            </a>
+          </div>
+
+        </div>
+      </section>
+
+    </div>
+  </main>
+
+  {/* Inline pill behaviour — same pattern as /play and /profile.
+      Click toggles aria-checked within each radiogroup. Avatar trigger
+      opens the hidden file input. */}
+  <script>
+    function wirePillGroup(group: HTMLElement) {
+      const pills = Array.from(group.querySelectorAll<HTMLButtonElement>("[role='radio']"));
+      pills.forEach((pill) => {
+        pill.addEventListener("click", () => {
+          pills.forEach((p) => p.setAttribute("aria-checked", p === pill ? "true" : "false"));
+        });
+      });
+    }
+    document.querySelectorAll<HTMLElement>("[data-pills]").forEach(wirePillGroup);
+
+    // Avatar squircle is a button — click opens the hidden file input.
+    // Real upload requires POST /api/profile/avatar (backend TBD).
+    // For v1 we just capture the selected file and log it; nothing
+    // posts anywhere yet.
+    const trigger = document.querySelector<HTMLButtonElement>("[data-avatar-trigger]");
+    const fileIn  = document.querySelector<HTMLInputElement>("[data-avatar-input]");
+    if (trigger && fileIn) {
+      trigger.addEventListener("click", () => fileIn.click());
+      fileIn.addEventListener("change", () => {
+        const f = fileIn.files?.[0];
+        if (f) {
+          // eslint-disable-next-line no-console
+          console.log("[avatar mock] picked file:", f.name, f.type, `${(f.size / 1024).toFixed(1)} kB`);
+        }
+      });
+    }
+  </script>
+</RootLayout>

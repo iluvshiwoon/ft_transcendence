@@ -1,0 +1,821 @@
+---
+/**
+ * Profile page — /profile.
+ *
+ * Chess.com-inspired layout, built strictly on the 4thewin token system:
+ *   - Surfaces: bg-surface / border-border / bg-muted (no raw hex)
+ *   - Typography: font-display italic for emotional headers, font-mono uppercase
+ *     for HUD labels, font-sans for body, font-mono tabular-nums for numbers
+ *   - Game palette: pawn-yellow for wins, pawn-red for losses (thematically the
+ *     player's vs. opponent's piece in Connect 4)
+ *   - Spacing: px-margin-mobile / px-margin-desktop + gap-gutter
+ *
+ * Composition (one file by design — no new components introduced):
+ *   1. Profile header  (avatar, username, rank, rating, actions)
+ *   2. Tab bar         (Overview / Stats / Friends)
+ *   3. Tab panels      (toggled by inline script — zero JS framework cost)
+ *
+ * Mock data only. Wire to the backend once /api/users/:username lands.
+ */
+import RootLayout from "~/layouts/RootLayout.astro";
+import { Button, buttonVariants } from "~/components/ui/button";
+import { cn } from "~/lib/utils";
+
+// ---------- Mock data ----------
+const player = {
+  username: "TestUser",
+  initial: "Q",
+  rank: 47,
+  rating: 2854,
+  title: "Grandmaster",
+  joined: "Joined March 2025",
+  bio: "Placeholder bio about the player",
+};
+
+const stats = {
+  played: 412,
+  won: 312,
+  lost: 89,
+  drawn: 11,
+};
+const winRate = ((stats.won / stats.played) * 100).toFixed(1);
+const lossRate = ((stats.lost / stats.played) * 100).toFixed(1);
+const drawRate = ((stats.drawn / stats.played) * 100).toFixed(1);
+
+type GameResult = "win" | "loss" | "draw";
+interface HistoryRow {
+  result: GameResult;
+  opponent: string;
+  opponentRating: number;
+  detail: string;
+  mode: "Connect 4";
+  date: string;
+}
+
+const history: HistoryRow[] = [
+  { result: "win",  opponent: "Sarah_w",     opponentRating: 2710, detail: "4 in a row · column 4", mode: "Connect 4", date: "2026-05-20" },
+  { result: "loss", opponent: "BotSlayer99", opponentRating: 2699, detail: "4 in a row · diagonal", mode: "Connect 4", date: "2026-05-19" },
+  { result: "win",  opponent: "A_connect",   opponentRating: 2349, detail: "4 in a row · row 3",    mode: "Connect 4", date: "2026-05-19" },
+  { result: "win",  opponent: "GridLock_",   opponentRating: 2569, detail: "4 in a row · diagonal", mode: "Connect 4", date: "2026-05-18" },
+  { result: "draw", opponent: "Sarah_w",     opponentRating: 2710, detail: "Board filled",          mode: "Connect 4", date: "2026-05-17" },
+  { result: "loss", opponent: "QuantumAI",   opponentRating: 2950, detail: "4 in a row · diagonal", mode: "Connect 4", date: "2026-05-16" },
+  { result: "win",  opponent: "Pivot_",      opponentRating: 2210, detail: "4 in a row · column 2", mode: "Connect 4", date: "2026-05-15" },
+  { result: "win",  opponent: "FourFingers", opponentRating: 2080, detail: "Opponent resigned",     mode: "Connect 4", date: "2026-05-14" },
+];
+
+type FriendStatus = "online" | "in_game" | "offline";
+interface Friend {
+  username: string;
+  initial: string;
+  status: FriendStatus;
+  rating: number;
+}
+
+const friends: Friend[] = [
+  { username: "Sarah_w",      initial: "S", status: "online",  rating: 2710 },
+  { username: "BotSlayer99",  initial: "B", status: "in_game", rating: 2699 },
+  { username: "GridLock_",    initial: "G", status: "online",  rating: 2569 },
+  { username: "A_connect",    initial: "A", status: "offline", rating: 2349 },
+  { username: "Pivot_",       initial: "P", status: "offline", rating: 2210 },
+  { username: "FourFingers",  initial: "F", status: "online",  rating: 2080 },
+  { username: "DiagonalDan",  initial: "D", status: "in_game", rating: 1980 },
+  { username: "RookieRed",    initial: "R", status: "offline", rating: 1654 },
+];
+
+// Result → token mapping (yellow = your pawn = win, red = opp pawn = loss)
+const resultTokens: Record<GameResult, { dot: string; label: string }> = {
+  win:  { dot: "bg-pawn-yellow", label: "WIN"  },
+  loss: { dot: "bg-pawn-red",    label: "LOSS" },
+  draw: { dot: "bg-muted-foreground", label: "DRAW" },
+};
+
+const statusTokens: Record<FriendStatus, { dot: string; label: string }> = {
+  online:  { dot: "bg-pawn-yellow",      label: "Online"  },
+  in_game: { dot: "bg-accent",           label: "In game" },
+  offline: { dot: "bg-muted-foreground", label: "Offline" },
+};
+
+// ─── Stats-tab mock data ────────────────────────────────────────────────────
+// These slice the same `stats` numbers along dimensions the header card
+// can't show: streaks, time control, opponent strength, milestones.
+// Nothing here exists in the backend yet — see HANDOFF_BACKEND.md.
+
+const streaks = { current: 7, longest: 14 };
+
+// 10 most recent results, oldest → newest. Reuses GameResult / resultTokens.
+const recentForm: GameResult[] = [
+  "win", "win", "loss", "win", "win", "win", "win", "win", "draw", "win",
+];
+
+interface TimeControlRow {
+  label: string;          // "Bullet" / "Blitz" / "Daily"
+  duration: string;       // "3 min" etc.
+  played: number;
+  won: number;
+  lost: number;
+  drawn: number;
+  winRate: number;        // pre-computed for display, 0-100
+}
+const timeControls: TimeControlRow[] = [
+  { label: "Bullet", duration: "3 min",  played: 129, won:  92, lost: 29, drawn:  8, winRate: 71 },
+  { label: "Blitz",  duration: "10 min", played: 192, won: 148, lost: 32, drawn: 12, winRate: 77 },
+  { label: "Daily",  duration: "60 min", played:  91, won:  73, lost: 18, drawn:  0, winRate: 80 },
+];
+
+interface OpponentStrengthRow {
+  label: string;          // "Lower-rated" etc.
+  symbol: "↓" | "=" | "↑";
+  winRate: number;        // 0-100
+  played: number;
+}
+const opponentStrength: OpponentStrengthRow[] = [
+  { label: "Lower-rated",  symbol: "↓", winRate: 91, played: 162 },
+  { label: "Equal-rated",  symbol: "=", winRate: 58, played: 137 },
+  { label: "Higher-rated", symbol: "↑", winRate: 34, played: 113 },
+];
+
+interface Milestone {
+  label:  string;
+  value:  string;
+  detail: string;
+}
+const milestones: Milestone[] = [
+  { label: "Fastest win",       value: "7 moves",  detail: "3 days ago"        },
+  { label: "Longest game",      value: "38 moves", detail: "Last week"         },
+  { label: "Highest rating",    value: "2854",     detail: "Today"             },
+  { label: "Total time played", value: "18h 22m",  detail: "Across all games"  },
+];
+
+// Shared card style — mirrors the dashboard surfaces used elsewhere in app.
+const cardCls = "rounded-xl border border-border bg-surface text-surface-foreground";
+---
+
+<RootLayout
+  title={`${player.username} — 4thewin`}
+  description={`Profile, stats and match history for ${player.username}.`}
+>
+  <main
+    id="main"
+    class="mx-auto w-full max-w-7xl px-margin-mobile pt-28 pb-16 md:px-margin-desktop md:pt-32"
+  >
+    {/* =========================================================
+        1. PROFILE HEADER
+        ========================================================= */}
+    <section
+      aria-label="Player profile"
+      class={cn(cardCls, "page-reveal p-6 md:p-8")}
+      style="--reveal-delay: 0s"
+    >
+      <div class="flex flex-col gap-6 md:flex-row md:items-start md:gap-8">
+        {/* Avatar — token-built (no image asset yet). Squircle to echo the board cells. */}
+        <div class="flex shrink-0 items-center justify-center">
+          <div
+            aria-hidden="true"
+            class="flex size-24 items-center justify-center rounded-2xl border border-border bg-foreground text-background font-display italic text-5xl md:size-28 md:text-6xl"
+          >
+            {player.initial}
+          </div>
+        </div>
+
+        {/* Identity column — fills the remaining width.
+            Composed of two stacked rows so the actions can sit on the same
+            line as the username on desktop (inline-hero pattern), while bio
+            and metrics span the full width below. */}
+        <div class="flex min-w-0 flex-1 flex-col gap-5">
+          {/* Row 1: title/rank + username on the left, actions on the right */}
+          <div class="flex flex-col gap-4 md:flex-row md:items-start md:justify-between md:gap-6">
+            <div class="min-w-0">
+              <div class="flex flex-wrap items-center gap-3">
+                <span class="font-mono text-mono-sm uppercase text-muted-foreground">
+                  {player.title}
+                </span>
+                <span aria-hidden="true" class="text-muted-foreground">·</span>
+                <span class="font-mono text-mono-sm uppercase text-muted-foreground">
+                  Rank #{player.rank}
+                </span>
+              </div>
+
+              <h1 class="mt-2 font-display italic text-4xl tracking-tight md:text-5xl">
+                {player.username}
+              </h1>
+            </div>
+
+            {/* Actions — horizontal row sitting at the top of the card.
+                Play is the prominent CTA. Add friend / Message are
+                compact size-9 round icon buttons (both brand-outline so
+                they share the same border + text-foreground brightness),
+                so the row reads as primary + matched secondaries. */}
+            <div class="flex shrink-0 items-center gap-2 md:self-start">
+              <a
+                href="/play"
+                class={cn(buttonVariants({ variant: "brand-filled", size: "pill" }), "gap-1.5")}
+              >
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="size-3.5" aria-hidden="true">
+                  <path d="M5 3l14 9-14 9V3z" />
+                </svg>
+                Play
+              </a>
+              <a
+                href="#"
+                title="Add friend"
+                aria-label="Add friend"
+                class={cn(buttonVariants({ variant: "brand-outline", size: "icon" }), "border-2")}
+              >
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="size-4" aria-hidden="true">
+                  <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2" />
+                  <circle cx="9" cy="7" r="4" />
+                  <line x1="19" y1="8" x2="19" y2="14" />
+                  <line x1="22" y1="11" x2="16" y2="11" />
+                </svg>
+                <span class="sr-only">Add friend</span>
+              </a>
+              <a
+                href="#"
+                title="Send message"
+                aria-label="Send message"
+                class={cn(buttonVariants({ variant: "brand-outline", size: "icon" }), "border-2")}
+              >
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="size-4" aria-hidden="true">
+                  <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
+                </svg>
+                <span class="sr-only">Send message</span>
+              </a>
+            </div>
+          </div>
+
+          {/* Row 2: bio */}
+          <p class="max-w-prose text-base text-muted-foreground">
+            {player.bio}
+          </p>
+
+          {/* Row 3: rating + metadata strip */}
+          <dl class="flex flex-wrap items-end gap-x-8 gap-y-3">
+            <div class="flex flex-col">
+              <dt class="font-mono text-mono-sm uppercase text-muted-foreground">Rating</dt>
+              <dd class="font-mono text-metric">{player.rating}</dd>
+            </div>
+            <div class="flex flex-col">
+              <dt class="font-mono text-mono-sm uppercase text-muted-foreground">Win rate</dt>
+              <dd class="font-mono text-metric">{winRate}%</dd>
+            </div>
+            <div class="flex flex-col">
+              <dt class="font-mono text-mono-sm uppercase text-muted-foreground">Games</dt>
+              <dd class="font-mono text-metric tabular-nums">{stats.played}</dd>
+            </div>
+            <div class="flex flex-col">
+              <dt class="font-mono text-mono-sm uppercase text-muted-foreground">Joined</dt>
+              <dd class="font-sans text-sm text-foreground">{player.joined}</dd>
+            </div>
+          </dl>
+        </div>
+      </div>
+    </section>
+
+    {/* =========================================================
+        2. TAB BAR
+        ========================================================= */}
+    <nav
+      aria-label="Profile sections"
+      class="page-reveal mt-8 border-b border-border"
+      style="--reveal-delay: 0.1s"
+      data-profile-tabs
+    >
+      <ul role="tablist" class="-mb-px flex flex-wrap gap-2">
+        {[
+          { id: "stats",    label: "Stats" },
+          { id: "history",  label: "History" },
+          { id: "friends",  label: "Friends" },
+        ].map((t, i) => (
+          <li role="presentation">
+            <button
+              role="tab"
+              type="button"
+              id={`tab-${t.id}`}
+              aria-controls={`panel-${t.id}`}
+              aria-selected={i === 0 ? "true" : "false"}
+              data-tab={t.id}
+              class:list={[
+                "px-4 py-3 font-mono text-mono-md uppercase",
+                "border-b-2 transition-colors",
+                "text-muted-foreground border-transparent",
+                "hover:text-foreground",
+                // Active state uses foreground (not accent crimson) to match
+                // the button language used across the app — accent reads as
+                // 'alert' / 'live' which doesn't fit primary navigation.
+                "aria-selected:text-foreground aria-selected:border-foreground",
+                "focus-visible:outline-none focus-visible:text-foreground",
+              ]}
+            >
+              {t.label}
+            </button>
+          </li>
+        ))}
+      </ul>
+    </nav>
+
+    {/* =========================================================
+        3. TAB PANELS
+        ========================================================= */}
+
+    {/* ---------- HISTORY ----------
+        Replaces the old Overview tab. Daily Games + 'New daily game'
+        button moved out of /profile entirely — game-starting actions
+        live on /play (lobby), and the Resume strip there shows active
+        games. /profile stays read-only: identity + stats + history +
+        social. History tab shows just the Recent Games table now —
+        full-width since the Daily Games sidebar is gone. Starts hidden
+        because Stats is the default tab. */}
+    <section
+      role="tabpanel"
+      id="panel-history"
+      aria-labelledby="tab-history"
+      data-panel="history"
+      hidden
+      class="page-reveal mt-8"
+      style="--reveal-delay: 0.2s"
+    >
+      <div class={cn(cardCls, "p-6")}>
+        <header class="mb-5 flex items-center justify-between">
+          <h2 class="font-mono text-mono-sm uppercase text-muted-foreground">
+            Recent games
+          </h2>
+          <a
+            href="#"
+            class="font-mono text-mono-sm uppercase text-muted-foreground hover:text-foreground"
+          >
+            View all →
+          </a>
+        </header>
+
+        {/* Mobile: card list */}
+        <ul class="flex flex-col divide-y divide-border md:hidden">
+          {history.map((row) => (
+            <li class="flex items-center justify-between gap-3 py-3">
+              <div class="flex min-w-0 items-center gap-3">
+                <span aria-hidden="true" class:list={["size-2.5 rounded-full", resultTokens[row.result].dot]} />
+                <div class="flex min-w-0 flex-col">
+                  <span class="truncate font-sans text-sm font-semibold text-foreground">
+                    vs {row.opponent}
+                  </span>
+                  <span class="truncate font-mono text-mono-sm uppercase text-muted-foreground">
+                    {row.detail}
+                  </span>
+                </div>
+              </div>
+              <div class="flex shrink-0 flex-col items-end">
+                <span class="font-mono text-mono-sm uppercase text-foreground">
+                  {resultTokens[row.result].label}
+                </span>
+                <span class="font-mono text-mono-sm tabular-nums text-muted-foreground">
+                  {row.date}
+                </span>
+              </div>
+            </li>
+          ))}
+        </ul>
+
+        {/* Desktop: tabular grid (div-based for full hover-pill control —
+            tr can't carry rounded corners reliably and pseudos on tr are
+            spec-iffy. role="table"/"row"/"cell" preserves screen-reader
+            semantics). The hover pill is an absolute pseudo behind the
+            content: full row width so it visually aligns with the dividers
+            above and below, inset-y-1 so it doesn't kiss them. */}
+        <div class="hidden md:block">
+          <div role="table" aria-label="Recent games" class="flex flex-col">
+            {/* Column headers */}
+            <div
+              role="row"
+              class="grid grid-cols-[6rem_minmax(0,1.4fr)_6rem_minmax(0,1.6fr)_6.5rem] items-center gap-3 border-b border-border px-4 pb-3"
+            >
+              <div role="columnheader" class="font-mono text-mono-sm uppercase font-medium text-muted-foreground">Result</div>
+              <div role="columnheader" class="font-mono text-mono-sm uppercase font-medium text-muted-foreground">Opponent</div>
+              <div role="columnheader" class="font-mono text-mono-sm uppercase font-medium text-muted-foreground">Mode</div>
+              <div role="columnheader" class="font-mono text-mono-sm uppercase font-medium text-muted-foreground">Detail</div>
+              <div role="columnheader" class="text-right font-mono text-mono-sm uppercase font-medium text-muted-foreground">Date</div>
+            </div>
+
+            {/* Body rows */}
+            {history.map((row, i) => (
+              <div
+                role="row"
+                class:list={[
+                  "group relative isolate",
+                  "grid grid-cols-[6rem_minmax(0,1.4fr)_6rem_minmax(0,1.6fr)_6.5rem] items-center gap-3",
+                  "px-4 py-3",
+                  i < history.length - 1 && "border-b border-border",
+                ]}
+              >
+                {/* Hover pill — absolute, behind content */}
+                <span
+                  aria-hidden="true"
+                  class="absolute inset-x-0 inset-y-1 -z-10 rounded-full bg-transparent transition-colors group-hover:bg-muted"
+                />
+
+                <div role="cell">
+                  <span class="inline-flex items-center gap-2">
+                    <span aria-hidden="true" class:list={["size-2.5 rounded-full", resultTokens[row.result].dot]} />
+                    <span class="font-mono text-mono-md uppercase text-foreground">
+                      {resultTokens[row.result].label}
+                    </span>
+                  </span>
+                </div>
+
+                <div role="cell">
+                  <div class="flex min-w-0 items-center gap-2">
+                    <span
+                      aria-hidden="true"
+                      class="flex size-7 shrink-0 items-center justify-center rounded-md border border-border bg-surface font-display italic text-sm text-foreground"
+                    >
+                      {row.opponent.charAt(0)}
+                    </span>
+                    <span class="truncate font-sans text-sm font-semibold text-foreground">
+                      {row.opponent}
+                    </span>
+                    <span class="font-mono text-mono-sm tabular-nums text-muted-foreground">
+                      ({row.opponentRating})
+                    </span>
+                  </div>
+                </div>
+
+                <div role="cell" class="font-mono text-mono-md uppercase text-muted-foreground">
+                  {row.mode}
+                </div>
+
+                <div role="cell" class="truncate font-sans text-sm text-muted-foreground">
+                  {row.detail}
+                </div>
+
+                <div role="cell" class="text-right font-mono text-mono-md tabular-nums text-muted-foreground">
+                  {row.date}
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+    </section>
+
+    {/* ---------- STATS ---------- */}
+    <section
+      role="tabpanel"
+      id="panel-stats"
+      aria-labelledby="tab-stats"
+      data-panel="stats"
+      class="page-reveal mt-8 flex flex-col gap-gutter"
+      style="--reveal-delay: 0.2s"
+    >
+      {/* ── Streaks & form (lead card) ───────────────────────── */}
+      <div class={cn(cardCls, "p-5 md:p-6")}>
+        <header class="mb-5 flex items-center justify-between">
+          <h2 class="font-mono text-mono-sm uppercase text-muted-foreground">
+            Streaks &amp; recent form
+          </h2>
+        </header>
+
+        <div class="grid grid-cols-1 gap-6 md:grid-cols-3">
+          {/* Current streak */}
+          <div>
+            <p class="font-mono text-mono-sm uppercase text-muted-foreground">
+              Current streak
+            </p>
+            <p class="mt-2 font-display italic text-foreground tabular-nums leading-none text-5xl md:text-6xl">
+              {streaks.current}
+              <span class="ml-2 align-middle font-mono uppercase text-muted-foreground text-2xl md:text-3xl">W</span>
+            </p>
+          </div>
+
+          {/* Longest streak */}
+          <div>
+            <p class="font-mono text-mono-sm uppercase text-muted-foreground">
+              Longest streak
+            </p>
+            <p class="mt-2 font-display italic text-foreground tabular-nums leading-none text-5xl md:text-6xl">
+              {streaks.longest}
+              <span class="ml-2 align-middle font-mono uppercase text-muted-foreground text-2xl md:text-3xl">W</span>
+            </p>
+          </div>
+
+          {/* Last 10 form */}
+          <div>
+            <p class="font-mono text-mono-sm uppercase text-muted-foreground">
+              Last 10 games
+            </p>
+            <ol class="mt-3 flex flex-wrap items-center gap-2" aria-label="Last 10 results, oldest to newest">
+              {recentForm.map((r) => (
+                <li
+                  aria-label={resultTokens[r].label}
+                  class:list={["size-4 rounded-full border border-border", resultTokens[r].dot]}
+                />
+              ))}
+            </ol>
+            <p class="mt-3 font-mono text-mono-sm uppercase text-muted-foreground tabular-nums">
+              {recentForm.filter((r) => r === "win").length} W ·
+              {" "}{recentForm.filter((r) => r === "loss").length} L ·
+              {" "}{recentForm.filter((r) => r === "draw").length} D
+            </p>
+          </div>
+        </div>
+      </div>
+
+      {/* ── By time control (3-up cards) ─────────────────────── */}
+      <div>
+        <h2 class="mb-4 font-mono text-mono-sm uppercase text-muted-foreground">
+          By time control
+        </h2>
+        <div class="grid grid-cols-1 gap-gutter md:grid-cols-3">
+          {timeControls.map((tc) => (
+            <article class={cn(cardCls, "p-5")}>
+              <header class="flex items-baseline justify-between gap-3">
+                <p class="font-mono text-mono-md uppercase text-foreground">
+                  {tc.label}
+                </p>
+                <p class="font-mono text-mono-sm uppercase text-muted-foreground tabular-nums">
+                  {tc.duration}
+                </p>
+              </header>
+
+              <p class="mt-3 font-display italic text-foreground tabular-nums leading-none text-4xl">
+                {tc.winRate}
+                <span class="ml-1 align-middle font-mono text-2xl text-muted-foreground">%</span>
+              </p>
+
+              {/* Compact W/L/D bar */}
+              <div
+                class="mt-4 flex h-2 w-full overflow-hidden rounded-full border border-border bg-muted"
+                role="img"
+                aria-label={`${tc.won} wins, ${tc.lost} losses, ${tc.drawn} draws`}
+              >
+                <div class="h-full bg-pawn-yellow"      style={`width: ${(tc.won  / tc.played) * 100}%`}></div>
+                <div class="h-full bg-pawn-red"         style={`width: ${(tc.lost / tc.played) * 100}%`}></div>
+                <div class="h-full bg-muted-foreground" style={`width: ${(tc.drawn / tc.played) * 100}%`}></div>
+              </div>
+
+              <p class="mt-3 font-mono text-mono-sm uppercase text-muted-foreground tabular-nums">
+                {tc.won} W · {tc.lost} L · {tc.drawn} D
+              </p>
+            </article>
+          ))}
+        </div>
+      </div>
+
+      {/* ── By opponent strength ─────────────────────────────── */}
+      <div class={cn(cardCls, "p-5 md:p-6")}>
+        <header class="mb-5 flex items-center justify-between">
+          <h2 class="font-mono text-mono-sm uppercase text-muted-foreground">
+            By opponent strength
+          </h2>
+          <span class="font-mono text-mono-sm uppercase text-muted-foreground tabular-nums">
+            {opponentStrength.reduce((n, o) => n + o.played, 0)} games
+          </span>
+        </header>
+
+        <ul class="grid grid-cols-1 gap-3 md:grid-cols-3">
+          {opponentStrength.map((o) => (
+            <li class="rounded-lg border border-border bg-muted px-4 py-3">
+              <div class="flex items-baseline justify-between gap-3">
+                <div class="flex items-center gap-3">
+                  <span aria-hidden="true" class="font-mono text-mono-md text-muted-foreground">
+                    {o.symbol}
+                  </span>
+                  <span class="font-mono text-mono-sm uppercase text-muted-foreground">
+                    {o.label}
+                  </span>
+                </div>
+                <p class="font-display italic text-foreground tabular-nums leading-none text-2xl">
+                  {o.winRate}
+                  <span class="ml-1 align-middle font-mono text-base text-muted-foreground">%</span>
+                </p>
+              </div>
+
+              {/* Win-rate bar (single colour, foreground accent) */}
+              <div
+                class="mt-3 h-1.5 w-full overflow-hidden rounded-full bg-muted-foreground/20"
+                role="presentation"
+              >
+                <div class="h-full bg-foreground" style={`width: ${o.winRate}%`}></div>
+              </div>
+
+              <p class="mt-2 font-mono text-mono-sm uppercase text-muted-foreground tabular-nums">
+                {o.played} games
+              </p>
+            </li>
+          ))}
+        </ul>
+      </div>
+
+      {/* ── Milestones (4-up grid) ───────────────────────────── */}
+      <div class={cn(cardCls, "p-6 md:p-8")}>
+        <header class="mb-5 flex items-center justify-between">
+          <h2 class="font-mono text-mono-sm uppercase text-muted-foreground">
+            Milestones
+          </h2>
+        </header>
+
+        <dl class="grid grid-cols-2 gap-x-6 gap-y-6 md:grid-cols-4">
+          {milestones.map((m) => (
+            <div class="flex flex-col gap-1.5">
+              <dt class="font-mono text-mono-sm uppercase text-muted-foreground">
+                {m.label}
+              </dt>
+              <dd class="font-display italic text-foreground tabular-nums leading-none text-2xl md:text-3xl">
+                {m.value}
+              </dd>
+              <p class="font-mono text-mono-sm uppercase text-muted-foreground">
+                {m.detail}
+              </p>
+            </div>
+          ))}
+        </dl>
+      </div>
+    </section>
+
+    {/* ---------- FRIENDS ---------- */}
+    <section
+      role="tabpanel"
+      id="panel-friends"
+      aria-labelledby="tab-friends"
+      data-panel="friends"
+      hidden
+      class="page-reveal mt-8"
+      style="--reveal-delay: 0.2s"
+    >
+      <div class={cn(cardCls, "p-6")}>
+        <header class="mb-5 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+          <div>
+            <h2 class="font-mono text-mono-sm uppercase text-muted-foreground">
+              Friends
+            </h2>
+            <p class="mt-1 font-sans text-sm text-muted-foreground">
+              <span data-friend-count>{friends.length}</span> total ·
+              <span class="ml-1 text-foreground">
+                {friends.filter((f) => f.status === "online" || f.status === "in_game").length} active
+              </span>
+            </p>
+          </div>
+
+          {/* Search bar */}
+          <label class="relative w-full sm:max-w-xs">
+            <span class="sr-only">Search friends</span>
+            <svg
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="2"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              class="pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2 text-muted-foreground"
+              aria-hidden="true"
+            >
+              <circle cx="11" cy="11" r="7" />
+              <path d="m21 21-4.3-4.3" />
+            </svg>
+            <input
+              type="search"
+              placeholder="Find a friend…"
+              autocomplete="off"
+              data-friend-search
+              class:list={[
+                "w-full rounded-full bg-input pl-9 pr-4 py-2",
+                "font-sans text-sm text-foreground",
+                "border border-border",
+                "placeholder:text-muted-foreground",
+                "focus:outline-none focus:ring-2 focus:ring-foreground",
+              ]}
+            />
+          </label>
+        </header>
+
+        <ul class="grid grid-cols-1 gap-3 sm:grid-cols-2" data-friend-list>
+          {friends.map((f) => (
+            <li
+              data-friend-username={f.username.toLowerCase()}
+              class="flex items-center justify-between gap-3 rounded-lg border border-border bg-muted px-4 py-3 transition-colors hover:border-foreground"
+            >
+              <div class="flex min-w-0 items-center gap-3">
+                {/* Avatar with status dot */}
+                <div class="relative">
+                  <span
+                    aria-hidden="true"
+                    class="flex size-10 items-center justify-center rounded-xl border border-border bg-surface font-display italic text-lg text-foreground"
+                  >
+                    {f.initial}
+                  </span>
+                  <span
+                    aria-hidden="true"
+                    class:list={[
+                      "absolute -bottom-0.5 -right-0.5 size-3 rounded-full ring-2 ring-muted",
+                      statusTokens[f.status].dot,
+                    ]}
+                  />
+                </div>
+                <div class="flex min-w-0 flex-col">
+                  <span class="truncate font-sans text-sm font-semibold text-foreground">
+                    {f.username}
+                  </span>
+                  <span class="font-mono text-mono-sm uppercase text-muted-foreground">
+                    {statusTokens[f.status].label} · {f.rating}
+                  </span>
+                </div>
+              </div>
+
+              <a
+                href="#"
+                class={cn(
+                  buttonVariants({ variant: "brand-outline", size: "pill" }),
+                  "shrink-0",
+                )}
+              >
+                {f.status === "in_game" ? "Watch" : "Play"}
+              </a>
+            </li>
+          ))}
+        </ul>
+
+        {/* Empty state — toggled by the search script */}
+        <p
+          data-friend-empty
+          hidden
+          class="mt-6 text-center font-display italic text-muted-foreground"
+        >
+          no friends match that search.
+        </p>
+      </div>
+    </section>
+  </main>
+
+  {/* =========================================================
+      Inline behaviors — tabs + friend search.
+      Tiny vanilla JS, no React island needed.
+      ========================================================= */}
+  <script>
+    // ---- One-shot page-reveal cleanup ----
+    // Header + tabs + the three tab panels share .page-reveal so they fade
+    // up on initial load. Chromium re-runs CSS animations whenever an
+    // element transitions from display:none -> displayed; that's exactly
+    // what happens when our tab toggle removes the [hidden] attribute on
+    // a previously hidden panel, so the panel ends up mid-animation
+    // (washed out) every time the user switches tabs.
+    //
+    // Fix: after the longest reveal-delay + animation duration (1.2s),
+    // strip the class. The element retains its final visible state because
+    // the .page-reveal rule only sets opacity:0.001 as a starting value,
+    // and once removed the inherited opacity:1 takes over.
+    setTimeout(() => {
+      document.querySelectorAll<HTMLElement>(".page-reveal").forEach((el) => {
+        el.classList.remove("page-reveal");
+      });
+    }, 1500);
+
+    // ---- Tabs ----
+    const tabRoot = document.querySelector<HTMLElement>("[data-profile-tabs]");
+    if (tabRoot) {
+      const tabs = Array.from(tabRoot.querySelectorAll<HTMLButtonElement>("[data-tab]"));
+      const panels = Array.from(document.querySelectorAll<HTMLElement>("[data-panel]"));
+
+      const activate = (id: string) => {
+        tabs.forEach((t) => t.setAttribute("aria-selected", t.dataset.tab === id ? "true" : "false"));
+        panels.forEach((p) => {
+          if (p.dataset.panel === id) p.removeAttribute("hidden");
+          else p.setAttribute("hidden", "");
+        });
+      };
+
+      tabs.forEach((t) => {
+        t.addEventListener("click", () => activate(t.dataset.tab!));
+      });
+
+      // Roving keyboard support: ← / → between tabs.
+      tabRoot.addEventListener("keydown", (e: KeyboardEvent) => {
+        const idx = tabs.findIndex((t) => t === document.activeElement);
+        if (idx === -1) return;
+        if (e.key === "ArrowRight" || e.key === "ArrowLeft") {
+          e.preventDefault();
+          const next = (idx + (e.key === "ArrowRight" ? 1 : -1) + tabs.length) % tabs.length;
+          tabs[next].focus();
+          activate(tabs[next].dataset.tab!);
+        }
+      });
+    }
+
+    // ---- Friend search ----
+    const input = document.querySelector<HTMLInputElement>("[data-friend-search]");
+    const list = document.querySelector<HTMLElement>("[data-friend-list]");
+    const empty = document.querySelector<HTMLElement>("[data-friend-empty]");
+
+    if (input && list) {
+      input.addEventListener("input", () => {
+        const q = input.value.trim().toLowerCase();
+        let visible = 0;
+        list.querySelectorAll<HTMLElement>("[data-friend-username]").forEach((li) => {
+          const match = !q || li.dataset.friendUsername!.includes(q);
+          li.style.display = match ? "" : "none";
+          if (match) visible++;
+        });
+        if (empty) {
+          if (visible === 0) empty.removeAttribute("hidden");
+          else empty.setAttribute("hidden", "");
+        }
+      });
+    }
+  </script>
+</RootLayout>

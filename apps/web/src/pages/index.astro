@@ -34,7 +34,12 @@ import { AITelemetry } from "~/components/landing/AITelemetry";
 import { Leaderboard } from "~/components/landing/Leaderboard";
 import { isAuthenticated } from "~/lib/auth";
 
+// Landing is the marketing surface for anon visitors. Authed users have
+// already seen the pitch and signed up — bounce them straight to the lobby.
 const authed = await isAuthenticated(Astro);
+if (authed) {
+  return Astro.redirect("/play");
+}
 
 // Board variant from ?board=X — liquid-glass is the chosen default. The
 // other variants are kept (Board.tsx + globals.css) so we can switch skins
@@ -59,6 +64,7 @@ const boardVariant: BoardVariant = VALID_VARIANTS.includes(requested as BoardVar
 <RootLayout
   title="4thewin — Connect 4, but smarter"
   description="Play Connect 4 against an AI in your browser. No signup needed to start."
+  showFooter
 >
   {/* Hero intro orchestration:
       1. If the user has seen the hero before (localStorage flag), add
