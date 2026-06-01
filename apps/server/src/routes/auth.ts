@@ -32,6 +32,8 @@ import { users } from "../db/schema.js";
 import { hashPassword, verifyPassword } from "../auth/password.js";
 import { signToken, verifyToken } from "../auth/jwt.js";
 import { requireAuth } from "../auth/middleware.js";
+import { titleForRating } from "../game/elo.js";
+import { getUserRank } from "../lib/rank.js";
 import {
   getAuthorizationUrl,
   exchangeCode,
@@ -156,6 +158,7 @@ export async function authRoutes(app: FastifyInstance) {
     // re-entry (sinon la révisite de /signup?step=3 sans /settings écrase
     // les valeurs du profil avec les défauts de la form — voir DESIGN.md
     // §17 ou apps/web/docs/authed-nav-roadmap.md).
+    const rank = await getUserRank(user.rating, user.peakRating, user.id);
     return reply.send({
       id: user.id,
       email: user.email,
@@ -163,6 +166,10 @@ export async function authRoutes(app: FastifyInstance) {
       avatarUrl: user.avatarUrl,
       bio: user.bio,
       signupCompletedAt: user.signupCompletedAt,
+      rating: user.rating,
+      peakRating: user.peakRating,
+      rank,
+      title: titleForRating(user.rating),
     });
   });
 

@@ -19,6 +19,8 @@ import { db } from "../db/client.js";
 import { users } from "../db/schema.js";
 import { requireAuth } from "../auth/middleware.js";
 import { hashPassword, verifyPassword } from "../auth/password.js";
+import { titleForRating } from "../game/elo.js";
+import { getUserRank } from "../lib/rank.js";
 
 // Dossier de destination des avatars (créé au démarrage par server.ts).
 const AVATARS_DIR = join(import.meta.dirname, "..", "..", "uploads", "avatars");
@@ -63,6 +65,7 @@ export async function userRoutes(app: FastifyInstance) {
     }
 
     // Renvoie uniquement les infos publiques (pas d'email, pas de password).
+    const rank = await getUserRank(user.rating, user.peakRating, user.id);
     return reply.send({
       id: user.id,
       username: user.username,
@@ -73,6 +76,10 @@ export async function userRoutes(app: FastifyInstance) {
       gamesWon: user.gamesWon,
       gamesLost: user.gamesLost,
       gamesDrawn: user.gamesDrawn,
+      rating: user.rating,
+      peakRating: user.peakRating,
+      rank,
+      title: titleForRating(user.rating),
     });
   });
 
@@ -126,7 +133,7 @@ export async function userRoutes(app: FastifyInstance) {
     }
   );
 
-  app.get(
+    app.get(
     "/profile",
     { preHandler: requireAuth },
     async (request, reply) => {
@@ -134,6 +141,7 @@ export async function userRoutes(app: FastifyInstance) {
       const [user] = await db.select().from(users).where(eq(users.id, request.userId!));
       if (!user) return reply.code(404).send({ error: "User not found" });
 
+      const rank = await getUserRank(user.rating, user.peakRating, user.id);
       return reply.send({
         id: user.id,
         email: user.email,
@@ -143,6 +151,10 @@ export async function userRoutes(app: FastifyInstance) {
         pawnSkin: user.pawnSkin,
         gridSkin: user.gridSkin,
         oauth42Linked: user.oauth42Id !== null,
+        rating: user.rating,
+        peakRating: user.peakRating,
+        rank,
+        title: titleForRating(user.rating),
       });
     }
   );
