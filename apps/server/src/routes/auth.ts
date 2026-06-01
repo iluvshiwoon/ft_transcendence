@@ -367,6 +367,36 @@ export async function authRoutes(app: FastifyInstance) {
       return reply.redirect(target);
     }
   );
+
+  app.post(
+    "/oauth42/unlink",
+    { preHandler: requireAuth },
+    async (request, reply) => {
+      // Dissocie le compte 42 du user courant. Bloqué si l'user n'a pas
+      // de mot de passe (sinon il perdrait tout moyen de se reconnecter —
+      // le flow OAuth n'est qu'un raccourci). On force la mise en place
+      // d'un password d'abord via PUT /api/profile/password.
+      const [user] = await db
+        .select({ id: users.id, password: users.password, oauth42Id: users.oauth42Id })
+        .from(users)
+        .where(eq(users.id, request.userId!));
+      if (!user) return reply.code(404).send({ error: "User not found" });
+      if (!user.oauth42Id) {
+        return reply.code(400).send({ error: "No 42 account linked" });
+      }
+      if (!user.password) {
+        return reply.code(409).send({
+          error:
+            "Set a password before unlinking 42 (otherwise you'd be locked out)",
+        });
+      }
+      await db
+        .update(users)
+        .set({ oauth42Id: null, updatedAt: new Date() })
+        .where(eq(users.id, request.userId!));
+      return reply.send({ ok: true });
+    }
+  );
 }
 
 // Pose le cookie d'auth : HttpOnly + secure en prod, 7 jours.
