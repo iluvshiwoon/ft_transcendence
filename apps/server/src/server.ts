@@ -16,6 +16,7 @@ import { notificationRoutes } from "./routes/notifications.js";
 import { lobbyRoutes } from "./routes/lobbies.js";
 import { gameRoutes } from "./routes/games.js";
 import { playRoutes } from "./routes/play.js";
+import { leaderboardRoutes } from "./routes/leaderboard.js";
 import { setupSocket } from "./socket/index.js";
 
 // Dossier racine des uploads (avatars, etc.). Créé au démarrage si absent.
@@ -78,6 +79,9 @@ export async function buildServer() {
   // Routes anonymous play (landing demo) : /api/play/start, /move, /state, /reset.
   // Server-authoritative game state, HttpOnly cookie session, in-memory store.
   await app.register(playRoutes, { prefix: "/api" });
+
+  // Public top-N Elo leaderboard for the landing page. No auth.
+  await app.register(leaderboardRoutes, { prefix: "/api" });
 
   // Setup Socket.io (auth + online/offline tracking + futurs events chat/game/notif).
   await setupSocket(app);

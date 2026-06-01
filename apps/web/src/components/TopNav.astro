@@ -206,9 +206,7 @@ const initial = user?.username?.[0]?.toUpperCase() ?? "?";
             {user!.username}
           </span>
           <span class="font-mono text-mono-sm uppercase tabular-nums text-muted-foreground">
-            {/* Mock rating until HANDOFF §3.2 (Elo + peak_rating) ships and
-                user.rating becomes a real field on CurrentUser. */}
-            Rating 2854
+            {user!.title} · {user!.rating}
           </span>
         </span>
       </a>

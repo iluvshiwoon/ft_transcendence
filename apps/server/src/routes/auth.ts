@@ -5,6 +5,13 @@
 //   Vérifie : champs présents, mot de passe ≥ 8 chars, email/username pas déjà pris.
 //   Hash le password, insère le user, pose le JWT en cookie HttpOnly.
 //
+// POST /api/auth/signup-complete — termine le flow /signup.
+//   Auth requise. Idempotent : pose signupCompletedAt si null.
+//   Body optionnel: { initialRating?: number }. Si présent, applique cette
+//   valeur à users.rating + users.peak_rating *uniquement* si la row est
+//   encore à 1000 (le défaut). Ça permet à un user OAuth de repasser par
+//   le flow sans se faire écraser sa note.
+//
 // POST /api/auth/login — connecte un user existant.
 //   Body: { email, password }
 //   Vérifie : credentials corrects.
@@ -25,13 +32,15 @@
 //   on crée/retrouve l'user en DB, on pose le cookie JWT, on redirige vers le front.
 
 import type { FastifyInstance, FastifyReply } from "fastify";
-import { and, eq, isNull } from "drizzle-orm";
+import { and, eq, isNull, sql } from "drizzle-orm";
 import { randomBytes } from "node:crypto";
 import { db } from "../db/client.js";
 import { users } from "../db/schema.js";
 import { hashPassword, verifyPassword } from "../auth/password.js";
 import { signToken, verifyToken } from "../auth/jwt.js";
 import { requireAuth } from "../auth/middleware.js";
+import { titleForRating } from "../game/elo.js";
+import { getUserRank } from "../lib/rank.js";
 import {
   getAuthorizationUrl,
   exchangeCode,
@@ -156,6 +165,7 @@ export async function authRoutes(app: FastifyInstance) {
     // re-entry (sinon la révisite de /signup?step=3 sans /settings écrase
     // les valeurs du profil avec les défauts de la form — voir DESIGN.md
     // §17 ou apps/web/docs/authed-nav-roadmap.md).
+    const rank = await getUserRank(user.rating, user.peakRating, user.id);
     return reply.send({
       id: user.id,
       email: user.email,
@@ -163,6 +173,10 @@ export async function authRoutes(app: FastifyInstance) {
       avatarUrl: user.avatarUrl,
       bio: user.bio,
       signupCompletedAt: user.signupCompletedAt,
+      rating: user.rating,
+      peakRating: user.peakRating,
+      rank,
+      title: titleForRating(user.rating),
     });
   });
 
@@ -172,9 +186,42 @@ export async function authRoutes(app: FastifyInstance) {
     async (request, reply) => {
       // Marque le flow /signup comme terminé pour ce user. Idempotent : si
       // déjà mis, no-op. Appelé par le frontend quand /signup?step=4 monte
-      // (ApsignupCompleteTracker dans Step4Welcome). Une fois cette colonne
+      // (SignupCompleteTracker dans Step4Welcome). Une fois cette colonne
       // posée, le gate dans apps/web/src/pages/signup.astro redirige
       // /signup → / pour ce user.
+      //
+      // Body optionnel { initialRating?: number } : si l'user arrive depuis
+      // une démo anonyme (EndGameOverlay → /signup?step=1&score=…),
+      // Step1Save persiste le score en localStorage et SignupCompleteTracker
+      // le forward ici. On l'applique à users.rating + users.peak_rating
+      // uniquement quand la row est encore à 1000 — ça empêche un user OAuth
+      // qui repasserait par /signup de se faire écraser sa note.
+      const body = (request.body ?? {}) as { initialRating?: unknown };
+      const rawInitial = body.initialRating;
+      const initial =
+        typeof rawInitial === "number" &&
+        Number.isFinite(rawInitial) &&
+        rawInitial >= 0 &&
+        rawInitial <= 4000
+          ? Math.floor(rawInitial)
+          : null;
+
+      if (initial !== null) {
+        // Single UPDATE with a rating=1000 guard so the conditional stays
+        // atomic (no read-then-write race). peak_rating uses GREATEST so a
+        // new user starting at a high score gets the matching peak.
+        await db
+          .update(users)
+          .set({
+            rating: initial,
+            peakRating: sql`GREATEST(${users.peakRating}, ${initial})`,
+            updatedAt: new Date(),
+          })
+          .where(
+            and(eq(users.id, request.userId!), eq(users.rating, 1000))
+          );
+      }
+
       await db
         .update(users)
         .set({ signupCompletedAt: new Date(), updatedAt: new Date() })

@@ -16,8 +16,9 @@
  * placeholders. The pill / swatch radios toggle via aria-checked
  * (same inline-JS pattern as /play and /profile tabs).
  *
- * Auth: matches /play and /profile — no redirect while data is mocked.
- * TODO: gate behind isAuthenticated() once real settings wire up.
+ * Auth: gated behind isAuthenticated(). Unauthed visitors get bounced
+ * to /signup?step=1. Form interactions remain mocked (real
+ * /api/users/:id PATCH wires up in a separate workstream).
  *
  * Backend status (see HANDOFF_BACKEND.md):
  *   - PUT /api/profile (exists) covers username / bio / pawnSkin / gridSkin
@@ -28,6 +29,11 @@
 import RootLayout from "~/layouts/RootLayout.astro";
 import { Button, buttonVariants } from "~/components/ui/button";
 import { cn } from "~/lib/utils";
+import { isAuthenticated } from "~/lib/auth";
+
+if (!(await isAuthenticated(Astro))) {
+  return Astro.redirect("/signup?step=1");
+}
 
 // ─── Mock current user / preferences ────────────────────────────────────────
 // Replaced by GET /api/profile + new privacy fields once they ship.

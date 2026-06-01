@@ -15,6 +15,13 @@
       "when": 1779502071829,
       "tag": "0001_sparkling_the_enforcers",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1780326152960,
+      "tag": "0002_sad_whizzer",
+      "breakpoints": true
     }
   ]
 }

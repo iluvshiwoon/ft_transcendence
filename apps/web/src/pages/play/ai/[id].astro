@@ -14,9 +14,8 @@
  * flanking it. No hero text, no marketing CTAs — this is a tool
  * surface for in-game use.
  *
- * Auth: matches /play and /profile — no redirect for now while data
- * is mocked. TODO: gate behind isAuthenticated() once real games
- * land. The :id parameter is the game ID returned by POST
+ * Auth: gated behind isAuthenticated(). Unauthed visitors get bounced
+ * to /signup?step=1. The :id parameter is the game ID returned by POST
  * /api/games/ai (Tim's endpoint, exists post-rebase).
  *
  * Board variant: 'liquid-glass' to match the landing page exactly.
@@ -32,7 +31,11 @@ import { isAuthenticated } from "~/lib/auth";
 import { cn } from "~/lib/utils";
 
 const { id: _gameId } = Astro.params;
-const authed = await isAuthenticated(Astro);
+
+if (!(await isAuthenticated(Astro))) {
+  return Astro.redirect("/signup?step=1");
+}
+const authed = true;
 
 // ─── Right-column mock data ─────────────────────────────────────────────────
 // All replaced once backend lands. Game id + state will come from GET

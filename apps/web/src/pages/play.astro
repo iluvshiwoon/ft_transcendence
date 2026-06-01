@@ -15,14 +15,19 @@
  * because they were just slim mirrors of /profile — see HANDOFF_BACKEND.md
  * for the v2 surfaces.
  *
- * Auth: matched /profile.astro for now (no redirect) so the page is
- * testable while data is mocked. TODO: restore the
- *   if (!(await isAuthenticated(Astro))) return Astro.redirect("/signup?step=1");
- * gate once real backend reads land (§3.4 in HANDOFF_BACKEND.md).
+ * Auth: gated behind isAuthenticated(). Unauthed visitors get bounced
+ * to /signup?step=1, which already has a "Sign in" link for users with
+ * existing accounts. Backed by §3.4 in HANDOFF_BACKEND.md now that
+ * /me and friends endpoints are wired.
  */
 import RootLayout from "~/layouts/RootLayout.astro";
 import { Button, buttonVariants } from "~/components/ui/button";
 import { cn } from "~/lib/utils";
+import { isAuthenticated } from "~/lib/auth";
+
+if (!(await isAuthenticated(Astro))) {
+  return Astro.redirect("/signup?step=1");
+}
 
 // ─── Mock data (replaced by backend reads in later phases) ──────────────────
 

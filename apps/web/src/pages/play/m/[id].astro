@@ -14,7 +14,7 @@
  *     uses socket.io chat events once Tim's game socket lands.
  *
  * Board: liquid-glass variant, same as vs-AI.
- * Auth: no redirect while data is mocked (matches /play/ai/[id]).
+ * Auth: gated behind isAuthenticated() (matches /play/ai/[id]).
  */
 import RootLayout from "~/layouts/RootLayout.astro";
 import { Board } from "~/components/landing/Board";
@@ -24,7 +24,11 @@ import { isAuthenticated } from "~/lib/auth";
 import { cn } from "~/lib/utils";
 
 const { id: _gameId } = Astro.params;
-const authed = await isAuthenticated(Astro);
+
+if (!(await isAuthenticated(Astro))) {
+  return Astro.redirect("/signup?step=1");
+}
+const authed = true;
 
 // ─── Mock data ───────────────────────────────────────────────────────────────
 

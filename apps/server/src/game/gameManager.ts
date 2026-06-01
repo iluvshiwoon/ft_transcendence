@@ -10,6 +10,7 @@ import { db } from "../db/client.js";
 import { games, moves, users } from "../db/schema.js";
 import { GameState } from "./gameState.js";
 import { getBestMove } from "./ai.js";
+import { eloDelta, phantomRatingForDifficulty, type AiDifficulty, type GameOutcome } from "./elo.js";
 
 interface CreateOpts
 {
@@ -172,6 +173,42 @@ class GameManager
     await this.applyMove(gameId, null, col);
   }
 
+  private async applyEloForPlayer(
+    myId: number,
+    oppId: number | null,
+    aiDifficulty: AiDifficulty | null,
+    score: GameOutcome,
+  ): Promise<void> {
+    if (myId === null) return;
+    const myRow = (await db.select({ rating: users.rating })
+      .from(users)
+      .where(eq(users.id, myId)))[0];
+    if (!myRow) return;
+    const myRating = myRow.rating;
+
+    let oppRating: number;
+    if (oppId === null) {
+      if (aiDifficulty === null) return;
+      oppRating = phantomRatingForDifficulty(aiDifficulty);
+    } else {
+      const oppRow = (await db.select({ rating: users.rating })
+        .from(users)
+        .where(eq(users.id, oppId)))[0];
+      if (!oppRow) return;
+      oppRating = oppRow.rating;
+    }
+
+    const delta = eloDelta(myRating, oppRating, score);
+    const newRating = myRating + delta;
+
+    await db.update(users)
+      .set({
+        rating: sql`${users.rating} + ${delta}`,
+        peakRating: sql`GREATEST(${users.peakRating}, ${newRating})`,
+      })
+      .where(eq(users.id, myId));
+  }
+
   private broadcastState(gameId: number): void
   {
     const g = this.games.get(gameId);
@@ -254,6 +291,23 @@ class GameManager
           .set({ ...incPlayed, gamesLost: sql`${users.gamesLost} + 1` } as any)
           .where(eq(users.id, loserId));
       }
+    }
+
+    // Elo : on relit l'eventuel ai_difficulty de la game, puis pour chaque
+    // joueur on calcule le delta et on met a jour rating + peak_rating. En
+    // cas d'IA, l'"adversaire" est un rating fantome (easy=800, medium=1200,
+    // hard=1800) et l'IA n'a pas de row a mettre a jour.
+    const gameRow = (await db.select({ aiDifficulty: games.aiDifficulty })
+      .from(games)
+      .where(eq(games.id, gameId)))[0];
+    const aiDifficulty: AiDifficulty | null = gameRow?.aiDifficulty ?? null;
+
+    const p1Score: GameOutcome = s.winner === 1 ? 1 : s.winner === 2 ? 0 : 0.5;
+    const p2Score: GameOutcome = s.winner === 2 ? 1 : s.winner === 1 ? 0 : 0.5;
+
+    await this.applyEloForPlayer(p1, p2, aiDifficulty, p1Score);
+    if (p2 !== null) {
+      await this.applyEloForPlayer(p2, p1, aiDifficulty, p2Score);
     }
 
     g.io.to(`game:${gameId}`).emit("game:over", {
