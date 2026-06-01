@@ -141,6 +141,38 @@ const user = await getCurrentUser(Astro);
             }
           });
         } catch (e) {}
+
+        // Expose a window-level API so React islands (e.g. SettingsAppearance)
+        // can drive the same code path. Accepts "light" | "dark" | "auto":
+        //   - light / dark: stores + applies
+        //   - auto: clears storage, picks based on prefers-color-scheme now
+        //     and lets the OS-preference listener take over going forward.
+        window.__4thewinSetTheme = function (theme) {
+          try {
+            if (theme === "auto") {
+              localStorage.removeItem("theme");
+              var prefersDark = window.matchMedia("(prefers-color-scheme: dark)").matches;
+              setTheme(prefersDark ? "dark" : "light");
+            } else {
+              localStorage.setItem("theme", theme);
+              setTheme(theme);
+            }
+          } catch (e) {
+            // localStorage unavailable — apply the requested mode without persisting.
+            if (theme === "light" || theme === "dark") setTheme(theme);
+          }
+        };
+        // Reads the current effective choice (light / dark / auto) for the
+        // /settings radio to initialise to.
+        window.__4thewinGetTheme = function () {
+          try {
+            var stored = localStorage.getItem("theme");
+            if (stored === "light" || stored === "dark") return stored;
+            return "auto";
+          } catch (e) {
+            return "auto";
+          }
+        };
       })();
     </script>
   </head>
