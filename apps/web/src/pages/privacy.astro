@@ -1,0 +1,103 @@
+---
+/**
+ * /privacy — concise privacy policy.
+ *
+ * NOTE(team): draft copy for a 42 student project, not reviewed legal text.
+ * Update the "Last updated" date and the contact line before any real launch.
+ */
+import RootLayout from "~/layouts/RootLayout.astro";
+
+const LAST_UPDATED = "June 1, 2026";
+
+const COLLECTED = [
+  { term: "Account data", detail: "Your username, email address, and a securely hashed password. If you sign in with 42, we store your 42 account ID instead of a password." },
+  { term: "Profile data", detail: "Anything you choose to add — avatar image, bio, and your selected pawn and grid skins." },
+  { term: "Gameplay data", detail: "Match results, moves, and the stats derived from them (games played, won, lost, drawn)." },
+  { term: "Social data", detail: "Your friends list, blocked users, and chat messages you send or receive." },
+];
+---
+
+<RootLayout
+  title="Privacy Policy — 4thewin"
+  description="What data 4thewin collects, why, and the control you have over it."
+>
+  <main id="main" class="mx-auto flex w-full max-w-4xl flex-col gap-12 px-margin-mobile pt-32 pb-16 md:px-margin-desktop">
+    {/* Header */}
+    <header class="flex flex-col gap-4 border-b border-border pb-8">
+      <p class="font-mono text-mono-sm uppercase text-muted-foreground">Legal · Last updated {LAST_UPDATED}</p>
+      <h1 class="font-display italic font-light tracking-wide text-3xl md:text-5xl text-foreground leading-none">
+        Privacy Policy
+      </h1>
+      <p class="max-w-prose text-base text-muted-foreground">
+        4thewin is a non-commercial project built for the 42 school curriculum. We keep data collection
+        to the minimum needed to run the game, and we never sell it.
+      </p>
+    </header>
+
+    {/* What we collect */}
+    <section class="flex flex-col gap-6">
+      <h2 class="font-display italic text-2xl text-foreground leading-none">What we collect</h2>
+      <dl class="grid gap-4 md:grid-cols-2">
+        {COLLECTED.map((item) => (
+          <div class="flex flex-col gap-2 rounded-xl border border-border bg-surface p-6">
+            <dt class="font-medium text-foreground">{item.term}</dt>
+            <dd class="text-sm text-muted-foreground">{item.detail}</dd>
+          </div>
+        ))}
+      </dl>
+    </section>
+
+    {/* How we use it */}
+    <section class="flex flex-col gap-4">
+      <h2 class="font-display italic text-2xl text-foreground leading-none">How we use it</h2>
+      <ul class="flex max-w-prose flex-col gap-2 text-sm text-muted-foreground">
+        <li>• To create and authenticate your account.</li>
+        <li>• To run matches, matchmaking lobbies, and the in-app chat.</li>
+        <li>• To display your public profile and game statistics.</li>
+        <li>• To deliver in-app notifications (friend requests, invites, results).</li>
+      </ul>
+      <p class="max-w-prose text-sm text-muted-foreground">
+        We do not use your data for advertising, profiling, or any purpose beyond operating the game.
+      </p>
+    </section>
+
+    {/* Cookies */}
+    <section class="flex flex-col gap-4">
+      <h2 class="font-display italic text-2xl text-foreground leading-none">Cookies</h2>
+      <div class="flex flex-col gap-3 rounded-xl border border-border bg-muted p-6">
+        <p class="text-sm text-muted-foreground">
+          We use a single <strong class="font-medium text-foreground">essential cookie</strong>: an
+          HttpOnly session token that keeps you logged in for up to 7 days. It is not used for tracking
+          and is not shared with third parties.
+        </p>
+        <p class="text-sm text-muted-foreground">
+          A small amount of data (such as your theme preference) is stored locally in your browser and
+          never leaves your device.
+        </p>
+      </div>
+    </section>
+
+    {/* Third parties */}
+    <section class="flex flex-col gap-4">
+      <h2 class="font-display italic text-2xl text-foreground leading-none">Third-party services</h2>
+      <p class="max-w-prose text-sm text-muted-foreground">
+        If you choose <strong class="font-medium text-foreground">42 OAuth</strong> to sign in, 42 shares
+        your login, email, and avatar with us so we can create your account. Your interaction with 42 is
+        governed by 42's own privacy policy. We use no analytics, ad networks, or social trackers.
+      </p>
+    </section>
+
+    {/* Your rights */}
+    <section class="flex flex-col gap-4">
+      <h2 class="font-display italic text-2xl text-foreground leading-none">Your rights</h2>
+      <ul class="flex max-w-prose flex-col gap-2 text-sm text-muted-foreground">
+        <li>• <strong class="font-medium text-foreground">Access &amp; edit</strong> — view and change your profile data at any time from your settings.</li>
+        <li>• <strong class="font-medium text-foreground">Delete</strong> — close your account whenever you like. We anonymize it rather than hard-deleting, so other players' match histories stay intact; your matches will show "Deleted player" in your place.</li>
+        <li>• <strong class="font-medium text-foreground">Control sharing</strong> — block users to stop them messaging you or viewing your profile.</li>
+      </ul>
+      <p class="max-w-prose text-sm text-muted-foreground">
+        Questions about your data? Reach the team through the project repository.
+      </p>
+    </section>
+  </main>
+</RootLayout>

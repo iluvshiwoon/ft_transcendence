@@ -1,0 +1,158 @@
+---
+/**
+ * /how-to-play — rules, stats explainer, and how to challenge friends.
+ * Static content page. Mirrors the styleguide's heading + card patterns.
+ */
+import RootLayout from "~/layouts/RootLayout.astro";
+
+const RULES = [
+  {
+    n: 1,
+    title: "Take turns dropping",
+    body: "Two players alternate dropping a pawn into one of the 7 columns. The pawn falls to the lowest empty slot in that column.",
+  },
+  {
+    n: 2,
+    title: "Line up four",
+    body: "The first player to connect four of their own pawns in a row wins — horizontally, vertically, or along either diagonal.",
+  },
+  {
+    n: 3,
+    title: "Beat the clock",
+    body: "Each player has a single time bank (chess-style), not a per-move limit. Your clock only ticks on your turn and pauses on your opponent's. Run out of time and you forfeit.",
+  },
+  {
+    n: 4,
+    title: "Don't fill the board",
+    body: "If every slot fills with no four-in-a-row, the game is a draw.",
+  },
+];
+
+const STATS = [
+  { label: "Games played / won / lost / drawn", note: "Your full record across every match." },
+  { label: "Win rate", note: "Wins as a percentage of games played — the headline number on your profile." },
+  { label: "Last 10 games", note: "Opponent, result, and date for your most recent matches." },
+  { label: "Top 3 opponents", note: "The rivals you've faced most often." },
+];
+---
+
+<RootLayout
+  title="How to play — 4thewin"
+  description="Learn the rules of Connect 4, how your stats work, and how to challenge friends."
+>
+  <main id="main" class="mx-auto flex w-full max-w-4xl flex-col gap-16 px-margin-mobile pt-32 pb-16 md:px-margin-desktop">
+    {/* Header */}
+    <header class="flex flex-col gap-4 border-b border-border pb-8">
+      <p class="font-mono text-mono-sm uppercase text-muted-foreground">Guide</p>
+      <h1 class="font-display italic font-light tracking-wide text-3xl md:text-5xl text-foreground leading-none">
+        How to play
+      </h1>
+      <p class="max-w-prose text-base text-muted-foreground">
+        Connect 4 takes a minute to learn and a while to master. Here's everything you need —
+        the rules, how your record is tracked, and how to drag a friend into a match.
+      </p>
+    </header>
+
+    {/* The rules */}
+    <section class="flex flex-col gap-6">
+      <h2 class="font-display italic text-2xl text-foreground leading-none">The rules</h2>
+      <ol class="grid gap-4 md:grid-cols-2">
+        {RULES.map((rule) => (
+          <li class="flex flex-col gap-3 rounded-xl border border-border bg-surface p-6">
+            <span class="flex size-9 items-center justify-center rounded-full bg-accent font-mono text-mono-sm text-background">
+              {rule.n}
+            </span>
+            <h3 class="text-base font-medium text-foreground">{rule.title}</h3>
+            <p class="text-sm text-muted-foreground">{rule.body}</p>
+          </li>
+        ))}
+      </ol>
+      <p class="max-w-prose text-sm text-muted-foreground">
+        Prefer a longer game? Some lobbies run the <strong class="font-medium text-foreground">Connect 5</strong>
+        variant — same board, but you need <strong class="font-medium text-foreground">five</strong> in a row to win.
+        The lobby creator picks the mode and the time control (5, 10, or 60 minutes per player).
+      </p>
+    </section>
+
+    {/* Playing the AI */}
+    <section class="flex flex-col gap-6">
+      <h2 class="font-display italic text-2xl text-foreground leading-none">Playing the AI</h2>
+      <div class="flex flex-col gap-4 rounded-xl border border-border bg-surface p-6">
+        <p class="text-sm text-muted-foreground">
+          No opponent around? Play the computer. It plans ahead with a minimax search and comes in
+          three flavours:
+        </p>
+        <ul class="flex flex-col gap-3">
+          <li class="flex flex-col gap-1 border-b border-border pb-3 last:border-b-0 last:pb-0">
+            <span class="font-mono text-mono-sm uppercase text-foreground">Easy</span>
+            <span class="text-sm text-muted-foreground">Shallow search and the occasional random move. A relaxed warm-up.</span>
+          </li>
+          <li class="flex flex-col gap-1 border-b border-border pb-3 last:border-b-0 last:pb-0">
+            <span class="font-mono text-mono-sm uppercase text-foreground">Medium</span>
+            <span class="text-sm text-muted-foreground">A solid, consistent challenge that punishes loose play.</span>
+          </li>
+          <li class="flex flex-col gap-1">
+            <span class="font-mono text-mono-sm uppercase text-foreground">Hard</span>
+            <span class="text-sm text-muted-foreground">Deep search — it sees traps coming. Bring your best.</span>
+          </li>
+        </ul>
+      </div>
+    </section>
+
+    {/* Stats */}
+    <section class="flex flex-col gap-6">
+      <h2 class="font-display italic text-2xl text-foreground leading-none">How your stats work</h2>
+      <p class="max-w-prose text-base text-muted-foreground">
+        There's no hidden rating to grind — your profile just shows the honest numbers. Every finished
+        match against a human updates your public record:
+      </p>
+      <div class="grid gap-4 md:grid-cols-2">
+        {STATS.map((stat) => (
+          <div class="flex flex-col gap-2 rounded-xl border border-border bg-muted p-6">
+            <p class="font-medium text-foreground">{stat.label}</p>
+            <p class="text-sm text-muted-foreground">{stat.note}</p>
+          </div>
+        ))}
+      </div>
+    </section>
+
+    {/* Challenge a friend */}
+    <section class="flex flex-col gap-6">
+      <h2 class="font-display italic text-2xl text-foreground leading-none">Challenge a friend</h2>
+      <ol class="flex flex-col gap-4">
+        <li class="flex gap-4 rounded-xl border border-border bg-surface p-6">
+          <span class="flex size-9 shrink-0 items-center justify-center rounded-full bg-accent font-mono text-mono-sm text-background">1</span>
+          <div class="flex flex-col gap-1">
+            <h3 class="text-base font-medium text-foreground">Add them as a friend</h3>
+            <p class="text-sm text-muted-foreground">Search by username and send a request. Once they accept, you'll see when they're online or in a game.</p>
+          </div>
+        </li>
+        <li class="flex gap-4 rounded-xl border border-border bg-surface p-6">
+          <span class="flex size-9 shrink-0 items-center justify-center rounded-full bg-accent font-mono text-mono-sm text-background">2</span>
+          <div class="flex flex-col gap-1">
+            <h3 class="text-base font-medium text-foreground">Create a lobby</h3>
+            <p class="text-sm text-muted-foreground">Pick Connect 4 or Connect 5, set the time per player, and choose public or private. You'll get a 6-character code.</p>
+          </div>
+        </li>
+        <li class="flex gap-4 rounded-xl border border-border bg-surface p-6">
+          <span class="flex size-9 shrink-0 items-center justify-center rounded-full bg-accent font-mono text-mono-sm text-background">3</span>
+          <div class="flex flex-col gap-1">
+            <h3 class="text-base font-medium text-foreground">Share the code</h3>
+            <p class="text-sm text-muted-foreground">Public lobbies show up on the <strong class="font-medium text-foreground">Join</strong> page for anyone to click. For a private match, send your friend the code — they enter it to drop in.</p>
+          </div>
+        </li>
+      </ol>
+      <div class="flex flex-wrap items-center gap-4 pt-2">
+        <a
+          href="/play"
+          class="rounded-full bg-foreground px-6 py-2.5 text-sm font-medium text-background transition-colors hover:bg-accent"
+        >
+          Play now
+        </a>
+        <a href="/about" class="text-sm text-emphasis underline underline-offset-4 hover:text-accent">
+          About the project
+        </a>
+      </div>
+    </section>
+  </main>
+</RootLayout>

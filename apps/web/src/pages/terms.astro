@@ -1,0 +1,94 @@
+---
+/**
+ * /terms — terms of service.
+ *
+ * NOTE(team): draft copy for a 42 student project, not reviewed legal text.
+ * Update the "Last updated" date before any real launch.
+ */
+import RootLayout from "~/layouts/RootLayout.astro";
+
+const LAST_UPDATED = "June 1, 2026";
+
+const FAIR_PLAY = [
+  "No bots, scripts, or external solvers that play moves for you.",
+  "No exploiting bugs in the game or board to gain an unfair edge — report them instead.",
+  "No deliberately stalling to run out your opponent's clock beyond normal thinking time.",
+  "No abusive, harassing, or hateful messages in chat or usernames.",
+];
+---
+
+<RootLayout
+  title="Terms of Service — 4thewin"
+  description="The rules for using 4thewin: accounts, fair play, and liability."
+>
+  <main id="main" class="mx-auto flex w-full max-w-4xl flex-col gap-12 px-margin-mobile pt-32 pb-16 md:px-margin-desktop">
+    {/* Header */}
+    <header class="flex flex-col gap-4 border-b border-border pb-8">
+      <p class="font-mono text-mono-sm uppercase text-muted-foreground">Legal · Last updated {LAST_UPDATED}</p>
+      <h1 class="font-display italic font-light tracking-wide text-3xl md:text-5xl text-foreground leading-none">
+        Terms of Service
+      </h1>
+      <p class="max-w-prose text-base text-muted-foreground">
+        By creating an account or playing 4thewin, you agree to these terms. They're short and written
+        in plain language — please read them.
+      </p>
+    </header>
+
+    {/* Accounts */}
+    <section class="flex flex-col gap-4">
+      <h2 class="font-display italic text-2xl text-foreground leading-none">Your account</h2>
+      <ul class="flex max-w-prose flex-col gap-2 text-sm text-muted-foreground">
+        <li>• You're responsible for keeping your login credentials private and for activity on your account.</li>
+        <li>• One person, one account. Don't impersonate other players or pick a misleading username.</li>
+        <li>• You must provide a valid email so we can secure and recover your account.</li>
+        <li>• You can close your account at any time; doing so anonymizes your data as described in the <a href="/privacy" class="text-emphasis underline underline-offset-4 hover:text-accent">Privacy Policy</a>.</li>
+      </ul>
+    </section>
+
+    {/* Fair play */}
+    <section class="flex flex-col gap-4">
+      <h2 class="font-display italic text-2xl text-foreground leading-none">Fair play &amp; anti-cheat</h2>
+      <p class="max-w-prose text-sm text-muted-foreground">
+        4thewin only works if matches are honest. The following will get a match voided and may lead to
+        account suspension:
+      </p>
+      <ul class="flex flex-col gap-3 rounded-xl border border-border bg-surface p-6">
+        {FAIR_PLAY.map((item) => (
+          <li class="flex gap-3 text-sm text-muted-foreground">
+            <span class="mt-1.5 size-1.5 shrink-0 rounded-full bg-accent" aria-hidden="true"></span>
+            <span>{item}</span>
+          </li>
+        ))}
+      </ul>
+      <p class="max-w-prose text-sm text-muted-foreground">
+        Disconnecting mid-game pauses your match for up to one minute so you can reconnect. Stay gone
+        longer and the game is forfeited to your opponent.
+      </p>
+    </section>
+
+    {/* Acceptable use */}
+    <section class="flex flex-col gap-4">
+      <h2 class="font-display italic text-2xl text-foreground leading-none">Acceptable use</h2>
+      <p class="max-w-prose text-sm text-muted-foreground">
+        Don't attempt to disrupt, overload, reverse-engineer, or gain unauthorized access to the service
+        or other users' accounts. Don't upload content you don't have the right to share, including
+        avatars. We may remove content and suspend accounts that break these rules.
+      </p>
+    </section>
+
+    {/* Liability */}
+    <section class="flex flex-col gap-4">
+      <h2 class="font-display italic text-2xl text-foreground leading-none">Liability</h2>
+      <div class="flex flex-col gap-3 rounded-xl border border-border bg-muted p-6">
+        <p class="text-sm text-muted-foreground">
+          4thewin is a non-commercial student project provided <strong class="font-medium text-foreground">"as is"</strong>,
+          without warranties of any kind. The service may go offline, lose data, or change without notice.
+        </p>
+        <p class="text-sm text-muted-foreground">
+          To the extent permitted by law, the team is not liable for any damages arising from your use of
+          the service. If you don't agree with these terms, please don't use 4thewin.
+        </p>
+      </div>
+    </section>
+  </main>
+</RootLayout>

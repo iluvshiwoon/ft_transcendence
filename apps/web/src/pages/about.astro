@@ -1,0 +1,89 @@
+---
+/**
+ * /about — what 4thewin is, the stack behind it, and who built it.
+ */
+import RootLayout from "~/layouts/RootLayout.astro";
+
+const STACK = [
+  { name: "Astro", role: "Server-rendered public pages + routing." },
+  { name: "React", role: "Interactive islands — the board, lobbies, chat." },
+  { name: "Tailwind CSS", role: "The whole design system, tokens and all." },
+  { name: "Fastify", role: "TypeScript API for auth, users, and game logic." },
+  { name: "PostgreSQL + Drizzle", role: "Typed schema and queries for everything persisted." },
+  { name: "Socket.IO", role: "Real-time moves, presence, chat, and notifications." },
+  { name: "Vault + ModSecurity", role: "Secrets management and a WAF in front of the API." },
+];
+---
+
+<RootLayout
+  title="About — 4thewin"
+  description="A browser-based Connect 4 platform built as a 42 school project."
+>
+  <main id="main" class="mx-auto flex w-full max-w-4xl flex-col gap-12 px-margin-mobile pt-32 pb-16 md:px-margin-desktop">
+    {/* Header */}
+    <header class="flex flex-col gap-4 border-b border-border pb-8">
+      <p class="font-mono text-mono-sm uppercase text-muted-foreground">About</p>
+      <h1 class="font-display italic font-light tracking-wide text-3xl md:text-5xl text-foreground leading-none">
+        4thewin
+      </h1>
+      <p class="max-w-prose text-base text-muted-foreground">
+        Connect 4, in your browser — against a friend across the world or an AI that actually thinks.
+        Real-time matches, accounts, friends, chat, and a board you can make your own.
+      </p>
+    </header>
+
+    {/* The project */}
+    <section class="flex flex-col gap-4">
+      <h2 class="font-display italic text-2xl text-foreground leading-none">The project</h2>
+      <p class="max-w-prose text-base text-muted-foreground">
+        4thewin is the capstone project of the <strong class="font-medium text-foreground">42 Common Core</strong> —
+        a team-built, full-stack web application. The brief is deliberately broad: ship a real multiplayer
+        game with everything a real product needs around it.
+      </p>
+      <p class="max-w-prose text-base text-muted-foreground">
+        We chose Connect 4. Underneath the simple game sits remote 1v1 play over WebSockets, a minimax AI
+        with three difficulty levels, user accounts with 42 OAuth, a friends-and-chat social layer, public
+        and private lobbies, persistent stats, and a hardened, containerized deployment.
+      </p>
+    </section>
+
+    {/* The stack */}
+    <section class="flex flex-col gap-6">
+      <h2 class="font-display italic text-2xl text-foreground leading-none">The stack</h2>
+      <dl class="grid gap-4 md:grid-cols-2">
+        {STACK.map((tech) => (
+          <div class="flex flex-col gap-2 rounded-xl border border-border bg-surface p-6">
+            <dt class="font-mono text-mono-sm uppercase text-foreground">{tech.name}</dt>
+            <dd class="text-sm text-muted-foreground">{tech.role}</dd>
+          </div>
+        ))}
+      </dl>
+      <p class="max-w-prose text-sm text-muted-foreground">
+        Everything runs in containers and launches with a single command, behind a reverse proxy serving
+        HTTPS end to end.
+      </p>
+    </section>
+
+    {/* The goal */}
+    <section class="flex flex-col gap-4">
+      <h2 class="font-display italic text-2xl text-foreground leading-none">The goal</h2>
+      <div class="flex flex-col gap-3 rounded-xl border border-border bg-muted p-6">
+        <p class="text-base text-muted-foreground">
+          More than passing a project: build something we'd actually want to play. A game that loads fast,
+          feels responsive, looks sharp in light or dark, and treats your data with respect.
+        </p>
+      </div>
+      <div class="flex flex-wrap items-center gap-4 pt-2">
+        <a
+          href="/play"
+          class="rounded-full bg-foreground px-6 py-2.5 text-sm font-medium text-background transition-colors hover:bg-accent"
+        >
+          Play a game
+        </a>
+        <a href="/how-to-play" class="text-sm text-emphasis underline underline-offset-4 hover:text-accent">
+          Learn how to play
+        </a>
+      </div>
+    </section>
+  </main>
+</RootLayout>
