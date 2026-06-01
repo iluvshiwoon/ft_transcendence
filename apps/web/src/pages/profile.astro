@@ -15,11 +15,19 @@
  *   2. Tab bar         (Overview / Stats / Friends)
  *   3. Tab panels      (toggled by inline script — zero JS framework cost)
  *
- * Mock data only. Wire to the backend once /api/users/:username lands.
+ * Auth: gated behind isAuthenticated(). Unauthed visitors get bounced
+ * to /signup?step=1. The page still shows mock data for now (real
+ * /api/users/:username wiring is a separate workstream) — but the
+ * redirect is in place so the page can't be reached anonymously.
  */
 import RootLayout from "~/layouts/RootLayout.astro";
 import { Button, buttonVariants } from "~/components/ui/button";
 import { cn } from "~/lib/utils";
+import { isAuthenticated } from "~/lib/auth";
+
+if (!(await isAuthenticated(Astro))) {
+  return Astro.redirect("/signup?step=1");
+}
 
 // ---------- Mock data ----------
 const player = {
