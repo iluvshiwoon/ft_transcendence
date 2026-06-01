@@ -17,6 +17,25 @@ import {
   notifications,
 } from "../src/db/schema.js";
 
+// 9 high-rated users with explicit Elo ratings matching the wireframe in
+// apps/web/src/components/landing/Leaderboard.tsx (QuantumDrop 2854,
+// Sarah_w 2710, ...). gamesPlayed/Won/Lost/Drawn are self-consistent and
+// produce a win rate that loosely tracks rating (higher Elo → higher
+// win rate). The top-6 of these will populate the /api/leaderboard
+// response. The 4 baseline users (alice/bob/charlie/diana) keep their
+// 1000 default; they exist for the chat/friends/block tests.
+const HIGH_RATED_USERS = [
+  { username: "QuantumDrop",  email: "qd@42.fr",  rating: 2854, peakRating: 2912, gamesPlayed: 250, gamesWon: 235, gamesLost: 8,  gamesDrawn: 7 },
+  { username: "Sarah_w",      email: "sw@42.fr",  rating: 2710, peakRating: 2745, gamesPlayed: 200, gamesWon: 183, gamesLost: 12, gamesDrawn: 5 },
+  { username: "BotSlayer99",  email: "bs@42.fr",  rating: 2699, peakRating: 2720, gamesPlayed: 200, gamesWon: 178, gamesLost: 17, gamesDrawn: 5 },
+  { username: "GridLock_",    email: "gl@42.fr",  rating: 2569, peakRating: 2601, gamesPlayed: 200, gamesWon: 170, gamesLost: 22, gamesDrawn: 8 },
+  { username: "A_connect",    email: "ac@42.fr",  rating: 2349, peakRating: 2380, gamesPlayed: 150, gamesWon: 123, gamesLost: 22, gamesDrawn: 5 },
+  { username: "Pivot_",       email: "pv@42.fr",  rating: 2210, peakRating: 2240, gamesPlayed: 100, gamesWon: 73,  gamesLost: 22, gamesDrawn: 5 },
+  { username: "FourFingers",  email: "ff@42.fr",  rating: 2080, peakRating: 2110, gamesPlayed: 80,  gamesWon: 56,  gamesLost: 19, gamesDrawn: 5 },
+  { username: "DiagonalDan",  email: "dd@42.fr",  rating: 1980, peakRating: 2010, gamesPlayed: 70,  gamesWon: 47,  gamesLost: 19, gamesDrawn: 4 },
+  { username: "RookieRed",    email: "rr@42.fr",  rating: 1654, peakRating: 1680, gamesPlayed: 30,  gamesWon: 15,  gamesLost: 13, gamesDrawn: 2 },
+];
+
 async function seed() {
   console.log("🌱 Seeding database...");
 
@@ -40,18 +59,41 @@ async function seed() {
   console.log("Creating users...");
   const password = await bcrypt.hash("password123", 12);
 
+  // Baseline users — kept stable for chat/friends/block tests.
+  // Alice won her single game (1000 → 1016), bob lost his (1000 → 984).
   const insertedUsers = await db
     .insert(users)
     .values([
-      { email: "alice@42.fr",   username: "alice",   password, bio: "I love Connect 4" },
-      { email: "bob@42.fr",     username: "bob",     password, bio: "Bob the builder" },
-      { email: "charlie@42.fr", username: "charlie", password, status: "online" },
-      { email: "diana@42.fr",   username: "diana",   password, status: "in_game" },
+      { email: "alice@42.fr",   username: "alice",   password, bio: "I love Connect 4", rating: 1016, peakRating: 1016 },
+      { email: "bob@42.fr",     username: "bob",     password, bio: "Bob the builder",  rating: 984,  peakRating: 1000 },
+      { email: "charlie@42.fr", username: "charlie", password, status: "online",         rating: 1000, peakRating: 1000 },
+      { email: "diana@42.fr",   username: "diana",   password, status: "in_game",        rating: 1000, peakRating: 1000 },
     ])
-    .returning(); // .returning() = renvoie les lignes insérées (avec les IDs auto-générés)
+    .returning();
 
-  // On déstructure pour récupérer chaque user dans une variable nommée
   const [alice, bob, charlie, diana] = insertedUsers;
+
+  // High-rated leaderboard users — explicit Elo values, self-consistent
+  // gamesPlayed/Won/Lost/Drawn. Inserted after the baseline so the
+  // baseline's chat/friends rows reference their stable IDs (1-4).
+  const insertedHigh = await db
+    .insert(users)
+    .values(
+      HIGH_RATED_USERS.map((u) => ({
+        email: u.email,
+        username: u.username,
+        password,
+        rating: u.rating,
+        peakRating: u.peakRating,
+        gamesPlayed: u.gamesPlayed,
+        gamesWon: u.gamesWon,
+        gamesLost: u.gamesLost,
+        gamesDrawn: u.gamesDrawn,
+      })),
+    )
+    .returning();
+
+  const highByName = Object.fromEntries(insertedHigh.map((u) => [u.username, u]));
 
   // 3. Crée des amitiés.
   //    alice <-> bob : amis
@@ -98,6 +140,71 @@ async function seed() {
     { gameId: game1.id, playerId: bob.id,   column: 4, row: 1, moveNumber: 4 },
   ]);
 
+  // 6b. Quelques parties historiques entre les joueurs haut-classés.
+  //     Le but : donner du vécu à la page de profil / leaderboard sans
+  //     recalculer les Elo (les rating sont fixés explicitement plus haut
+  //     pour correspondre à la maquette). Les résultats sont choisis
+  //     pour que les perdants aient quand même des `gamesLost` non nuls
+  //     (cohérent avec les stats du seed ci-dessus).
+  console.log("Creating historical games...");
+  const historicalGames = [
+    // QuantumDrop dominates the upper bracket
+    { p1: "QuantumDrop", p2: "Sarah_w",     winner: "QuantumDrop" },
+    { p1: "QuantumDrop", p2: "BotSlayer99", winner: "QuantumDrop" },
+    { p1: "QuantumDrop", p2: "GridLock_",   winner: "QuantumDrop" },
+    { p1: "QuantumDrop", p2: "A_connect",   winner: "QuantumDrop" },
+    // Some upend / draws
+    { p1: "Sarah_w",     p2: "BotSlayer99", winner: "Sarah_w" },
+    { p1: "Sarah_w",     p2: "GridLock_",   winner: "Sarah_w" },
+    { p1: "BotSlayer99", p2: "GridLock_",   winner: "BotSlayer99" },
+    { p1: "BotSlayer99", p2: "A_connect",   winner: "BotSlayer99" },
+    { p1: "GridLock_",   p2: "A_connect",   winner: "A_connect" },
+    // Mid bracket
+    { p1: "A_connect",   p2: "Pivot_",      winner: "A_connect" },
+    { p1: "A_connect",   p2: "FourFingers", winner: "A_connect" },
+    { p1: "Pivot_",      p2: "FourFingers", winner: "Pivot_" },
+    { p1: "Pivot_",      p2: "DiagonalDan", winner: "Pivot_" },
+    { p1: "FourFingers", p2: "DiagonalDan", winner: "FourFingers" },
+    // Lower bracket — RookieRed takes some losses
+    { p1: "DiagonalDan", p2: "RookieRed",   winner: "DiagonalDan" },
+    { p1: "RookieRed",   p2: "FourFingers", winner: "FourFingers" },
+    { p1: "RookieRed",   p2: "Pivot_",      winner: "Pivot_" },
+    { p1: "RookieRed",   p2: "DiagonalDan", winner: "DiagonalDan" },
+    // Cross-bracket upsets
+    { p1: "RookieRed",   p2: "A_connect",   winner: "A_connect" },
+    { p1: "DiagonalDan", p2: "GridLock_",   winner: "DiagonalDan" },
+    // A few draws to bump gamesDrawn counts
+    { p1: "Sarah_w",     p2: "BotSlayer99", winner: null },
+    { p1: "Pivot_",      p2: "FourFingers", winner: null },
+    { p1: "RookieRed",   p2: "DiagonalDan", winner: null },
+  ];
+
+  for (const h of historicalGames) {
+    const p1 = highByName[h.p1];
+    const p2 = highByName[h.p2];
+    if (!p1 || !p2) continue;
+    const [g] = await db
+      .insert(games)
+      .values({
+        player1Id: p1.id,
+        player2Id: p2.id,
+        winnerId: h.winner ? highByName[h.winner].id : null,
+        status: "finished",
+        mode: "connect4",
+        timePerPlayerSeconds: 300,
+        startedAt: new Date(Date.now() - Math.floor(Math.random() * 30) * 24 * 3600 * 1000),
+        finishedAt: new Date(),
+      })
+      .returning();
+    // 4 cosmetic moves — they don't need to be a real game.
+    await db.insert(moves).values([
+      { gameId: g.id, playerId: p1.id, column: 0, row: 5, moveNumber: 1 },
+      { gameId: g.id, playerId: p2.id, column: 1, row: 5, moveNumber: 2 },
+      { gameId: g.id, playerId: p1.id, column: 0, row: 4, moveNumber: 3 },
+      { gameId: g.id, playerId: p2.id, column: 1, row: 4, moveNumber: 4 },
+    ]);
+  }
+
   // 7. Crée une partie en cours : charlie vs IA (medium).
   //    player2Id reste null, isAiOpponent = true.
   console.log("Creating AI game...");
@@ -115,7 +222,7 @@ async function seed() {
 
   // 8. Met à jour les stats : alice a gagné sa partie, bob l'a perdue.
   //    .update().set().where() = équivalent SQL UPDATE ... SET ... WHERE
-  console.log("Updating user stats...");
+  console.log("Updating baseline user stats...");
   await db.update(users).set({ gamesPlayed: 1, gamesWon: 1 }).where(eq(users.id, alice.id));
   await db.update(users).set({ gamesPlayed: 1, gamesLost: 1 }).where(eq(users.id, bob.id));
   await db.update(users).set({ gamesPlayed: 1 }).where(eq(users.id, charlie.id));
