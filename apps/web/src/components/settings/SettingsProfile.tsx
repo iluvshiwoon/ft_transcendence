@@ -126,7 +126,15 @@ function AvatarBlock({
         if (fileInputRef.current) fileInputRef.current.value = "";
         setTimeout(() => setStatus("idle"), 1500);
       } catch (e) {
-        const msg = e instanceof ProfileApiError ? e.message : "Upload failed";
+        const code = e instanceof ProfileApiError ? e.code : "INTERNAL";
+        const msg =
+          code === "FILE_TOO_LARGE"
+            ? "Image must be 2 MB or smaller."
+            : code === "INVALID_FILE"
+            ? "That file isn't a supported image (JPG, PNG, WebP)."
+            : e instanceof ProfileApiError
+            ? e.message
+            : "Upload failed";
         setError(msg);
         setStatus("error");
       }

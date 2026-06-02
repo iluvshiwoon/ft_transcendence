@@ -365,21 +365,53 @@ export async function userRoutes(app: FastifyInstance) {
     "/profile/avatar",
     { preHandler: requireAuth },
     async (request, reply) => {
-      // Récupère le fichier uploadé (limit 2 MB déjà configuré côté plugin).
-      const data = await request.file();
+      // Récupère le fichier uploadé. @fastify/multipart's fileSize limit
+      // (2 MB, set in server.ts) is enforced inside the busboy stream, so
+      // request.file() throws a Fastify error with code FST_REQ_FILE_TOO_LARGE
+      // (statusCode 413) before returning a usable stream. Without this
+      // catch the request would still resolve to a typed 413 (Fastify's
+      // default error handler), but in the bare `{ error, statusCode }`
+      // shape — the frontend's typed-error switch wouldn't match and the
+      // user would see the raw 'Payload Too Large' string. We catch it
+      // and re-emit through sendError so the response carries our code.
+      let data;
+      try {
+        data = await request.file();
+      } catch (err) {
+        const e = err as { statusCode?: number; code?: string };
+        if (e.statusCode === 413 || e.code === "FST_REQ_FILE_TOO_LARGE") {
+          return sendError(
+            reply,
+            413,
+            "FILE_TOO_LARGE",
+            "Image must be 2 MB or smaller.",
+          );
+        }
+        throw err;
+      }
       if (!data) {
-        return reply.code(400).send({ error: "No file uploaded" });
+        return sendError(reply, 400, "INVALID_FILE", "No file uploaded.");
       }
 
       // Vérifie le type MIME (le plugin a déjà coupé si > 2 MB).
       if (!ALLOWED_MIMETYPES.includes(data.mimetype)) {
-        return reply.code(400).send({ error: "Unsupported file type (JPG/PNG/WebP only)" });
+        return sendError(
+          reply,
+          400,
+          "INVALID_FILE",
+          "Unsupported file type (JPG, PNG, WebP only).",
+        );
       }
 
       // Lit tout le fichier en mémoire (OK car ≤ 2 MB).
       const buffer = await data.toBuffer();
       if (data.file.truncated) {
-        return reply.code(400).send({ error: "File too large (max 2 MB)" });
+        return sendError(
+          reply,
+          400,
+          "FILE_TOO_LARGE",
+          "Image must be 2 MB or smaller.",
+        );
       }
 
       // Redimensionne en 500x500 max (sans agrandir si plus petit) et convertit en webp.
@@ -393,7 +425,12 @@ export async function userRoutes(app: FastifyInstance) {
           .toBuffer();
       } catch (err) {
         request.log.warn({ err }, "avatar: sharp processing failed");
-        return reply.code(400).send({ error: "Invalid or corrupt image data" });
+        return sendError(
+          reply,
+          400,
+          "INVALID_FILE",
+          "Couldn't read the image data — file may be corrupt.",
+        );
       }
 
       // Sauvegarde sur disque. Nom de fichier = userId pour éviter les collisions.

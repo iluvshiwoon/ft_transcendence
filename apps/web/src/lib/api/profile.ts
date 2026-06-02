@@ -177,7 +177,28 @@ export function updatePassword(args: {
 
 // ─── Avatar (multipart) ──────────────────────────────────────────────
 
+// Mirrors the fileSize limit on the backend
+// (apps/server/src/server.ts → multipart plugin: 2 MB). Kept as a
+// constant here so the pre-validation in uploadAvatar() can short-
+// circuit before the roundtrip — without it, the user gets a 413 from
+// @fastify/multipart (or, now that the backend catches it, a typed
+// FILE_TOO_LARGE response), but the request has already shipped the
+// whole file. Pre-validating saves bandwidth and gives instant
+// feedback.
+export const AVATAR_MAX_BYTES = 2 * 1024 * 1024;
+
 export function uploadAvatar(file: File): Promise<{ avatarUrl: string }> {
+  // Pre-validate the size. The server's multipart plugin would also
+  // reject the file, but doing it client-side means the user gets the
+  // error before the file has been streamed to the server.
+  if (file.size > AVATAR_MAX_BYTES) {
+    return Promise.reject(
+      new ProfileApiError(
+        "FILE_TOO_LARGE",
+        "Image must be 2 MB or smaller.",
+      ),
+    );
+  }
   // Inlined fetch — requestJson() spreads JSON_HEADERS (Content-Type:
   // application/json) into the request headers before the browser has a
   // chance to override them with the multipart boundary. Fastify's
@@ -185,7 +206,7 @@ export function uploadAvatar(file: File): Promise<{ avatarUrl: string }> {
   // type and refuses to parse the body → 400 "No file uploaded". The
   // browser does set the correct Content-Type for FormData bodies in
   // modern fetch, but only when the headers dict doesn't pin it first.
-  // Step3Profile works because it doesn't go through requestJson.
+  // Step3Profile works because it doesn't use requestJson.
   const form = new FormData();
   form.append("file", file);
   return fetch("/api/profile/avatar", {
