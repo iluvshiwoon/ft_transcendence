@@ -40,6 +40,11 @@ export const users = pgTable("users", {
   // re-enter the flow and accidentally overwrite their profile with the
   // form's defaults. Future profile edits go through /settings (TBD).
   signupCompletedAt: timestamp("signup_completed_at"),
+  // Set whenever the user changes their password via /api/profile/password.
+  // Stays null for OAuth-only accounts that have never set a password.
+  // Surfaced in GET /api/profile as `passwordChangedAt` (ISO 8601) and
+  // displayed in /settings under the Password row as "Last changed · …".
+  passwordChangedAt: timestamp("password_changed_at"),
   createdAt: timestamp("created_at").notNull().defaultNow(),
   updatedAt: timestamp("updated_at").notNull().defaultNow(),
 });

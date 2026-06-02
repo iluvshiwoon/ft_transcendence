@@ -21,6 +21,7 @@ import { users } from "../db/schema.js";
 import { requireAuth } from "../auth/middleware.js";
 import { hashPassword, verifyPassword } from "../auth/password.js";
 import { titleForRating } from "../game/elo.js";
+import { sendError } from "../lib/errors.js";
 import { getUserRank } from "../lib/rank.js";
 
 // Dossier de destination des avatars (créé au démarrage par server.ts).
@@ -191,6 +192,9 @@ export async function userRoutes(app: FastifyInstance) {
         peakRating: user.peakRating,
         rank,
         title: titleForRating(user.rating),
+        // ISO 8601 or null. null for OAuth-only accounts that have
+        // never set a password. Surfaced in /settings as "Last changed".
+        passwordChangedAt: user.passwordChangedAt?.toISOString() ?? null,
       });
     }
   );
@@ -263,24 +267,29 @@ export async function userRoutes(app: FastifyInstance) {
       // Re-auth obligatoire : on demande le mot de passe actuel avant de changer l'email.
       const { currentPassword, newEmail } = request.body;
       if (!currentPassword || !newEmail) {
-        return reply.code(400).send({ error: "Missing fields" });
+        return sendError(reply, 400, "INVALID_BODY", "Missing fields");
       }
 
       const [user] = await db.select().from(users).where(eq(users.id, request.userId!));
       if (!user || !user.password) {
         // Compte OAuth-only : on bloque (faudrait d'abord set un password).
-        return reply.code(400).send({ error: "Cannot change email without a password set" });
+        return sendError(
+          reply,
+          400,
+          "PASSWORD_REQUIRED",
+          "Cannot change email without a password set",
+        );
       }
 
       const valid = await verifyPassword(currentPassword, user.password);
       if (!valid) {
-        return reply.code(401).send({ error: "Wrong current password" });
+        return sendError(reply, 401, "WRONG_PASSWORD", "Wrong current password");
       }
 
       // Vérifie que le nouvel email n'est pas déjà pris par un autre user.
       const existing = await db.select().from(users).where(eq(users.email, newEmail));
       if (existing.length > 0 && existing[0].id !== request.userId) {
-        return reply.code(409).send({ error: "Email already in use" });
+        return sendError(reply, 409, "EMAIL_IN_USE", "Email already in use");
       }
 
       await db
@@ -299,29 +308,56 @@ export async function userRoutes(app: FastifyInstance) {
       // Re-auth obligatoire : on demande le mot de passe actuel avant de changer.
       const { currentPassword, newPassword } = request.body;
       if (!currentPassword || !newPassword) {
-        return reply.code(400).send({ error: "Missing fields" });
+        return sendError(reply, 400, "INVALID_BODY", "Missing fields");
       }
       if (newPassword.length < 8) {
-        return reply.code(400).send({ error: "Password must be at least 8 chars" });
+        return sendError(
+          reply,
+          400,
+          "PASSWORD_TOO_SHORT",
+          "Password must be at least 8 chars",
+        );
       }
 
       const [user] = await db.select().from(users).where(eq(users.id, request.userId!));
       if (!user || !user.password) {
-        return reply.code(400).send({ error: "Cannot change password without one set" });
+        return sendError(
+          reply,
+          400,
+          "PASSWORD_REQUIRED",
+          "Cannot change password without one set",
+        );
       }
 
       const valid = await verifyPassword(currentPassword, user.password);
       if (!valid) {
-        return reply.code(401).send({ error: "Wrong current password" });
+        return sendError(reply, 401, "WRONG_PASSWORD", "Wrong current password");
+      }
+
+      // Refuse same-as-current. Defense in depth: the frontend also blocks
+      // this client-side so the user gets the inline error before submit,
+      // but the server enforces it too — never trust the client.
+      if (await verifyPassword(newPassword, user.password)) {
+        return sendError(
+          reply,
+          400,
+          "PASSWORD_SAME_AS_CURRENT",
+          "New password must be different from current password",
+        );
       }
 
       const newHash = await hashPassword(newPassword);
+      const now = new Date();
       await db
         .update(users)
-        .set({ password: newHash, updatedAt: new Date() })
+        .set({
+          password: newHash,
+          passwordChangedAt: now,
+          updatedAt: now,
+        })
         .where(eq(users.id, request.userId!));
 
-      return reply.send({ message: "Password updated" });
+      return reply.send({ message: "Password updated", passwordChangedAt: now.toISOString() });
     }
   );
 
