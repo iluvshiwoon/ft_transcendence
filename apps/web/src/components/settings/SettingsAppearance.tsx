@@ -55,7 +55,7 @@ const THEME_OPTIONS: { id: Theme; label: string }[] = [
 ];
 
 const PILL_CLS =
-  "px-3 py-1 rounded-full font-mono text-mono-sm uppercase border border-border bg-muted text-muted-foreground transition-colors hover:border-foreground hover:bg-foreground/20 hover:text-foreground aria-checked:border-foreground aria-checked:bg-foreground aria-checked:text-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-foreground";
+  "px-3 py-1 rounded-full font-mono text-mono-sm uppercase border border-border bg-muted text-muted-foreground transition-colors hover:border-foreground hover:bg-foreground/20 hover:text-foreground data-[state=checked]:border-foreground data-[state=checked]:bg-foreground data-[state=checked]:text-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-foreground";
 
 const BOARD_VARIANT_KEY = "settings.boardVariant";
 
@@ -212,6 +212,7 @@ function ThemeBlock() {
               type="button"
               role="radio"
               aria-checked={theme === opt.id ? "true" : "false"}
+              data-state={theme === opt.id ? "checked" : "unchecked"}
               onClick={() => pickTheme(opt.id)}
               className={PILL_CLS}
             >
@@ -250,14 +251,10 @@ function GridSkinBlock({
               type="button"
               role="radio"
               aria-checked={value === opt.id ? "true" : "false"}
+              data-state={value === opt.id ? "checked" : "unchecked"}
               onClick={() => value !== opt.id && onChange(opt.id)}
               className={cn(
                 PILL_CLS,
-                // The PILL_CLS doesn't include a flex layout, so the gap-2
-                // below would do nothing on a block-level button. inline-flex
-                // + items-center keeps the swatch and label on the same line
-                // with a real 8px gap (otherwise the dot visually overlaps
-                // the first character of the label).
                 "inline-flex items-center gap-2",
               )}
             >
@@ -294,6 +291,7 @@ function BoardVariantBlock({
               type="button"
               role="radio"
               aria-checked={value === opt.id ? "true" : "false"}
+              data-state={value === opt.id ? "checked" : "unchecked"}
               onClick={() => value !== opt.id && onChange(opt.id)}
               className={PILL_CLS}
             >
