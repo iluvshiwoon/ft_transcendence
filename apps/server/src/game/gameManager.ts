@@ -258,40 +258,45 @@ class GameManager
       s.winner === 2 ? s.players[2] :
       null;
 
-    await db.update(games)
-      .set({
-        status: s.status === "abandoned" ? "abandoned" : "finished",
-        winnerId: winnerUserId,
-        finishedAt: new Date(),
-      })
-      .where(eq(games.id, gameId));
-
-    // Stats utilisateurs : on incremente games_played pour les 2, won/lost selon le resultat.
     const p1 = s.players[1];
     const p2 = s.players[2];
     const incPlayed = { gamesPlayed: sql`${users.gamesPlayed} + 1` };
 
-    if (s.winner === null) {
-      // Nul (impossible en abandon mais possible en draw).
-      const incDraw = { ...incPlayed, gamesDrawn: sql`${users.gamesDrawn} + 1` };
-      await db.update(users).set(incDraw as any).where(eq(users.id, p1));
-      if (p2 !== null) await db.update(users).set(incDraw as any).where(eq(users.id, p2));
-    } else {
-      const winId = winnerUserId;
-      const loserSlot: 1 | 2 = s.winner === 1 ? 2 : 1;
-      const loserId = s.players[loserSlot];
+    // mise en place de la tâche B10 : le passage status=finished et l'incrément des compteurs de stats
+    // doivent etre atomiques. On les regroupe dans une seule transaction pour
+    // qu'on ne puisse jamais avoir une partie finie sans stats a jour (ou l'inverse).
+    await db.transaction(async (tx) => {
+      await tx.update(games)
+        .set({
+          status: s.status === "abandoned" ? "abandoned" : "finished",
+          winnerId: winnerUserId,
+          finishedAt: new Date(),
+        })
+        .where(eq(games.id, gameId));
 
-      if (winId !== null) {
-        await db.update(users)
-          .set({ ...incPlayed, gamesWon: sql`${users.gamesWon} + 1` } as any)
-          .where(eq(users.id, winId));
+      // Stats utilisateurs : on incremente games_played pour les 2, won/lost selon le resultat.
+      if (s.winner === null) {
+        // Nul (impossible en abandon mais possible en draw).
+        const incDraw = { ...incPlayed, gamesDrawn: sql`${users.gamesDrawn} + 1` };
+        await tx.update(users).set(incDraw as any).where(eq(users.id, p1));
+        if (p2 !== null) await tx.update(users).set(incDraw as any).where(eq(users.id, p2));
+      } else {
+        const winId = winnerUserId;
+        const loserSlot: 1 | 2 = s.winner === 1 ? 2 : 1;
+        const loserId = s.players[loserSlot];
+
+        if (winId !== null) {
+          await tx.update(users)
+            .set({ ...incPlayed, gamesWon: sql`${users.gamesWon} + 1` } as any)
+            .where(eq(users.id, winId));
+        }
+        if (loserId !== null) {
+          await tx.update(users)
+            .set({ ...incPlayed, gamesLost: sql`${users.gamesLost} + 1` } as any)
+            .where(eq(users.id, loserId));
+        }
       }
-      if (loserId !== null) {
-        await db.update(users)
-          .set({ ...incPlayed, gamesLost: sql`${users.gamesLost} + 1` } as any)
-          .where(eq(users.id, loserId));
-      }
-    }
+    });
 
     // Elo : on relit l'eventuel ai_difficulty de la game, puis pour chaque
     // joueur on calcule le delta et on met a jour rating + peak_rating. En
