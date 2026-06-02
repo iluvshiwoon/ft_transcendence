@@ -93,6 +93,30 @@ async function requestJson<T>(
   return parseJson<T>(res);
 }
 
+// Bodyless request variant — does NOT set Content-Type. Used for DELETE
+// (account deletion) and any other call that has no body. Without this,
+// a DELETE that goes through requestJson() would pin
+// Content-Type: application/json on an empty body, and Fastify returns
+// 400 FST_ERR_CTP_EMPTY_JSON_BODY (verified live at
+// http://localhost:3000/api/profile). This mirrors how `fetch` already
+// correctly omits Content-Type for bodyless requests — we just have to
+// not interfere.
+async function requestVoid<T>(
+  url: string,
+  init: RequestInit = {},
+): Promise<T> {
+  let res: Response;
+  try {
+    res = await fetch(url, { ...init, credentials: "include" });
+  } catch (e) {
+    throw new ProfileApiError(
+      "NETWORK",
+      e instanceof Error ? e.message : "Network error",
+    );
+  }
+  return parseJson<T>(res);
+}
+
 async function parseJson<T>(res: Response): Promise<T> {
   let body: unknown;
   try {
@@ -219,7 +243,10 @@ export function uploadAvatar(file: File): Promise<{ avatarUrl: string }> {
 // ─── Account deletion ────────────────────────────────────────────────
 
 export function deleteAccount(): Promise<{ message: string }> {
-  return requestJson<{ message: string }>("/api/profile", { method: "DELETE" });
+  // Bodyless DELETE — must go through requestVoid() (not requestJson())
+  // so the Content-Type: application/json header is NOT set on an empty
+  // body. Fastify would otherwise return 400 FST_ERR_CTP_EMPTY_JSON_BODY.
+  return requestVoid<{ message: string }>("/api/profile", { method: "DELETE" });
 }
 
 // ─── 42 OAuth link / unlink ──────────────────────────────────────────
