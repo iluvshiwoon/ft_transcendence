@@ -26,6 +26,7 @@ import { AlertBox } from "~/components/ui/alert-box";
 import { Button } from "~/components/ui/button";
 import { Input } from "~/components/ui/input";
 import { Label } from "~/components/ui/label";
+import { PASSWORD_MIN, passwordStrength } from "~/lib/password";
 import { cn } from "~/lib/utils";
 
 const USERNAME_RE = /^[a-zA-Z0-9_]{3,30}$/;
@@ -33,21 +34,6 @@ const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 type ServerErrors = Partial<Record<"email" | "username" | "password" | "form", string>>;
 type Touched = Partial<Record<"email" | "username" | "password", boolean>>;
-
-type Strength = { score: 0 | 1 | 2 | 3 | 4; label: string };
-
-function passwordStrength(p: string): Strength {
-  if (p.length === 0) return { score: 0, label: "" };
-  if (p.length < 8) return { score: 1, label: "Too short" };
-  let variety = 0;
-  if (/[a-z]/.test(p)) variety++;
-  if (/[A-Z]/.test(p)) variety++;
-  if (/[0-9]/.test(p)) variety++;
-  if (/[^a-zA-Z0-9]/.test(p)) variety++;
-  if (variety <= 1) return { score: 2, label: "Fair" };
-  if (variety === 2) return { score: 3, label: "Good" };
-  return { score: 4, label: "Strong" };
-}
 
 export function Step2Credentials() {
   const emailId = useId();
@@ -69,7 +55,7 @@ export function Step2Credentials() {
   // Derived during render — no useEffect.
   const emailIsValid = EMAIL_RE.test(email);
   const usernameIsValid = USERNAME_RE.test(username);
-  const passwordIsValid = password.length >= 8;
+  const passwordIsValid = password.length >= PASSWORD_MIN;
   const strength = passwordStrength(password);
 
   const showEmailError =
