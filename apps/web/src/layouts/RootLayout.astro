@@ -79,6 +79,26 @@ const user = await getCurrentUser(Astro);
     <title>{title}</title>
 
     {/*
+      FOUC shield — inline critical initial states BEFORE the external
+      stylesheet loads.  Without this, the browser renders SSR HTML at
+      default browser styles (opacity: 1, static position, etc.), then
+      the external CSS arrives, .topnav-pill snaps from flow to fixed —
+      visible flash.
+
+      NOTE: We intentionally do NOT set opacity on .page-reveal here
+      because that element's opacity is driven by a CSS animation
+      (page-reveal keyframes). Inline opacity would override the
+      animation endpoint (both use the same property). Instead, the
+      external CSS's .page-reveal { opacity: 0.001 } base rule plus
+      animation-fill-mode: both handles the initial hidden state — the
+      flash there is sub-frame and invisible to the eye.
+    */}
+    <style is:inline>
+      .topnav-pill { position: fixed; top: 0; left: 50%; transform: translate(-50%, 0); }
+      .topnav-bar { position: fixed; top: 0; inset-inline: 0; }
+    </style>
+
+    {/*
       Theme bootstrap — must run BEFORE paint to avoid FOUC.
       Reads localStorage first, falls back to prefers-color-scheme.
       Adds either `light` or `dark` class to <html>; never both.
