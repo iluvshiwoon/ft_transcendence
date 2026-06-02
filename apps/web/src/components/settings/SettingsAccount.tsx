@@ -2,27 +2,27 @@
  * SettingsAccount — Account card of the /settings page.
  *
  * Sections (top to bottom):
- *   1. Email         "Change" opens a re-auth modal (current password
- *                     + new email) → PUT /api/profile/email
- *   2. Password      "Change" opens a re-auth modal (current password
- *                     + new password, 8+ chars, double-entry) →
- *                     PUT /api/profile/password
+ *   1. Email         Inline expand/collapse. "Change" replaces the row
+ *                     with a form (current password + new email) in the
+ *                     same card chrome, no modal. PUT /api/profile/email.
+ *   2. Password      Same inline pattern. current + new (8+ chars) +
+ *                     confirm + show/hide toggle. PUT /api/profile/password.
  *   3. 42 OAuth      "Link" navigates to /api/auth/42 (the existing
  *                     callback's existingToken branch handles the link);
- *                     "Unlink" opens a confirmation modal → POST
- *                     /api/auth/oauth42/unlink
+ *                     "Unlink" opens a confirmation modal →
+ *                     POST /api/auth/oauth42/unlink.
  *   4. Delete        Opens a confirmation modal (type 'DELETE' to
  *                     confirm) → DELETE /api/profile, then redirect to /
  *                     (the backend clears the auth cookie on the way out).
  *
- * All modals are inline (no portal / Radix). They use a simple
- * open/close state held in this card's React tree, with Escape-to-close
- * and overlay-click-to-close. Focus management: when a modal opens, the
- * first input is auto-focused; the previous focus is restored on close.
+ * Email and OAuth state are lifted to the parent so a successful save
+ * patches the card in place — no `window.location.reload()`. The only
+ * place we still reload is the delete flow (the account is gone, the
+ * server clears the cookie, the home page is the right landing).
  *
- * Account deletion is destructive and irreversible — the modal requires
- * the user to type the literal string 'DELETE' to enable the button,
- * same affordance as GitHub's repo delete.
+ * The Unlink and Delete modals stay as modals — they're confirmation
+ * dialogs, not edit forms, and the modal pattern is the right affordance
+ * for "are you sure" + "type DELETE to confirm".
  */
 
 import { Eye, EyeOff } from "lucide-react";
@@ -42,15 +42,22 @@ import {
   type ProfileMe,
 } from "~/lib/api/profile";
 
-type ModalKind = "email" | "password" | "unlink" | "delete" | null;
+type ModalKind = "unlink" | "delete" | null;
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+const PASSWORD_MIN = 8;
 
 interface SettingsAccountProps {
   initial: ProfileMe;
 }
 
 export function SettingsAccount({ initial }: SettingsAccountProps) {
+  // Lift the mutable bits so a save can patch the card in place
+  // instead of round-tripping the page through the server.
+  const [email, setEmail] = useState(initial.email);
+  const [oauth42Linked, setOauth42Linked] = useState(initial.oauth42Linked);
+  const [emailEditing, setEmailEditing] = useState(false);
+  const [passwordEditing, setPasswordEditing] = useState(false);
   const [modal, setModal] = useState<ModalKind>(null);
   const [unlinkError, setUnlinkError] = useState<string | null>(null);
   const [isUnlinking, startUnlink] = useTransition();
@@ -64,9 +71,7 @@ export function SettingsAccount({ initial }: SettingsAccountProps) {
     startUnlink(async () => {
       try {
         await unlinkOAuth42();
-        // The page is now stale on oauth42Linked — force a reload so
-        // the button flips to "Link" and the helper text updates.
-        window.location.reload();
+        setOauth42Linked(false);
       } catch (e) {
         const code = e instanceof ProfileApiError ? e.code : "INTERNAL";
         const msg =
@@ -94,40 +99,58 @@ export function SettingsAccount({ initial }: SettingsAccountProps) {
 
       <div className="mt-6 flex flex-col gap-6">
         {/* Email */}
-        <div className="flex items-center justify-between gap-4">
-          <div className="min-w-0">
-            <p className="font-mono text-mono-sm uppercase text-muted-foreground">Email</p>
-            <p className="mt-1 truncate font-sans text-sm text-foreground">{initial.email}</p>
+        {emailEditing ? (
+          <EmailEditForm
+            currentEmail={email}
+            onCancel={() => setEmailEditing(false)}
+            onSuccess={(newEmail) => {
+              setEmail(newEmail);
+              setEmailEditing(false);
+            }}
+          />
+        ) : (
+          <div className="flex items-center justify-between gap-4">
+            <div className="min-w-0">
+              <p className="font-mono text-mono-sm uppercase text-muted-foreground">Email</p>
+              <p className="mt-1 truncate font-sans text-sm text-foreground">{email}</p>
+            </div>
+            <Button
+              type="button"
+              variant="brand-outline"
+              size="pill"
+              onClick={() => setEmailEditing(true)}
+              className="shrink-0"
+            >
+              Change
+            </Button>
           </div>
-          <Button
-            type="button"
-            variant="brand-outline"
-            size="pill"
-            onClick={() => setModal("email")}
-            className="shrink-0"
-          >
-            Change
-          </Button>
-        </div>
+        )}
 
         {/* Password */}
-        <div className="flex items-center justify-between gap-4 border-t border-border pt-6">
-          <div className="min-w-0">
-            <p className="font-mono text-mono-sm uppercase text-muted-foreground">Password</p>
-            <p className="mt-1 font-mono text-mono-sm uppercase text-muted-foreground">
-              Last changed · unknown
-            </p>
+        {passwordEditing ? (
+          <PasswordEditForm
+            onCancel={() => setPasswordEditing(false)}
+            onSuccess={() => setPasswordEditing(false)}
+          />
+        ) : (
+          <div className="flex items-center justify-between gap-4 border-t border-border pt-6">
+            <div className="min-w-0">
+              <p className="font-mono text-mono-sm uppercase text-muted-foreground">Password</p>
+              <p className="mt-1 font-mono text-mono-sm uppercase text-muted-foreground">
+                Last changed · unknown
+              </p>
+            </div>
+            <Button
+              type="button"
+              variant="brand-outline"
+              size="pill"
+              onClick={() => setPasswordEditing(true)}
+              className="shrink-0"
+            >
+              Change
+            </Button>
           </div>
-          <Button
-            type="button"
-            variant="brand-outline"
-            size="pill"
-            onClick={() => setModal("password")}
-            className="shrink-0"
-          >
-            Change
-          </Button>
-        </div>
+        )}
 
         {/* 42 OAuth */}
         <div className="flex flex-col gap-2 border-t border-border pt-6">
@@ -135,10 +158,10 @@ export function SettingsAccount({ initial }: SettingsAccountProps) {
             <div className="min-w-0">
               <p className="font-mono text-mono-sm uppercase text-muted-foreground">42 account</p>
               <p className="mt-1 font-sans text-sm text-foreground">
-                {initial.oauth42Linked ? "Linked" : "Not linked"}
+                {oauth42Linked ? "Linked" : "Not linked"}
               </p>
             </div>
-            {initial.oauth42Linked ? (
+            {oauth42Linked ? (
               <Button
                 type="button"
                 variant="brand-outline"
@@ -179,15 +202,17 @@ export function SettingsAccount({ initial }: SettingsAccountProps) {
         </div>
       </div>
 
-      {/* Modals */}
-      {modal === "email" ? <EmailModal onClose={close} /> : null}
-      {modal === "password" ? <PasswordModal onClose={close} /> : null}
+      {/* Confirmation modals — only the destructive/affirmative dialogs.
+          Edit forms are inline above, not modals. */}
       {modal === "unlink" ? (
         <UnlinkModal
           onClose={close}
           onConfirm={() => {
-            handleUnlink();
+            // Close the modal immediately so the unlink runs in the
+            // background and the error (if any) surfaces inline in the
+            // card where the user can read it. Same pattern as before.
             close();
+            handleUnlink();
           }}
         />
       ) : null}
@@ -196,7 +221,302 @@ export function SettingsAccount({ initial }: SettingsAccountProps) {
   );
 }
 
-// ─── Modal shell ──────────────────────────────────────────────────────
+// ─── Email change (inline) ───────────────────────────────────────────
+
+function EmailEditForm({
+  currentEmail,
+  onCancel,
+  onSuccess,
+}: {
+  currentEmail: string;
+  onCancel: () => void;
+  onSuccess: (newEmail: string) => void;
+}) {
+  const currentPwId = useId();
+  const newEmailId = useId();
+  const [currentPassword, setCurrentPassword] = useState("");
+  const [newEmail, setNewEmail] = useState("");
+  const [error, setError] = useState<string | null>(null);
+  const [isPending, startTransition] = useTransition();
+  const emailInputRef = useRef<HTMLInputElement>(null);
+
+  const emailFormatError =
+    newEmail.length > 0 && !EMAIL_RE.test(newEmail)
+      ? "Enter a valid email address."
+      : null;
+  const sameEmail = newEmail.trim().toLowerCase() === currentEmail.trim().toLowerCase();
+  const sameEmailError =
+    newEmail.length > 0 && sameEmail ? "That's already your email." : null;
+  const canSubmit =
+    currentPassword.length > 0 &&
+    EMAIL_RE.test(newEmail) &&
+    !sameEmail;
+
+  // Auto-focus the new-email field when the form expands. requestAnimationFrame
+  // waits one paint so the input is in the DOM and the ref is attached.
+  // Empty deps: only run on mount, not on each keystroke.
+  useEffect(() => {
+    const id = requestAnimationFrame(() => emailInputRef.current?.focus());
+    return () => cancelAnimationFrame(id);
+  }, []);
+
+  function handleSubmit(e: React.FormEvent) {
+    e.preventDefault();
+    if (!canSubmit) return;
+    setError(null);
+    startTransition(async () => {
+      try {
+        await updateEmail({ currentPassword, newEmail });
+        onSuccess(newEmail);
+      } catch (err) {
+        const code = err instanceof ProfileApiError ? err.code : "INTERNAL";
+        const msg =
+          code === "WRONG_PASSWORD"
+            ? "That password doesn't match your current password. Please try again."
+            : code === "EMAIL_IN_USE"
+            ? "That email is already in use."
+            : code === "PASSWORD_REQUIRED"
+            ? "Set a password on this account first (OAuth-only accounts can't change email without one)."
+            : err instanceof ProfileApiError
+            ? err.message
+            : "Update failed";
+        setError(msg);
+      }
+    });
+  }
+
+  return (
+    <form
+      onSubmit={handleSubmit}
+      className="flex flex-col gap-3 border-t border-border pt-6"
+      noValidate
+    >
+      <p className="font-mono text-mono-sm uppercase text-muted-foreground">Change email</p>
+      <p className="font-sans text-sm text-muted-foreground">
+        Enter your current password to confirm. You'll see the new email
+        here as soon as you save.
+      </p>
+
+      <div className="flex flex-col gap-1.5">
+        <Label htmlFor={newEmailId}>New email</Label>
+        <Input
+          id={newEmailId}
+          ref={emailInputRef}
+          type="email"
+          autoComplete="email"
+          value={newEmail}
+          onChange={(e) => {
+            setNewEmail(e.target.value);
+            setError(null);
+          }}
+          aria-invalid={emailFormatError !== null || sameEmailError !== null ? true : undefined}
+          aria-describedby={
+            emailFormatError || sameEmailError ? `${newEmailId}-error` : undefined
+          }
+          required
+        />
+        {emailFormatError ? (
+          <p id={`${newEmailId}-error`} role="alert" className="font-sans text-sm text-destructive">
+            {emailFormatError}
+          </p>
+        ) : sameEmailError ? (
+          <p id={`${newEmailId}-error`} role="alert" className="font-sans text-sm text-destructive">
+            {sameEmailError}
+          </p>
+        ) : null}
+      </div>
+
+      <div className="flex flex-col gap-1.5">
+        <Label htmlFor={currentPwId}>Current password</Label>
+        <Input
+          id={currentPwId}
+          type="password"
+          autoComplete="current-password"
+          value={currentPassword}
+          onChange={(e) => {
+            setCurrentPassword(e.target.value);
+            setError(null);
+          }}
+          required
+        />
+      </div>
+
+      {error ? <AlertBox>{error}</AlertBox> : null}
+
+      <div className="flex justify-end gap-2">
+        <Button type="button" variant="ghost" onClick={onCancel} disabled={isPending}>
+          Cancel
+        </Button>
+        <Button type="submit" variant="brand-filled" size="pill" disabled={!canSubmit || isPending}>
+          {isPending ? "Saving…" : "Update email"}
+        </Button>
+      </div>
+    </form>
+  );
+}
+
+// ─── Password change (inline) ───────────────────────────────────────
+
+function PasswordEditForm({
+  onCancel,
+  onSuccess,
+}: {
+  onCancel: () => void;
+  onSuccess: () => void;
+}) {
+  const currentPwId = useId();
+  const newPwId = useId();
+  const confirmPwId = useId();
+  const [currentPassword, setCurrentPassword] = useState("");
+  const [newPassword, setNewPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [isPending, startTransition] = useTransition();
+  const currentPwRef = useRef<HTMLInputElement>(null);
+
+  const tooShort =
+    newPassword.length > 0 && newPassword.length < PASSWORD_MIN
+      ? `At least ${PASSWORD_MIN} characters.`
+      : null;
+  const mismatch =
+    confirmPassword.length > 0 && newPassword !== confirmPassword
+      ? "Passwords don't match."
+      : null;
+  const canSubmit =
+    currentPassword.length > 0 &&
+    newPassword.length >= PASSWORD_MIN &&
+    newPassword === confirmPassword;
+
+  // Auto-focus the current-password field on expand.
+  useEffect(() => {
+    const id = requestAnimationFrame(() => currentPwRef.current?.focus());
+    return () => cancelAnimationFrame(id);
+  }, []);
+
+  function handleSubmit(e: React.FormEvent) {
+    e.preventDefault();
+    if (!canSubmit) return;
+    setError(null);
+    startTransition(async () => {
+      try {
+        await updatePassword({ currentPassword, newPassword });
+        onSuccess();
+      } catch (err) {
+        const code = err instanceof ProfileApiError ? err.code : "INTERNAL";
+        const msg =
+          code === "WRONG_PASSWORD"
+            ? "That password doesn't match your current password. Please try again."
+            : code === "PASSWORD_REQUIRED"
+            ? "This account doesn't have a password yet (OAuth-only)."
+            : err instanceof ProfileApiError
+            ? err.message
+            : "Update failed";
+        setError(msg);
+      }
+    });
+  }
+
+  return (
+    <form
+      onSubmit={handleSubmit}
+      className="flex flex-col gap-3 border-t border-border pt-6"
+      noValidate
+    >
+      <p className="font-mono text-mono-sm uppercase text-muted-foreground">Change password</p>
+      <p className="font-sans text-sm text-muted-foreground">
+        At least {PASSWORD_MIN} characters. Use a mix of letters, numbers,
+        and symbols for the best security.
+      </p>
+
+      <div className="flex flex-col gap-1.5">
+        <Label htmlFor={currentPwId}>Current password</Label>
+        <Input
+          id={currentPwId}
+          ref={currentPwRef}
+          type="password"
+          autoComplete="current-password"
+          value={currentPassword}
+          onChange={(e) => {
+            setCurrentPassword(e.target.value);
+            setError(null);
+          }}
+          required
+        />
+      </div>
+
+      <div className="flex flex-col gap-1.5">
+        <Label htmlFor={newPwId}>New password</Label>
+        <div className="relative">
+          <Input
+            id={newPwId}
+            type={showPassword ? "text" : "password"}
+            autoComplete="new-password"
+            value={newPassword}
+            onChange={(e) => {
+              setNewPassword(e.target.value);
+              setError(null);
+            }}
+            required
+            minLength={PASSWORD_MIN}
+            aria-invalid={tooShort !== null ? true : undefined}
+            aria-describedby={tooShort ? `${newPwId}-error` : undefined}
+            className="pr-12"
+          />
+          <button
+            type="button"
+            onClick={() => setShowPassword((s) => !s)}
+            aria-label={showPassword ? "Hide password" : "Show password"}
+            aria-pressed={showPassword}
+            className="absolute inset-y-0 right-0 z-10 grid w-10 place-items-center text-muted-foreground transition-colors hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring rounded-r-md"
+          >
+            {showPassword ? <EyeOff className="size-4" /> : <Eye className="size-4" />}
+          </button>
+        </div>
+        {tooShort ? (
+          <p id={`${newPwId}-error`} role="alert" className="font-sans text-sm text-destructive">
+            {tooShort}
+          </p>
+        ) : null}
+      </div>
+
+      <div className="flex flex-col gap-1.5">
+        <Label htmlFor={confirmPwId}>Confirm new password</Label>
+        <Input
+          id={confirmPwId}
+          type={showPassword ? "text" : "password"}
+          autoComplete="new-password"
+          value={confirmPassword}
+          onChange={(e) => {
+            setConfirmPassword(e.target.value);
+            setError(null);
+          }}
+          required
+          aria-invalid={mismatch !== null ? true : undefined}
+          aria-describedby={mismatch ? `${confirmPwId}-error` : undefined}
+        />
+        {mismatch ? (
+          <p id={`${confirmPwId}-error`} role="alert" className="font-sans text-sm text-destructive">
+            {mismatch}
+          </p>
+        ) : null}
+      </div>
+
+      {error ? <AlertBox>{error}</AlertBox> : null}
+
+      <div className="flex justify-end gap-2">
+        <Button type="button" variant="ghost" onClick={onCancel} disabled={isPending}>
+          Cancel
+        </Button>
+        <Button type="submit" variant="brand-filled" size="pill" disabled={!canSubmit || isPending}>
+          {isPending ? "Saving…" : "Update password"}
+        </Button>
+      </div>
+    </form>
+  );
+}
+
+// ─── Modal shell (only for the destructive confirmations) ────────────
 
 function ModalShell({
   title,
@@ -209,14 +529,11 @@ function ModalShell({
   children: React.ReactNode;
   maxWidth?: string;
 }) {
-  // Escape closes. Overlay click closes. The first focusable element is
-  // auto-focused via the autoFocus prop on inputs below.
   useEffect(() => {
     function onKey(e: KeyboardEvent) {
       if (e.key === "Escape") onClose();
     }
     document.addEventListener("keydown", onKey);
-    // Lock body scroll while the modal is open.
     const prev = document.body.style.overflow;
     document.body.style.overflow = "hidden";
     return () => {
@@ -243,238 +560,6 @@ function ModalShell({
         {children}
       </div>
     </div>
-  );
-}
-
-// ─── Email change ────────────────────────────────────────────────────
-
-function EmailModal({ onClose }: { onClose: () => void }) {
-  const currentPwId = useId();
-  const newEmailId = useId();
-  const [currentPassword, setCurrentPassword] = useState("");
-  const [newEmail, setNewEmail] = useState("");
-  const [error, setError] = useState<string | null>(null);
-  const [isPending, startTransition] = useTransition();
-
-  const valid = currentPassword.length > 0 && EMAIL_RE.test(newEmail);
-
-  function handleSubmit(e: React.FormEvent) {
-    e.preventDefault();
-    if (!valid) return;
-    setError(null);
-    startTransition(async () => {
-      try {
-        await updateEmail({ currentPassword, newEmail });
-        // Reload so the displayed email in the card refreshes.
-        window.location.reload();
-      } catch (err) {
-        const code = err instanceof ProfileApiError ? err.code : "INTERNAL";
-        const msg =
-          code === "WRONG_PASSWORD"
-            ? "Current password is wrong."
-            : code === "EMAIL_IN_USE"
-            ? "That email is already in use."
-            : code === "PASSWORD_REQUIRED"
-            ? "Set a password on this account first (OAuth-only accounts can't change email without one)."
-            : err instanceof ProfileApiError
-            ? err.message
-            : "Update failed";
-        setError(msg);
-      }
-    });
-  }
-
-  return (
-    <ModalShell title="Change email" onClose={onClose}>
-      <form onSubmit={handleSubmit} className="flex flex-col gap-5" noValidate>
-        <header className="flex flex-col gap-1">
-          <h3 className="font-display text-2xl italic">Change email</h3>
-          <p className="font-sans text-sm text-muted-foreground">
-            Enter your current password to confirm.
-          </p>
-        </header>
-
-        <div className="flex flex-col gap-2">
-          <Label htmlFor={currentPwId}>Current password</Label>
-          <Input
-            id={currentPwId}
-            type="password"
-            autoComplete="current-password"
-            autoFocus
-            value={currentPassword}
-            onChange={(e) => {
-              setCurrentPassword(e.target.value);
-              setError(null);
-            }}
-            required
-          />
-        </div>
-
-        <div className="flex flex-col gap-2">
-          <Label htmlFor={newEmailId}>New email</Label>
-          <Input
-            id={newEmailId}
-            type="email"
-            autoComplete="email"
-            value={newEmail}
-            onChange={(e) => {
-              setNewEmail(e.target.value);
-              setError(null);
-            }}
-            required
-          />
-        </div>
-
-        {error ? <AlertBox>{error}</AlertBox> : null}
-
-        <div className="flex justify-end gap-2">
-          <Button type="button" variant="ghost" onClick={onClose} disabled={isPending}>
-            Cancel
-          </Button>
-          <Button type="submit" variant="brand-filled" size="pill" disabled={!valid || isPending}>
-            {isPending ? "Saving…" : "Update email"}
-          </Button>
-        </div>
-      </form>
-    </ModalShell>
-  );
-}
-
-// ─── Password change ─────────────────────────────────────────────────
-
-function PasswordModal({ onClose }: { onClose: () => void }) {
-  const currentPwId = useId();
-  const newPwId = useId();
-  const confirmPwId = useId();
-  const [currentPassword, setCurrentPassword] = useState("");
-  const [newPassword, setNewPassword] = useState("");
-  const [confirmPassword, setConfirmPassword] = useState("");
-  const [showPassword, setShowPassword] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const [isPending, startTransition] = useTransition();
-
-  const valid =
-    currentPassword.length > 0 &&
-    newPassword.length >= 8 &&
-    newPassword === confirmPassword;
-
-  function handleSubmit(e: React.FormEvent) {
-    e.preventDefault();
-    if (!valid) return;
-    setError(null);
-    startTransition(async () => {
-      try {
-        await updatePassword({ currentPassword, newPassword });
-        onClose();
-        // Force reload — the session cookie's identity didn't change
-        // but the user might want to see fresh state everywhere.
-        setTimeout(() => window.location.reload(), 300);
-      } catch (err) {
-        const code = err instanceof ProfileApiError ? err.code : "INTERNAL";
-        const msg =
-          code === "WRONG_PASSWORD"
-            ? "Current password is wrong."
-            : code === "PASSWORD_REQUIRED"
-            ? "This account doesn't have a password yet (OAuth-only)."
-            : err instanceof ProfileApiError
-            ? err.message
-            : "Update failed";
-        setError(msg);
-      }
-    });
-  }
-
-  return (
-    <ModalShell title="Change password" onClose={onClose}>
-      <form onSubmit={handleSubmit} className="flex flex-col gap-5" noValidate>
-        <header className="flex flex-col gap-1">
-          <h3 className="font-display text-2xl italic">Change password</h3>
-          <p className="font-sans text-sm text-muted-foreground">
-            At least 8 characters.
-          </p>
-        </header>
-
-        <div className="flex flex-col gap-2">
-          <Label htmlFor={currentPwId}>Current password</Label>
-          <Input
-            id={currentPwId}
-            type="password"
-            autoComplete="current-password"
-            autoFocus
-            value={currentPassword}
-            onChange={(e) => {
-              setCurrentPassword(e.target.value);
-              setError(null);
-            }}
-            required
-          />
-        </div>
-
-        <div className="flex flex-col gap-2">
-          <Label htmlFor={newPwId}>New password</Label>
-          <div className="relative">
-            <Input
-              id={newPwId}
-              type={showPassword ? "text" : "password"}
-              autoComplete="new-password"
-              value={newPassword}
-              onChange={(e) => {
-                setNewPassword(e.target.value);
-                setError(null);
-              }}
-              required
-              minLength={8}
-              className="pr-12"
-            />
-            <button
-              type="button"
-              onClick={() => setShowPassword((s) => !s)}
-              aria-label={showPassword ? "Hide password" : "Show password"}
-              aria-pressed={showPassword}
-              className="absolute inset-y-0 right-0 z-10 grid w-10 place-items-center text-muted-foreground transition-colors hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring rounded-r-md"
-            >
-              {showPassword ? <EyeOff className="size-4" /> : <Eye className="size-4" />}
-            </button>
-          </div>
-        </div>
-
-        <div className="flex flex-col gap-2">
-          <Label htmlFor={confirmPwId}>Confirm new password</Label>
-          <Input
-            id={confirmPwId}
-            type={showPassword ? "text" : "password"}
-            autoComplete="new-password"
-            value={confirmPassword}
-            onChange={(e) => {
-              setConfirmPassword(e.target.value);
-              setError(null);
-            }}
-            required
-            aria-invalid={
-              confirmPassword.length > 0 && newPassword !== confirmPassword
-                ? true
-                : undefined
-            }
-          />
-          {confirmPassword.length > 0 && newPassword !== confirmPassword ? (
-            <p role="alert" className="text-sm text-destructive">
-              Passwords don't match.
-            </p>
-          ) : null}
-        </div>
-
-        {error ? <AlertBox>{error}</AlertBox> : null}
-
-        <div className="flex justify-end gap-2">
-          <Button type="button" variant="ghost" onClick={onClose} disabled={isPending}>
-            Cancel
-          </Button>
-          <Button type="submit" variant="brand-filled" size="pill" disabled={!valid || isPending}>
-            {isPending ? "Saving…" : "Update password"}
-          </Button>
-        </div>
-      </form>
-    </ModalShell>
   );
 }
 
@@ -529,7 +614,8 @@ function DeleteModal({ onClose }: { onClose: () => void }) {
       try {
         await deleteAccount();
         // Backend clears the auth cookie. Send the user home — they're
-        // now a logged-out visitor.
+        // now a logged-out visitor. No reload-style update makes sense
+        // here: the account is gone.
         window.location.href = "/";
       } catch (err) {
         setError(
