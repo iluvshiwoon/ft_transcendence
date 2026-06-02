@@ -1,6 +1,7 @@
 // Routes utilisateurs : profils publics, recherche, lecture/édition de son propre profil.
 //
 // GET  /api/users/:id              — profil public d'un user (n'importe qui peut le voir)
+// GET  /api/users/by-username/:username — idem, mais par username (pour les URLs /profile/<username>)
 // GET  /api/users/check-username   — vérifie si un username est dispo (UNAUTH, pour le signup)
 // GET  /api/users/search           — recherche par username (auth requise)
 // GET  /api/profile                — son propre profil (avec email, infos privées)
@@ -50,6 +51,39 @@ interface UpdatePasswordBody {
   newPassword: string;
 }
 
+// Construit la réponse publique d'un profil user. Même shape pour /users/:id
+// et /users/by-username/:username — comme ça le front a un seul `User` type
+// à typer des deux côtés. Renvoie un placeholder minimal "Joueur supprimé"
+// quand `isDeleted` est vrai, pour préserver la cohérence de l'historique
+// des parties (cf. DELETE /api/profile).
+async function publicProfilePayload(user: typeof users.$inferSelect) {
+  if (user.isDeleted) {
+    return {
+      id: user.id,
+      username: "Joueur supprimé",
+      avatarUrl: null as string | null,
+    };
+  }
+
+  const rank = await getUserRank(user.rating, user.peakRating, user.id);
+  return {
+    id: user.id,
+    username: user.username,
+    avatarUrl: user.avatarUrl,
+    bio: user.bio,
+    status: user.status,
+    gamesPlayed: user.gamesPlayed,
+    gamesWon: user.gamesWon,
+    gamesLost: user.gamesLost,
+    gamesDrawn: user.gamesDrawn,
+    rating: user.rating,
+    peakRating: user.peakRating,
+    rank,
+    title: titleForRating(user.rating),
+    createdAt: user.createdAt.toISOString(),
+  };
+}
+
 export async function userRoutes(app: FastifyInstance) {
   app.get<{ Params: { id: string } }>("/users/:id", async (request, reply) => {
     // Profil public : pas besoin d'être connecté pour voir.
@@ -59,29 +93,31 @@ export async function userRoutes(app: FastifyInstance) {
     const [user] = await db.select().from(users).where(eq(users.id, id));
     if (!user) return reply.code(404).send({ error: "User not found" });
 
-    // Si l'user a supprimé son compte, on renvoie un placeholder.
-    if (user.isDeleted) {
-      return reply.send({ id: user.id, username: "Joueur supprimé", avatarUrl: null });
-    }
-
-    // Renvoie uniquement les infos publiques (pas d'email, pas de password).
-    const rank = await getUserRank(user.rating, user.peakRating, user.id);
-    return reply.send({
-      id: user.id,
-      username: user.username,
-      avatarUrl: user.avatarUrl,
-      bio: user.bio,
-      status: user.status,
-      gamesPlayed: user.gamesPlayed,
-      gamesWon: user.gamesWon,
-      gamesLost: user.gamesLost,
-      gamesDrawn: user.gamesDrawn,
-      rating: user.rating,
-      peakRating: user.peakRating,
-      rank,
-      title: titleForRating(user.rating),
-    });
+    return reply.send(await publicProfilePayload(user));
   });
+
+  app.get<{ Params: { username: string } }>(
+    "/users/by-username/:username",
+    async (request, reply) => {
+      // Profil public lookupé par username — utilisé par la future page
+      // /profile/<username> (côté front, dynamic route Astro). Pas d'auth :
+      // un profil public reste public, comme via /users/:id.
+      //
+      // URLs sensibles à la casse : on stocke en `eq` (case-sensitive) comme
+      // le reste du schéma. /users/by-username/sarah_w ≠ /users/by-username/Sarah_w.
+      // C'est volontaire et aligné avec /users/check-username (cf. signup).
+      const username = request.params.username?.trim();
+      if (!username) return reply.code(404).send({ error: "User not found" });
+
+      const [user] = await db
+        .select()
+        .from(users)
+        .where(eq(users.username, username));
+      if (!user) return reply.code(404).send({ error: "User not found" });
+
+      return reply.send(await publicProfilePayload(user));
+    }
+  );
 
   app.get<{ Querystring: { q?: string } }>(
     "/users/check-username",
