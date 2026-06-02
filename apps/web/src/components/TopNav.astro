@@ -196,13 +196,14 @@ const initial = user?.username?.[0]?.toUpperCase() ?? "?";
         class="ml-2 flex items-center gap-2.5 rounded-md p-1 pr-2 transition-colors hover:bg-foreground/10 focus-visible:outline-none focus-visible:bg-foreground/10 xs:ml-3"
       >
         <span
+          id="topnav-initial"
           aria-hidden="true"
           class="flex size-9 shrink-0 items-center justify-center rounded-md border border-border bg-foreground font-display italic text-base text-background"
         >
           {initial}
         </span>
         <span class="hidden flex-col leading-tight xs:flex">
-          <span class="truncate font-sans text-sm font-semibold text-foreground">
+          <span id="topnav-username" class="truncate font-sans text-sm font-semibold text-foreground">
             {user!.username}
           </span>
           <span class="font-mono text-mono-sm uppercase tabular-nums text-muted-foreground">
@@ -212,4 +213,25 @@ const initial = user?.username?.[0]?.toUpperCase() ?? "?";
       </a>
     </div>
   </header>
+
+  <script>
+    // In-place username sync. The SettingsProfile island dispatches
+    // 'username-changed' after a successful PUT /api/profile { username }.
+    // The TopNav is server-rendered (Astro), so it would otherwise stay
+    // stale until the next full reload. We patch two DOM nodes:
+    //   - #topnav-username — the visible name on the right cluster.
+    //   - #topnav-initial  — the avatar tile (only shown if the user
+    //     hasn't uploaded an avatar; if they have, the <img> covers the
+    //     initial and the update is invisible but harmless).
+    // The script is hoisted by Astro into a per-page bundle; it runs
+    // once per page load and only listens.
+    document.addEventListener("username-changed", (event) => {
+      const username = event instanceof CustomEvent ? event.detail?.username : null;
+      if (typeof username !== "string" || username.length === 0) return;
+      const nameEl = document.getElementById("topnav-username");
+      if (nameEl) nameEl.textContent = username;
+      const initialEl = document.getElementById("topnav-initial");
+      if (initialEl) initialEl.textContent = username[0]?.toUpperCase() ?? "?";
+    });
+  </script>
 )}

@@ -258,11 +258,15 @@ function UsernameBlock({ initialUsername }: { initialUsername: string }) {
       try {
         await updateProfile({ username: value });
         setStatus("saved");
+        // The page itself doesn't re-render (no data-flow into the parent
+        // card), but the TopNav is server-rendered and so is stale on the
+        // username. We dispatch a custom event the TopNav script listens
+        // for and patches its DOM in place. Cleaner than a full reload:
+        // no flash, no scroll reset, no SSR roundtrip.
+        window.dispatchEvent(
+          new CustomEvent("username-changed", { detail: { username: value } }),
+        );
         setTimeout(() => setStatus("idle"), 1500);
-        // After save, the page is stale on username — force a hard reload
-        // so the TopNav's username + the /profile URL pick up the change.
-        // (The cookie hasn't changed; a `window.location.reload()` is enough.)
-        setTimeout(() => window.location.reload(), 600);
       } catch (e) {
         const code = e instanceof ProfileApiError ? e.code : "INTERNAL";
         const msg =
