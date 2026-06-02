@@ -42,6 +42,12 @@ export type ApiErrorCode =
   // OAuth
   | "OAUTH_NOT_LINKED"
   | "OAUTH_UNLINK_BLOCKED"
+  // Anonymous play (/api/play/*)
+  | "NO_SESSION"
+  | "INVALID_COL"
+  | "COL_FULL"
+  | "GAME_OVER"
+  | "NOT_YOUR_TURN"
   // Catch-all
   | "INTERNAL";
 
