@@ -1,6 +1,7 @@
 # Handoff backend — page `/profile`
 
-État au 2026-06-01, après merge de `kgriset_landing_wire` dans `main` :
+État au 2026-06-02, après merge de `kgriset_landing_wire` dans `main`
+et début de la branche `kgriset_settings` :
 
 - ✅ **§3.2 livré** sur `main` (commits `ec928dd`→`48f0e16` + `554fc6f`
   + `ab9825c` du `kgriset_landing_wire`). Schéma Elo, application dans
@@ -11,7 +12,12 @@
   `/signup?step=1..4` (Step1Save → `localStorage` → Step4
   SignupCompleteTracker → `POST /api/auth/signup-complete` avec
   `initialRating` optionnel, atomic et idempotent).
-- §3.1, §3.3, §3.4, §3.5, §3.6, §3.7, §3.9, §3.10, §3.12 : à faire.
+- ✅ **§3.12 livré** sur la branche `kgriset_settings` (commits
+  `26ccaac` + `cf4dd29`). `/api/auth/logout` content-negotiate (HTML
+  Accept → 302 redirect, script Accept → JSON). Nouveau endpoint
+  `POST /api/auth/oauth42/unlink` qui dissocie le compte 42 d'un user
+  (refuse avec 409 si l'user n'a pas de password — sinon lock-out).
+- §3.1, §3.3, §3.4, §3.5, §3.6, §3.7, §3.9, §3.10 : à faire.
 
 État au 2026-05-29, après merge de `kgriset_landing` dans `main`, import
 de `profile.astro` (Adam) puis refonte UI sur `kgriset_profile_review` :
@@ -596,7 +602,7 @@ les justifie.
 
 ---
 
-### 3.12 — `POST /api/auth/logout` — comportement form vs API
+### 3.12 — `POST /api/auth/logout` — comportement form vs API  ✅ FAIT (kgriset_settings, commits 26ccaac + cf4dd29)
 
 **Pourquoi.** La TopNav authed (sur `/play`, `/profile`, etc.) utilise
 un `<form method="POST" action="/api/auth/logout">` pour le bouton
@@ -631,6 +637,33 @@ app.post("/logout", async (request, reply) => {
 handler JS qui fait `fetch(POST /api/auth/logout)` puis
 `window.location = "/"`. Casse le no-JS path mais reste fonctionnel.
 
+**Statut (juin 2026).** ✅ Livré sur la branche `kgriset_settings`
+(commits `26ccaac` + `cf4dd29`). Décomposition réelle :
+
+- **Logout content-negotiation** (`26ccaac`). `/api/auth/logout` lit
+  l'header `Accept` :
+  - si `text/html` présent et `application/json` absent → 302 redirect
+    vers `/` (chemin `<form>` du TopNav, sans JS).
+  - sinon → `200 { message: "Logged out" }` (chemin fetch/curl/future
+    client-side flow).
+  L'ordre des args de `reply.redirect()` suit la signature Fastify v5
+  (`url, statusCode?`) — petit gotcha trouvé à `tsc --noEmit`.
+
+- **Bonus : `POST /api/auth/oauth42/unlink`** (`cf4dd29`). Le bouton
+  Link/Unlink 42 de l'UI Settings existait depuis le mock mais n'avait
+  aucun backend pour dissocier. Nouvel endpoint authed qui pose
+  `oauth42Id = null` sur la row. Refuse avec 409 si l'user n'a pas
+  de password — sans ça il perdrait tout moyen de se reconnecter
+  (l'OAuth n'est qu'un raccourci, pas une identité propre). Renvoie
+  400 si aucun oauth42Id n'est set (idempotence côté UX : le client
+  affiche un message 'nothing to unlink' plutôt qu'un silent success).
+  Le `kgriset_settings` PR (commit `603ce33`) wire ce endpoint dans
+  le SettingsAccount React island avec un modal de confirmation.
+
+**Vérifications.** `pnpm --filter server exec tsc --noEmit` clean,
+`pnpm --filter web build` clean. Pas de tests vitest pour logout
+(cookie clear + redirect = trivial à la main).
+
 ---
 
 ## 4. Ordre de priorité recommandé
@@ -654,9 +687,10 @@ handler JS qui fait `fetch(POST /api/auth/logout)` puis
 10. **3.10 — Matchmaking queue.** Pas critique. Active le bouton « Find
     match » sur le lobby. Peut attendre que le flow Challenge friend
     (3.7) soit éprouvé en prod avant d'ajouter cette deuxième entrée.
-11. **3.12 — Logout content-negotiation.** Tout petit (~5 lignes).
-    Sans ça le bouton Logout de la TopNav affiche du JSON brut après
-    déconnexion. À faire dès qu'on touche `auth.ts`.
+11. **3.12 — Logout content-negotiation.** ✅ FAIT
+    (kgriset_settings, commits `26ccaac` + `cf4dd29`). Le bouton
+    Logout de la TopNav redirige maintenant proprement, et un
+    endpoint OAuth-unlink bonus a été ajouté en passant.
 
 Les points 3.1 → 3.5 + 3.9 forment l'essentiel du câblage de `/profile`.
 Les points 3.6 et 3.7 ne sont nécessaires que pour rendre les boutons
