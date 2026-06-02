@@ -226,9 +226,6 @@ function GridSkinBlock({
           </li>
         ))}
       </ul>
-      <p className="font-mono text-mono-sm uppercase text-muted-foreground">
-        {status === "saving" ? "Saving…" : status === "saved" ? "Saved" : ""}
-      </p>
       {status === "error" ? <AlertBox>{error ?? "Save failed"}</AlertBox> : null}
     </div>
   );

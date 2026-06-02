@@ -240,6 +240,13 @@ function PawnSkinBlock({
 
 function UsernameBlock({ initialUsername }: { initialUsername: string }) {
   const inputId = useId();
+  // Lift the saved value to state so a successful save patches isDirty
+  // and the hint logic naturally drops back to the default ("3–30 chars…")
+  // instead of re-showing the stale "Available ✓" that the user just acted
+  // on. Without this, "Available ✓" would zombie back ~1.5s after Save once
+  // status returned to idle, which doesn't make sense — the user took that
+  // username, it's no longer "available", it's theirs.
+  const [savedUsername, setSavedUsername] = useState(initialUsername);
   const [value, setValue] = useState(initialUsername);
   const [status, setStatus] = useState<Status>("idle");
   const [error, setError] = useState<string | null>(null);
@@ -247,7 +254,7 @@ function UsernameBlock({ initialUsername }: { initialUsername: string }) {
     "unknown" | "checking" | "available" | "taken" | "invalid"
   >("unknown");
   const [isPending, startTransition] = useTransition();
-  const isDirty = value !== initialUsername;
+  const isDirty = value !== savedUsername;
   const isValid = USERNAME_RE.test(value);
 
   function handleSave() {
@@ -257,6 +264,8 @@ function UsernameBlock({ initialUsername }: { initialUsername: string }) {
     startTransition(async () => {
       try {
         await updateProfile({ username: value });
+        setSavedUsername(value);
+        setAvailability("unknown");
         setStatus("saved");
         // The page itself doesn't re-render (no data-flow into the parent
         // card), but the TopNav is server-rendered and so is stale on the
@@ -291,7 +300,7 @@ function UsernameBlock({ initialUsername }: { initialUsername: string }) {
     setStatus("idle");
     setError(null);
     if (debounceRef.current) clearTimeout(debounceRef.current);
-    if (next === initialUsername) {
+    if (next === savedUsername) {
       setAvailability("unknown");
       return;
     }
@@ -314,13 +323,31 @@ function UsernameBlock({ initialUsername }: { initialUsername: string }) {
     taken:     "Already taken",
     invalid:   "Invalid format",
   };
-  const availabilityClass = {
-    unknown:   "text-muted-foreground",
-    checking:  "text-muted-foreground",
-    available: "text-pawn-yellow",
-    taken:     "text-destructive",
-    invalid:   "text-destructive",
-  }[availability];
+  // Color choices follow the design tokens (apps/web/DESIGN.md §1.1):
+  //   - pawn-yellow is reserved for the AI pawn — the only yellow on the
+  //     page. Reusing it for "Available" was wrong: it carries the visual
+  //     weight of the AI pawn and reads as a warning, not confirmation.
+  //   - There's no success/green token in the system; "Available ✓" and
+  //     "Saved ✓" rely on the checkmark glyph as the visual cue and
+  //     text-foreground (primary) for emphasis.
+  //   - destructive stays for the two error states.
+  //   - muted-foreground for the default hint and the in-flight "Checking…".
+  //
+  // The class is derived from the hint state, not the availability enum,
+  // so "Saved ✓" stays in the right color even when availability is
+  // reset to "unknown" on save success.
+  const hint =
+    status === "saving" ? "Saving…"
+    : status === "saved" ? "Saved ✓"
+    : isDirty ? availabilityLabel[availability]
+    : availabilityLabel.unknown;
+  const hintClass = (() => {
+    if (status === "saving") return "text-muted-foreground";
+    if (status === "saved") return "text-foreground";
+    if (availability === "available") return "text-foreground";
+    if (availability === "taken" || availability === "invalid") return "text-destructive";
+    return "text-muted-foreground";
+  })();
 
   return (
     <div className="flex flex-col gap-2 border-t border-border pt-6">
@@ -338,9 +365,9 @@ function UsernameBlock({ initialUsername }: { initialUsername: string }) {
       <div className="flex items-center justify-between gap-3">
         <p
           id={`${inputId}-hint`}
-          className={cn("font-mono text-mono-sm uppercase", availabilityClass)}
+          className={cn("font-mono text-mono-sm uppercase", hintClass)}
         >
-          {status === "saved" ? "Saved" : status === "saving" ? "Saving…" : availabilityLabel[availability]}
+          {hint}
         </p>
         <Button
           type="button"
