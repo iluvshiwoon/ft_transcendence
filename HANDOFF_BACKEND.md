@@ -17,7 +17,14 @@ et début de la branche `kgriset_settings` :
   Accept → 302 redirect, script Accept → JSON). Nouveau endpoint
   `POST /api/auth/oauth42/unlink` qui dissocie le compte 42 d'un user
   (refuse avec 409 si l'user n'a pas de password — sinon lock-out).
-- §3.1, §3.3, §3.4, §3.5, §3.6, §3.7, §3.9, §3.10 : à faire.
+- ✅ **§3.1 livré** sur la branche `kgriset_settings` (commits
+  `cc1081d` + `b6f4f9d`, ramenés depuis `kgriset_3_1_users` qui a été
+  supprimé). `GET /api/users/by-username/:username` (public, anonyme),
+  même shape que `GET /api/users/:id` (helper partagé
+  `publicProfilePayload` dans `users.ts`). Les deux endpoints exposent
+  maintenant `createdAt` (ISO 8601) en plus de tous les champs publics
+  du profil.
+- §3.3, §3.4, §3.5, §3.6, §3.7, §3.9, §3.10 : à faire.
 
 État au 2026-05-29, après merge de `kgriset_landing` dans `main`, import
 de `profile.astro` (Adam) puis refonte UI sur `kgriset_profile_review` :
@@ -77,7 +84,7 @@ réels, ce qui couvre déjà l'essentiel du bloc Stats de `/profile`.
 
 ## 3. Ce qui manque pour `/profile`
 
-### 3.1 — `GET /api/users/by-username/:username`
+### 3.1 — `GET /api/users/by-username/:username`  ✅ FAIT (kgriset_3_1_users)
 
 **Pourquoi.** Les URLs profil seront en `/profile/<username>` (pas par id
 numérique). Aucun endpoint actuel ne fait le lookup par username.
@@ -94,6 +101,43 @@ GET /api/users/by-username/:username       (public)
 Même règle que `/users/:id` : si `isDeleted`, on renvoie `username: "Joueur supprimé"`.
 
 **Effort estimé.** ~15 lignes dans `users.ts`. Pas de migration.
+
+**Statut (juin 2026).** ✅ Livré sur la branche `kgriset_3_1_users`.
+Décomposition réelle :
+
+- **Helper partagé `publicProfilePayload(user)`.** Plutôt que dupliquer la
+  logique de la réponse entre `/users/:id` et `/users/by-username/:username`
+  (et risquer qu'elles dérivent), un helper privé en haut de `users.ts`
+  construit la réponse publique. Mêmes champs des deux côtés du
+  endpoint, single source of truth.
+- **Route ajoutée** `app.get("/users/by-username/:username", …)`. Pas
+  d'auth (cohérent avec `/users/:id`). `eq(users.username, …)` —
+  case-sensitive, aligné avec `/users/check-username` (cf. signup) et
+  avec le format des usernames stockés. 404 si pas trouvé, 404 si
+  username vide (le routeur ne match pas un segment vide, mais le
+  garde-fou `?.trim()` est là si un proxy aval le réécrit).
+- **Extension** de `GET /api/users/:id` pour inclure `createdAt`
+  (`user.createdAt.toISOString()`). Cohérence : les deux endpoints
+  publics exposent exactement la même shape. La page `/profile`
+  consomme `createdAt` pour son badge « Joined March 2025 ».
+- **Pas de migration.** Le schéma avait déjà `created_at` depuis le
+  baseline (`schema.ts:43`), et l'utilisateur reste sur le default
+  `now()` si non spécifié.
+
+**Hors scope (suivi séparé).** Le câblage de la page
+`apps/web/src/pages/profile.astro` (ou un éventuel dynamic route
+`profile/[username].astro`) à ce nouvel endpoint n'est pas dans cette
+branche — c'est un deliverable frontend distinct qui consomme aussi
+§3.3 (historique), §3.5 (friends), §3.9 (stats).
+
+**Vérifications.** `pnpm --filter server exec tsc --noEmit` clean.
+Pas de tests vitest ajoutés (le projet n'a pas de suite — à démarrer
+séparément ; ce n'est pas une régression). Vérifié manuellement que
+l'ordre des routes `/users/:id` puis `/users/by-username/:username`
+est sans conflit : segments différents (2 vs 3) → find-my-way n'a
+aucune ambiguïté. La route statique existante `/users/check-username`
+(2 segments, statique) reste prioritaire sur `/users/:id` comme avant
+(static > dynamic dans find-my-way).
 
 ---
 
@@ -669,8 +713,12 @@ handler JS qui fait `fetch(POST /api/auth/logout)` puis
 ## 4. Ordre de priorité recommandé
 
 1. **Merger `tim` dans `main`.** Pré-requis pour 3.2, 3.3, 3.4, 3.5, 3.9.
-2. **3.1 — `/users/by-username/:username` + `createdAt`.** Petit, débloque
-   les URLs profil.
+2. **3.1 — `/users/by-username/:username` + `createdAt`.** ✅ FAIT
+   (kgriset_3_1_users). Endpoint public, même shape que
+   `/api/users/:id` (helper partagé). Les URLs `/profile/<username>`
+   ont maintenant un endpoint à appeler ; reste à câbler côté
+   frontend. Pré-requis pour 3.3, 3.5, 3.9 — maintenant levé pour
+   3.1, le câblage de la page profile attend toujours 3.3 + 3.5 + 3.9.
 3. **3.2 — Rating Elo + `peak_rating` + rang + titre.** ✅ FAIT
    (kgriset_landing_wire, merge `925f36f`). Était migration courte.
    Pré-requis pour 3.3, 3.5, 3.9 — maintenant levé.
