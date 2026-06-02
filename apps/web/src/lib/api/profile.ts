@@ -27,6 +27,10 @@ export interface ProfileMe {
   peakRating: number;
   rank: number;
   title: Title;
+  /** ISO 8601 of the last successful PUT /api/profile/password. null
+   *  for OAuth-only accounts that have never set a password. Surfaced
+   *  in /settings under the Password row as "Last changed · …". */
+  passwordChangedAt: string | null;
 }
 
 export interface ProfileUpdate {
@@ -48,6 +52,8 @@ export type ProfileErrorCode =
   | "WRONG_PASSWORD"
   | "EMAIL_IN_USE"
   | "PASSWORD_REQUIRED"
+  | "PASSWORD_TOO_SHORT"
+  | "PASSWORD_SAME_AS_CURRENT"
   | "OAUTH_NOT_LINKED"
   | "OAUTH_UNLINK_BLOCKED"
   | "NOT_AUTHED"
@@ -95,12 +101,16 @@ async function parseJson<T>(res: Response): Promise<T> {
     body = null;
   }
   if (!res.ok) {
-    const b = body as { error?: string; message?: string } | null;
-    throw new ProfileApiError(
-      (b?.error as ProfileErrorCode) ?? "INTERNAL",
-      b?.message ?? `Request failed with status ${res.status}`,
-      res.status,
-    );
+    // The backend returns a stable `code` for every error site that
+    // the client branches on. Fall back to INTERNAL when the response
+    // shape is unexpected (network proxy, 502 from upstream, etc.).
+    // The server's `error` is the human-readable message; we trust it
+    // directly so the user sees the backend's wording when the client
+    // has no opinion.
+    const b = body as { error?: string; code?: string; message?: string } | null;
+    const code = (b?.code ?? "INTERNAL") as ProfileErrorCode;
+    const message = b?.error ?? b?.message ?? `Request failed with status ${res.status}`;
+    throw new ProfileApiError(code, message, res.status);
   }
   return body as T;
 }
@@ -155,11 +165,14 @@ export function updateEmail(args: {
 export function updatePassword(args: {
   currentPassword: string;
   newPassword: string;
-}): Promise<{ message: string }> {
-  return requestJson<{ message: string }>("/api/profile/password", {
-    method: "PUT",
-    body: JSON.stringify(args),
-  });
+}): Promise<{ message: string; passwordChangedAt: string }> {
+  return requestJson<{ message: string; passwordChangedAt: string }>(
+    "/api/profile/password",
+    {
+      method: "PUT",
+      body: JSON.stringify(args),
+    },
+  );
 }
 
 // ─── Avatar (multipart) ──────────────────────────────────────────────

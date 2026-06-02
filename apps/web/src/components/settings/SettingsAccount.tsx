@@ -31,6 +31,11 @@ import { AlertBox } from "~/components/ui/alert-box";
 import { Button, buttonVariants } from "~/components/ui/button";
 import { Input } from "~/components/ui/input";
 import { Label } from "~/components/ui/label";
+import {
+  PASSWORD_MIN,
+  lastChangedLabel,
+  passwordStrength,
+} from "~/lib/password";
 import { cn } from "~/lib/utils";
 import {
   ProfileApiError,
@@ -45,7 +50,6 @@ import {
 type ModalKind = "unlink" | "delete" | null;
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-const PASSWORD_MIN = 8;
 
 interface SettingsAccountProps {
   initial: ProfileMe;
@@ -56,6 +60,12 @@ export function SettingsAccount({ initial }: SettingsAccountProps) {
   // instead of round-tripping the page through the server.
   const [email, setEmail] = useState(initial.email);
   const [oauth42Linked, setOauth42Linked] = useState(initial.oauth42Linked);
+  // Lifted too: after a successful password change we want the row to
+  // show "Last changed · just now" without reloading the page. The
+  // server returns the new ISO timestamp in PUT /api/profile/password.
+  const [passwordChangedAt, setPasswordChangedAt] = useState<string | null>(
+    initial.passwordChangedAt,
+  );
   const [emailEditing, setEmailEditing] = useState(false);
   const [passwordEditing, setPasswordEditing] = useState(false);
   const [modal, setModal] = useState<ModalKind>(null);
@@ -130,14 +140,17 @@ export function SettingsAccount({ initial }: SettingsAccountProps) {
         {passwordEditing ? (
           <PasswordEditForm
             onCancel={() => setPasswordEditing(false)}
-            onSuccess={() => setPasswordEditing(false)}
+            onSuccess={(at) => {
+              setPasswordChangedAt(at);
+              setPasswordEditing(false);
+            }}
           />
         ) : (
           <div className="flex items-center justify-between gap-4 border-t border-border pt-6">
             <div className="min-w-0">
               <p className="font-mono text-mono-sm uppercase text-muted-foreground">Password</p>
               <p className="mt-1 font-mono text-mono-sm uppercase text-muted-foreground">
-                Last changed · unknown
+                Last changed · {lastChangedLabel(passwordChangedAt)}
               </p>
             </div>
             <Button
@@ -362,11 +375,12 @@ function PasswordEditForm({
   onSuccess,
 }: {
   onCancel: () => void;
-  onSuccess: () => void;
+  onSuccess: (passwordChangedAt: string) => void;
 }) {
   const currentPwId = useId();
   const newPwId = useId();
   const confirmPwId = useId();
+  const strengthId = useId();
   const [currentPassword, setCurrentPassword] = useState("");
   const [newPassword, setNewPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
@@ -375,17 +389,29 @@ function PasswordEditForm({
   const [isPending, startTransition] = useTransition();
   const currentPwRef = useRef<HTMLInputElement>(null);
 
-  const tooShort =
-    newPassword.length > 0 && newPassword.length < PASSWORD_MIN
-      ? `At least ${PASSWORD_MIN} characters.`
+  const strength = passwordStrength(newPassword);
+  // Derived errors. Each one is a stable string for inline display, or
+  // null when the field is valid (or empty). The "same as current"
+  // check is intentionally client-side: it's the most common footgun
+  // (the user assumes they're already in the new-password field) and
+  // we'd rather catch it pre-submit than round-trip the server. The
+  // server enforces it too (defense in depth) — see PASSWORD_SAME_AS_CURRENT.
+  const sameAsCurrent =
+    newPassword.length > 0 && newPassword === currentPassword
+      ? "New password must be different from your current password."
       : null;
   const mismatch =
     confirmPassword.length > 0 && newPassword !== confirmPassword
       ? "Passwords don't match."
       : null;
+  const tooShort =
+    newPassword.length > 0 && newPassword.length < PASSWORD_MIN
+      ? `At least ${PASSWORD_MIN} characters.`
+      : null;
   const canSubmit =
     currentPassword.length > 0 &&
     newPassword.length >= PASSWORD_MIN &&
+    newPassword !== currentPassword &&
     newPassword === confirmPassword;
 
   // Auto-focus the current-password field on expand.
@@ -400,8 +426,8 @@ function PasswordEditForm({
     setError(null);
     startTransition(async () => {
       try {
-        await updatePassword({ currentPassword, newPassword });
-        onSuccess();
+        const { passwordChangedAt } = await updatePassword({ currentPassword, newPassword });
+        onSuccess(passwordChangedAt);
       } catch (err) {
         const code = err instanceof ProfileApiError ? err.code : "INTERNAL";
         const msg =
@@ -409,6 +435,10 @@ function PasswordEditForm({
             ? "That password doesn't match your current password. Please try again."
             : code === "PASSWORD_REQUIRED"
             ? "This account doesn't have a password yet (OAuth-only)."
+            : code === "PASSWORD_SAME_AS_CURRENT"
+            ? "New password must be different from your current password."
+            : code === "PASSWORD_TOO_SHORT"
+            ? `Password must be at least ${PASSWORD_MIN} characters.`
             : err instanceof ProfileApiError
             ? err.message
             : "Update failed";
@@ -459,8 +489,10 @@ function PasswordEditForm({
             }}
             required
             minLength={PASSWORD_MIN}
-            aria-invalid={tooShort !== null ? true : undefined}
-            aria-describedby={tooShort ? `${newPwId}-error` : undefined}
+            aria-invalid={
+              tooShort !== null || sameAsCurrent !== null ? true : undefined
+            }
+            aria-describedby={newPassword.length > 0 ? strengthId : undefined}
             className="pr-12"
           />
           <button
@@ -473,10 +505,38 @@ function PasswordEditForm({
             {showPassword ? <EyeOff className="size-4" /> : <Eye className="size-4" />}
           </button>
         </div>
-        {tooShort ? (
-          <p id={`${newPwId}-error`} role="alert" className="font-sans text-sm text-destructive">
-            {tooShort}
-          </p>
+
+        {/* Strength meter — 4 segments, fills as score increases. Same
+            recipe as the onboarding form so the two read consistently. */}
+        {newPassword.length > 0 ? (
+          <div className="flex flex-col gap-1.5 pt-1">
+            <div className="flex gap-1.5" aria-hidden="true">
+              {[1, 2, 3, 4].map((seg) => (
+                <div
+                  key={seg}
+                  className={cn(
+                    "h-1 flex-1 rounded-full transition-colors duration-150",
+                    seg <= strength.score ? "bg-foreground" : "bg-muted",
+                  )}
+                />
+              ))}
+            </div>
+            <p
+              id={strengthId}
+              className={cn(
+                "text-sm",
+                sameAsCurrent
+                  ? "text-destructive"
+                  : "text-muted-foreground",
+              )}
+            >
+              {sameAsCurrent
+                ? sameAsCurrent
+                : strength.label
+                  ? `Strength: ${strength.label}`
+                  : ""}
+            </p>
+          </div>
         ) : null}
       </div>
 
