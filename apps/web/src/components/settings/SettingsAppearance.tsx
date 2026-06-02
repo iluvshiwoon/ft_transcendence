@@ -108,6 +108,7 @@ export function SettingsAppearance({ initial }: SettingsAppearanceProps) {
             });
           }}
           status={gridStatus}
+          error={gridError}
         />
         <BoardVariantBlock
           value={boardVariant}
@@ -188,10 +189,12 @@ function GridSkinBlock({
   value,
   onChange,
   status,
+  error,
 }: {
   value: string;
   onChange: (next: string) => void;
   status: Status;
+  error: string | null;
 }) {
   return (
     <div className="flex flex-col gap-2">
@@ -206,12 +209,17 @@ function GridSkinBlock({
               onClick={() => value !== opt.id && onChange(opt.id)}
               className={cn(
                 PILL_CLS,
-                "gap-2",
+                // The PILL_CLS doesn't include a flex layout, so the gap-2
+                // below would do nothing on a block-level button. inline-flex
+                // + items-center keeps the swatch and label on the same line
+                // with a real 8px gap (otherwise the dot visually overlaps
+                // the first character of the label).
+                "inline-flex items-center gap-2",
               )}
             >
               <span
                 aria-hidden="true"
-                className={cn("inline-block size-3 rounded-full", opt.swatchClass)}
+                className={cn("inline-block size-3 shrink-0 rounded-full", opt.swatchClass)}
               />
               {opt.label}
             </button>
@@ -221,7 +229,7 @@ function GridSkinBlock({
       <p className="font-mono text-mono-sm uppercase text-muted-foreground">
         {status === "saving" ? "Saving…" : status === "saved" ? "Saved" : ""}
       </p>
-      {status === "error" ? <AlertBox>{/* gridError */}Save failed</AlertBox> : null}
+      {status === "error" ? <AlertBox>{error ?? "Save failed"}</AlertBox> : null}
     </div>
   );
 }
