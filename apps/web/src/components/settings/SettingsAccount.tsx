@@ -11,18 +11,26 @@
  *                     callback's existingToken branch handles the link);
  *                     "Unlink" opens a confirmation modal →
  *                     POST /api/auth/oauth42/unlink.
- *   4. Delete        Opens a confirmation modal (type 'DELETE' to
- *                     confirm) → DELETE /api/profile, then redirect to /
- *                     (the backend clears the auth cookie on the way out).
+ *   4. Delete        Inline expand/collapse. "Delete" replaces the row
+ *                     with a type-to-confirm form in the same card
+ *                     chrome (no modal). DELETE /api/profile, then
+ *                     redirect to / (the backend clears the auth cookie
+ *                     on the way out).
  *
  * Email and OAuth state are lifted to the parent so a successful save
  * patches the card in place — no `window.location.reload()`. The only
  * place we still reload is the delete flow (the account is gone, the
  * server clears the cookie, the home page is the right landing).
  *
- * The Unlink and Delete modals stay as modals — they're confirmation
- * dialogs, not edit forms, and the modal pattern is the right affordance
- * for "are you sure" + "type DELETE to confirm".
+ * The Unlink modal stays as a modal — it's a single-step "are you sure"
+ * dialog. The Delete flow used to be a modal too, but the user's rule
+ * for the card is "the input takes the original space of the associated
+ * setting card, with the same appearance, no modal overlay" — so Delete
+ * now expands inline the same way Email and Password do, including the
+ * type-DELETE-to-confirm affordance. (Earlier the rationale for keeping
+ * it as a modal was "type DELETE to confirm is a destructive dialog" —
+ * but the same pattern is used inline here and reads cleaner without
+ * the modal chrome for a single row.)
  */
 
 import { Eye, EyeOff } from "lucide-react";
@@ -68,6 +76,7 @@ export function SettingsAccount({ initial }: SettingsAccountProps) {
   );
   const [emailEditing, setEmailEditing] = useState(false);
   const [passwordEditing, setPasswordEditing] = useState(false);
+  const [deleteEditing, setDeleteEditing] = useState(false);
   const [modal, setModal] = useState<ModalKind>(null);
   const [unlinkError, setUnlinkError] = useState<string | null>(null);
   const [isUnlinking, startUnlink] = useTransition();
@@ -198,21 +207,27 @@ export function SettingsAccount({ initial }: SettingsAccountProps) {
         </div>
 
         {/* Delete */}
-        <div className="flex items-center justify-between gap-4 border-t border-border pt-6">
-          <div className="min-w-0">
-            <p className="font-mono text-mono-sm uppercase text-muted-foreground">Delete account</p>
-            <p className="mt-1 font-sans text-sm text-muted-foreground">
-              Permanently remove your account and game history. This can't be undone.
-            </p>
+        {deleteEditing ? (
+          <DeleteConfirmForm
+            onCancel={() => setDeleteEditing(false)}
+          />
+        ) : (
+          <div className="flex items-center justify-between gap-4 border-t border-border pt-6">
+            <div className="min-w-0">
+              <p className="font-mono text-mono-sm uppercase text-muted-foreground">Delete account</p>
+              <p className="mt-1 font-sans text-sm text-muted-foreground">
+                Permanently remove your account and game history. This can't be undone.
+              </p>
+            </div>
+            <Button
+              type="button"
+              onClick={() => setDeleteEditing(true)}
+              className="shrink-0 border-2 border-accent bg-transparent text-accent hover:bg-accent hover:text-accent-foreground"
+            >
+              Delete
+            </Button>
           </div>
-          <Button
-            type="button"
-            onClick={() => setModal("delete")}
-            className="shrink-0 border-2 border-accent bg-transparent text-accent hover:bg-accent hover:text-accent-foreground"
-          >
-            Delete
-          </Button>
-        </div>
+        )}
       </div>
 
       {/* Confirmation modals — only the destructive/affirmative dialogs.
@@ -229,7 +244,6 @@ export function SettingsAccount({ initial }: SettingsAccountProps) {
           }}
         />
       ) : null}
-      {modal === "delete" ? <DeleteModal onClose={close} /> : null}
     </section>
   );
 }
@@ -655,16 +669,29 @@ function UnlinkModal({
   );
 }
 
-// ─── Delete account (type-to-confirm) ────────────────────────────────
+// ─── Delete account (type-to-confirm, inline) ────────────────────────
 
-function DeleteModal({ onClose }: { onClose: () => void }) {
+function DeleteConfirmForm({
+  onCancel,
+}: {
+  onCancel: () => void;
+}) {
   const inputId = useId();
   const [confirm, setConfirm] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
-  const inputRef = useRef<HTMLInputElement>(null);
 
   const armed = confirm === "DELETE";
+
+  // Auto-focus the input when the form expands (matches the email +
+  // password edit forms). Empty deps: only run on mount.
+  useEffect(() => {
+    const id = requestAnimationFrame(() => {
+      const el = document.getElementById(inputId);
+      if (el instanceof HTMLInputElement) el.focus();
+    });
+    return () => cancelAnimationFrame(id);
+  }, [inputId]);
 
   function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -678,58 +705,57 @@ function DeleteModal({ onClose }: { onClose: () => void }) {
         // here: the account is gone.
         window.location.href = "/";
       } catch (err) {
-        setError(
-          err instanceof ProfileApiError ? err.message : "Delete failed",
-        );
+        const msg = err instanceof ProfileApiError ? err.message : "Delete failed";
+        setError(msg);
       }
     });
   }
 
   return (
-    <ModalShell title="Delete account" onClose={onClose}>
-      <form onSubmit={handleSubmit} className="flex flex-col gap-5" noValidate>
-        <header className="flex flex-col gap-1">
-          <h3 className="font-display text-2xl italic text-destructive">Delete account</h3>
-          <p className="font-sans text-sm text-muted-foreground">
-            This anonymises your account — game history stays, but your
-            username, email, and avatar are wiped. This can't be undone.
-          </p>
-        </header>
+    <form
+      onSubmit={handleSubmit}
+      className="flex flex-col gap-4 border-t border-border pt-6"
+      noValidate
+    >
+      <header className="flex flex-col gap-1">
+        <h3 className="font-display text-2xl italic text-destructive">Delete account</h3>
+        <p className="font-sans text-sm text-muted-foreground">
+          This anonymises your account — game history stays, but your
+          username, email, and avatar are wiped. This can't be undone.
+        </p>
+      </header>
 
-        <div className="flex flex-col gap-2">
-          <Label htmlFor={inputId}>
-            Type <span className="font-mono font-bold text-foreground">DELETE</span> to confirm
-          </Label>
-          <Input
-            id={inputId}
-            ref={inputRef}
-            type="text"
-            value={confirm}
-            onChange={(e) => {
-              setConfirm(e.target.value);
-              setError(null);
-            }}
-            autoComplete="off"
-            autoFocus
-            aria-invalid={confirm.length > 0 && !armed ? true : undefined}
-          />
-        </div>
+      <div className="flex flex-col gap-2">
+        <Label htmlFor={inputId}>
+          Type <span className="font-mono font-bold text-foreground">DELETE</span> to confirm
+        </Label>
+        <Input
+          id={inputId}
+          type="text"
+          value={confirm}
+          onChange={(e) => {
+            setConfirm(e.target.value);
+            setError(null);
+          }}
+          autoComplete="off"
+          aria-invalid={confirm.length > 0 && !armed ? true : undefined}
+        />
+      </div>
 
-        {error ? <AlertBox>{error}</AlertBox> : null}
+      {error ? <AlertBox>{error}</AlertBox> : null}
 
-        <div className="flex justify-end gap-2">
-          <Button type="button" variant="ghost" onClick={onClose} disabled={isPending}>
-            Cancel
-          </Button>
-          <Button
-            type="submit"
-            disabled={!armed || isPending}
-            className="border-2 border-accent bg-transparent text-accent hover:bg-accent hover:text-accent-foreground"
-          >
-            {isPending ? "Deleting…" : "Delete account"}
-          </Button>
-        </div>
-      </form>
-    </ModalShell>
+      <div className="flex justify-end gap-2">
+        <Button type="button" variant="ghost" onClick={onCancel} disabled={isPending}>
+          Cancel
+        </Button>
+        <Button
+          type="submit"
+          disabled={!armed || isPending}
+          className="border-2 border-accent bg-transparent text-accent hover:bg-accent hover:text-accent-foreground"
+        >
+          {isPending ? "Deleting…" : "Delete account"}
+        </Button>
+      </div>
+    </form>
   );
 }

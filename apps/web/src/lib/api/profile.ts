@@ -178,15 +178,21 @@ export function updatePassword(args: {
 // ─── Avatar (multipart) ──────────────────────────────────────────────
 
 export function uploadAvatar(file: File): Promise<{ avatarUrl: string }> {
+  // Inlined fetch — requestJson() spreads JSON_HEADERS (Content-Type:
+  // application/json) into the request headers before the browser has a
+  // chance to override them with the multipart boundary. Fastify's
+  // @fastify/multipart then sees the explicit application/json content
+  // type and refuses to parse the body → 400 "No file uploaded". The
+  // browser does set the correct Content-Type for FormData bodies in
+  // modern fetch, but only when the headers dict doesn't pin it first.
+  // Step3Profile works because it doesn't go through requestJson.
   const form = new FormData();
   form.append("file", file);
-  // Don't set Content-Type — let the browser pick multipart/form-data
-  // with the right boundary. Overriding it would break the multipart
-  // framing and Fastify would 400.
-  return requestJson<{ avatarUrl: string }>("/api/profile/avatar", {
+  return fetch("/api/profile/avatar", {
     method: "POST",
+    credentials: "include",
     body: form,
-  });
+  }).then(parseJson<{ avatarUrl: string }>);
 }
 
 // ─── Account deletion ────────────────────────────────────────────────

@@ -154,7 +154,7 @@
         - MODSEC_AUDIT_LOG=/var/log/nginx/modsec_audit.log
         - ERRORLOG=/var/log/nginx/modsec_error.log
         - BACKEND=web:4321 
-        - ALLOWED_METHODS=GET POST PUT HEAD
+        - ALLOWED_METHODS=GET POST PUT HEAD DELETE
         # The image already wires nginx.conf's resolver from /etc/resolv.conf
         # at startup (see /docker-entrypoint.d/91-update-resolver.sh). That
         # gives us a cross-runtime resolver — Docker (127.0.0.11) and Podman

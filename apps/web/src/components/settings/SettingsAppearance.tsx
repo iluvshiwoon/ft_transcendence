@@ -74,6 +74,39 @@ export function SettingsAppearance({ initial }: SettingsAppearanceProps) {
     return window.localStorage.getItem(BOARD_VARIANT_KEY) ?? "liquid-glass";
   });
 
+  // Re-sync board variant from localStorage when:
+  //   1. The window regains focus (user switched back to this tab).
+  //   2. The page becomes visible (mobile sleep, tab restore).
+  //   3. A "themechange" event fires (any code path that changes the
+  //      theme can also clear or re-write the localStorage key as a
+  //      side effect of its own bookkeeping — we don't want a
+  //      mid-render mismatch if a future change does that).
+  // The onClick handler is the only authoritative writer (it also
+  // writes to localStorage), so this listener is a re-read safety net
+  // — never a writer. Without it, the radio could stick on the
+  // default 'liquid-glass' even when the user has saved a different
+  // choice in another tab/session, or after a theme change exposes
+  // a pre-existing mismatch.
+  useEffect(() => {
+    function resync() {
+      try {
+        const stored = window.localStorage.getItem(BOARD_VARIANT_KEY);
+        const next = stored ?? "liquid-glass";
+        setBoardVariant((prev) => (prev === next ? prev : next));
+      } catch (_) {
+        // localStorage may be disabled — silently keep the in-memory value.
+      }
+    }
+    window.addEventListener("focus", resync);
+    document.addEventListener("visibilitychange", resync);
+    window.addEventListener("themechange", resync);
+    return () => {
+      window.removeEventListener("focus", resync);
+      document.removeEventListener("visibilitychange", resync);
+      window.removeEventListener("themechange", resync);
+    };
+  }, []);
+
   return (
     <section
       aria-labelledby="settings-appearance-heading"
@@ -139,13 +172,24 @@ function ThemeBlock() {
     return (get ? get() : "auto") as Theme;
   });
 
-  // If the OS preference changes while the user is in "auto", the
-  // <html> class is updated by the inline script, but our local state
-  // doesn't know. We don't surface that as a UI change — the visual
-  // already tracks the OS, and the radio stays on "auto".
+  // Keep the radio in sync with whatever the DOM's authoritative state is.
+  // Three sources can change the theme out-of-band from this radio:
+  //   1. TopNav's [data-theme-toggle] button (light ↔ dark).
+  //   2. The OS-pref listener when the user is in "auto".
+  //   3. Another tab on the same domain (storage event, currently unused
+  //      but cheap to support).
+  // The IIFE dispatches "themechange" on any of these; we re-read the
+  // resolved value and patch state. Without this, the radio sticks on
+  // whatever the user last clicked here even if the DOM has moved on —
+  // e.g. user picks auto, then clicks the TopNav toggle (which forces
+  // light/dark) — the radio would still read "auto" until a refresh.
   useEffect(() => {
     function onThemeChange() {
-      // No-op; just here to make React aware the DOM may have shifted.
+      const get = (window as unknown as { __4thewinGetTheme?: () => string })
+        .__4thewinGetTheme;
+      if (!get) return;
+      const next = get() as Theme;
+      setThemeState((prev) => (prev === next ? prev : next));
     }
     window.addEventListener("themechange", onThemeChange);
     return () => window.removeEventListener("themechange", onThemeChange);

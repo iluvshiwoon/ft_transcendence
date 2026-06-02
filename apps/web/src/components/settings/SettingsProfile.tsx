@@ -135,13 +135,18 @@ function AvatarBlock({
 
   return (
     <div className="flex items-center gap-5">
-      <button
-        type="button"
-        onClick={pickFile}
-        disabled={isPending}
-        aria-label="Change avatar"
-        title="Change avatar"
-        className="group relative flex size-20 shrink-0 items-center justify-center overflow-hidden rounded-2xl border border-border bg-foreground transition-all hover:ring-2 hover:ring-foreground hover:ring-offset-2 hover:ring-offset-surface active:scale-[0.97] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-foreground focus-visible:ring-offset-2 focus-visible:ring-offset-surface disabled:opacity-50"
+      {/*
+        Avatar itself is a non-interactive preview (a div, not a button).
+        Earlier this was a button that opened the file picker on click, but
+        that hid what the user could actually do — the dedicated "Upload
+        picture" button is the only affordance. Clicking the avatar does
+        nothing now; the camera badge stays as a decorative hint. The
+        endpoint also returned 400 in /settings (worked in onboarding) —
+        see the uploadAvatar fix in lib/api/profile.ts.
+      */}
+      <div
+        aria-hidden="true"
+        className="relative flex size-20 shrink-0 items-center justify-center overflow-hidden rounded-2xl border border-border bg-foreground"
       >
         {avatarUrl ? (
           <img
@@ -150,20 +155,20 @@ function AvatarBlock({
             className="absolute inset-0 size-full object-cover"
           />
         ) : (
-          <span aria-hidden="true" className="font-display italic text-4xl text-background">
+          <span className="font-display italic text-4xl text-background">
             {initial}
           </span>
         )}
         <span
           aria-hidden="true"
-          className="absolute -right-1 -bottom-1 flex size-7 items-center justify-center rounded-full border border-border bg-surface text-foreground shadow-sm transition-transform group-hover:scale-110"
+          className="absolute -right-1 -bottom-1 flex size-7 items-center justify-center rounded-full border border-border bg-surface text-foreground shadow-sm"
         >
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" className="size-3.5">
             <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z" />
             <circle cx="12" cy="13" r="4" />
           </svg>
         </span>
-      </button>
+      </div>
       <input
         ref={fileInputRef}
         type="file"

@@ -131,6 +131,7 @@ const user = await getCurrentUser(Astro);
           var next = current === "dark" ? "light" : "dark";
           setTheme(next);
           try { localStorage.setItem("theme", next); } catch (e) {}
+          dispatchThemeChange();
         });
 
         // Follow OS preference live when the user hasn't explicitly chosen.
@@ -138,9 +139,21 @@ const user = await getCurrentUser(Astro);
           window.matchMedia("(prefers-color-scheme: dark)").addEventListener("change", function (e) {
             if (localStorage.getItem("theme") === null) {
               setTheme(e.matches ? "dark" : "light");
+              dispatchThemeChange();
             }
           });
         } catch (e) {}
+
+        // Dispatch a "themechange" event whenever the resolved theme
+        // (light/dark on <html>) changes. Listened to by SettingsAppearance
+        // so the radio reflects the actual state — including changes from
+        // the TopNav toggle, the OS-pref listener, and __4thewinSetTheme
+        // itself. Without this, the React island's local state can drift
+        // from the DOM (e.g. user toggles auto → clicks light on /settings
+        // → radio sticks on auto).
+        function dispatchThemeChange() {
+          try { window.dispatchEvent(new Event("themechange")); } catch (e) {}
+        }
 
         // Expose a window-level API so React islands (e.g. SettingsAppearance)
         // can drive the same code path. Accepts "light" | "dark" | "auto":
@@ -148,6 +161,8 @@ const user = await getCurrentUser(Astro);
         //   - auto: clears storage, picks based on prefers-color-scheme now
         //     and lets the OS-preference listener take over going forward.
         window.__4thewinSetTheme = function (theme) {
+          var previous = null;
+          try { previous = document.documentElement.classList.contains("dark") ? "dark" : "light"; } catch (e) {}
           try {
             if (theme === "auto") {
               localStorage.removeItem("theme");
@@ -161,6 +176,9 @@ const user = await getCurrentUser(Astro);
             // localStorage unavailable — apply the requested mode without persisting.
             if (theme === "light" || theme === "dark") setTheme(theme);
           }
+          var current = null;
+          try { current = document.documentElement.classList.contains("dark") ? "dark" : "light"; } catch (e) {}
+          if (current !== null && current !== previous) dispatchThemeChange();
         };
         // Reads the current effective choice (light / dark / auto) for the
         // /settings radio to initialise to.
