@@ -140,34 +140,27 @@ function AvatarBlock({
         Earlier this was a button that opened the file picker on click, but
         that hid what the user could actually do — the dedicated "Upload
         picture" button is the only affordance. Clicking the avatar does
-        nothing now; the camera badge stays as a decorative hint. The
-        endpoint also returned 400 in /settings (worked in onboarding) —
-        see the uploadAvatar fix in lib/api/profile.ts.
+        nothing now. No camera badge either: a non-interactive portrait
+        shouldn't have to advertise interactivity it doesn't have, and
+        the button next to it already says "Upload picture" in plain text.
+        The endpoint also returned 400 in /settings (worked in onboarding)
+        — see the uploadAvatar fix in lib/api/profile.ts.
       */}
       <div
         aria-hidden="true"
-        className="relative flex size-20 shrink-0 items-center justify-center overflow-hidden rounded-2xl border border-border bg-foreground"
+        className="flex size-20 shrink-0 items-center justify-center overflow-hidden rounded-2xl border border-border bg-foreground"
       >
         {avatarUrl ? (
           <img
             src={avatarUrl}
             alt=""
-            className="absolute inset-0 size-full object-cover"
+            className="size-full object-cover"
           />
         ) : (
           <span className="font-display italic text-4xl text-background">
             {initial}
           </span>
         )}
-        <span
-          aria-hidden="true"
-          className="absolute -right-1 -bottom-1 flex size-7 items-center justify-center rounded-full border border-border bg-surface text-foreground shadow-sm"
-        >
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" className="size-3.5">
-            <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z" />
-            <circle cx="12" cy="13" r="4" />
-          </svg>
-        </span>
       </div>
       <input
         ref={fileInputRef}
