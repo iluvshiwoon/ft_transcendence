@@ -14,9 +14,9 @@ import { join } from "node:path";
 import { writeFile } from "node:fs/promises";
 import type { FastifyInstance } from "fastify";
 import sharp from "sharp";
-import { eq, ilike } from "drizzle-orm";
+import { eq, ilike, or, and, inArray, sql } from "drizzle-orm";
 import { db } from "../db/client.js";
-import { users } from "../db/schema.js";
+import { users, games } from "../db/schema.js";
 import { requireAuth } from "../auth/middleware.js";
 import { hashPassword, verifyPassword } from "../auth/password.js";
 import { titleForRating } from "../game/elo.js";
@@ -365,4 +365,178 @@ export async function userRoutes(app: FastifyInstance) {
       return reply.send({ message: "Account deleted" });
     }
   );
+
+  // ── B10 — Game Stats API ────────────────────────────────────────────────
+  // Endpoints publics (pas d'auth) : ils alimentent la page profil de n'importe
+  // quel user. Seuls les compteurs / l'historique sont exposés, jamais d'info
+  // privée. Un compte supprimé (isDeleted) apparaît comme "Joueur supprimé".
+
+  // GET /api/users/:id/stats — parties jouées/gagnées/perdues/nulles + win rate.
+  app.get<{ Params: { id: string } }>("/users/:id/stats", async (request, reply) => {
+    const id = Number(request.params.id);
+    if (isNaN(id)) return reply.code(400).send({ error: "Invalid id" });
+
+    const [user] = await db
+      .select({
+        gamesPlayed: users.gamesPlayed,
+        gamesWon: users.gamesWon,
+        gamesLost: users.gamesLost,
+        gamesDrawn: users.gamesDrawn,
+      })
+      .from(users)
+      .where(eq(users.id, id));
+    if (!user) return reply.code(404).send({ error: "User not found" });
+
+    // Win rate en % (1 décimale), 0 si aucune partie jouée (évite la div par 0).
+    const winRate =
+      user.gamesPlayed === 0
+        ? 0
+        : Math.round((user.gamesWon / user.gamesPlayed) * 1000) / 10;
+
+    return reply.send({ ...user, winRate });
+  });
+
+  // GET /api/users/:id/games — historique des parties terminées (paginé, 10/page).
+  app.get<{ Params: { id: string }; Querystring: { page?: string; limit?: string } }>(
+    "/users/:id/games",
+    async (request, reply) => {
+      const id = Number(request.params.id);
+      if (isNaN(id)) return reply.code(400).send({ error: "Invalid id" });
+
+      const [user] = await db.select({ id: users.id }).from(users).where(eq(users.id, id));
+      if (!user) return reply.code(404).send({ error: "User not found" });
+
+      // Pagination : page ≥ 1, limit borné à [1, 50] (défaut 10).
+      const page = Math.max(1, Number(request.query.page) || 1);
+      const limit = Math.min(50, Math.max(1, Number(request.query.limit) || 10));
+      const offset = (page - 1) * limit;
+
+      // On ne montre que les parties terminées (finished/abandoned), pas celles
+      // en attente ou en cours.
+      const belongsToUser = and(
+        or(eq(games.player1Id, id), eq(games.player2Id, id)),
+        inArray(games.status, ["finished", "abandoned"]),
+      );
+
+      const [{ total }] = await db
+        .select({ total: sql<number>`count(*)::int` })
+        .from(games)
+        .where(belongsToUser);
+
+      const rows = await db
+        .select()
+        .from(games)
+        .where(belongsToUser)
+        // finishedAt en premier (parties récentes), id en tie-breaker stable.
+        .orderBy(sql`${games.finishedAt} desc nulls last`, sql`${games.id} desc`)
+        .limit(limit)
+        .offset(offset);
+
+      // Récupère en un seul query les infos des adversaires humains référencés.
+      const opponentIds = [
+        ...new Set(
+          rows
+            .map((g) => (g.player1Id === id ? g.player2Id : g.player1Id))
+            .filter((oid): oid is number => oid !== null),
+        ),
+      ];
+      const opponentMap = await loadPublicUsers(opponentIds);
+
+      const list = rows.map((g) => {
+        // Résultat du point de vue du user demandé.
+        const result =
+          g.winnerId === null ? "draw" : g.winnerId === id ? "win" : "loss";
+
+        // Adversaire : l'IA, ou l'autre joueur humain.
+        const opponentId = g.player1Id === id ? g.player2Id : g.player1Id;
+        const opponent = g.isAiOpponent
+          ? { id: null, username: "IA", avatarUrl: null }
+          : opponentMap.get(opponentId!) ?? { id: opponentId, username: "Joueur supprimé", avatarUrl: null };
+
+        return {
+          id: g.id,
+          mode: g.mode,
+          result,
+          status: g.status,
+          isAiOpponent: g.isAiOpponent,
+          aiDifficulty: g.aiDifficulty,
+          opponent,
+          finishedAt: g.finishedAt,
+        };
+      });
+
+      return reply.send({ page, limit, total, games: list });
+    },
+  );
+
+  // GET /api/users/:id/opponents — top 3 des adversaires humains les plus fréquents.
+  app.get<{ Params: { id: string } }>("/users/:id/opponents", async (request, reply) => {
+    const id = Number(request.params.id);
+    if (isNaN(id)) return reply.code(400).send({ error: "Invalid id" });
+
+    const [user] = await db.select({ id: users.id }).from(users).where(eq(users.id, id));
+    if (!user) return reply.code(404).send({ error: "User not found" });
+
+    // L'adversaire = l'autre joueur de la ligne. On exclut les parties IA.
+    const opponentIdExpr = sql<number>`CASE WHEN ${games.player1Id} = ${id} THEN ${games.player2Id} ELSE ${games.player1Id} END`;
+
+    const rows = await db
+      .select({
+        opponentId: opponentIdExpr,
+        gamesAgainst: sql<number>`count(*)::int`,
+      })
+      .from(games)
+      .where(
+        and(
+          or(eq(games.player1Id, id), eq(games.player2Id, id)),
+          eq(games.isAiOpponent, false),
+          inArray(games.status, ["finished", "abandoned"]),
+        ),
+      )
+      // GROUP BY position ordinale : Drizzle rend la colonne du CASE non-qualifiée
+      // dans le SELECT mais qualifiée dans un GROUP BY par expression, et Postgres
+      // les traite alors comme deux expressions distinctes. `GROUP BY 1` cible
+      // directement la 1re colonne projetée et évite ce mismatch.
+      .groupBy(sql`1`)
+      .orderBy(sql`count(*) desc`)
+      .limit(3);
+
+    const map = await loadPublicUsers(rows.map((r) => r.opponentId));
+    const opponents = rows.map((r) => {
+      const u = map.get(r.opponentId) ?? { id: r.opponentId, username: "Joueur supprimé", avatarUrl: null };
+      return { ...u, gamesAgainst: r.gamesAgainst };
+    });
+
+    return reply.send({ opponents });
+  });
+}
+
+// Charge les infos publiques (id, username, avatar) d'un lot d'users en un query.
+// Les comptes supprimés sont renvoyés comme "Joueur supprimé" / avatar null,
+// conformément à l'anonymisation (B10 / RGPD).
+async function loadPublicUsers(
+  ids: number[],
+): Promise<Map<number, { id: number; username: string; avatarUrl: string | null }>> {
+  const map = new Map<number, { id: number; username: string; avatarUrl: string | null }>();
+  if (ids.length === 0) return map;
+
+  const rows = await db
+    .select({
+      id: users.id,
+      username: users.username,
+      avatarUrl: users.avatarUrl,
+      isDeleted: users.isDeleted,
+    })
+    .from(users)
+    .where(inArray(users.id, ids));
+
+  for (const u of rows) {
+    map.set(
+      u.id,
+      u.isDeleted
+        ? { id: u.id, username: "Joueur supprimé", avatarUrl: null }
+        : { id: u.id, username: u.username, avatarUrl: u.avatarUrl },
+    );
+  }
+  return map;
 }

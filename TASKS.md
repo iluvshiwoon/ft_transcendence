@@ -781,17 +781,17 @@ Responsible for containerization, security hardening, and deployment.
 
 ### Backend — Rayane (verticale "user / social")
 - [x] B1 — Database Schema & Drizzle Setup
-- [ ] B2 — Authentication System (JWT + bcrypt) — **next**
-- [ ] B6 — Socket.io Infrastructure (critical, unblocks B7/B8/B9)
-- [ ] B3 — OAuth 42
-- [ ] B4 — User Management API (profile, friends, block, avatar)
-- [ ] B8 — Chat System (DM)
-- [ ] B9 — Notification System
+- [x] B2 — Authentication System (JWT + bcrypt) — **next**
+- [x] B6 — Socket.io Infrastructure (critical, unblocks B7/B8/B9)
+- [x] B3 — OAuth 42
+- [x] B4 — User Management API (profile, friends, block, avatar)
+- [x] B8 — Chat System (DM)
+- [x] B9 — Notification System
 
 ### Backend — Tim (verticale "jeu temps réel")
-- [ ] B5 — Game Logic Engine (Puissance 4 + minimax AI)
-- [ ] B7 — Lobby System & Game Sync (depends on B5 + B6)
-- [ ] B10 — Game Stats API
+- [x] B5 — Game Logic Engine (Puissance 4 + minimax AI)
+- [x] B7 — Lobby System & Game Sync (depends on B5 + B6)
+- [x] B10 — Game Stats API
 
 ### Frontend — TBD (à attribuer à un dev front)
 - [ ] A2 — SSR layout & routing

@@ -9,6 +9,7 @@ Documentation des endpoints HTTP et events Socket.io exposés par `apps/server/`
 - [Bases](#bases)
 - [Auth](#auth)
 - [Profil & users](#profil--users)
+- [Stats & historique (B10)](#stats--historique-b10)
 - [Amis & blocage](#amis--blocage)
 - [Chat](#chat)
 - [Notifications](#notifications)
@@ -182,6 +183,62 @@ Auth requise. Marque `is_deleted = true`, vide bio/avatar/oauth, déconnecte.
 ### `GET /uploads/avatars/{userId}.webp` — récupérer un avatar
 
 Pas d'auth. Sert directement le fichier.
+
+---
+
+## Stats & historique (B10)
+
+Routes publiques (pas d'auth) : elles alimentent la page profil de n'importe quel
+user. Un compte supprimé (`is_deleted`) apparaît partout comme `"Joueur supprimé"`,
+avatar `null`. `404` si l'`id` n'existe pas.
+
+### `GET /api/users/:id/stats` — compteurs + win rate
+
+Pas d'auth. Réponse `200` :
+```json
+{ "gamesPlayed": 12, "gamesWon": 7, "gamesLost": 4, "gamesDrawn": 1, "winRate": 58.3 }
+```
+`winRate` = `gamesWon / gamesPlayed * 100`, arrondi à 1 décimale (`0` si aucune partie).
+
+### `GET /api/users/:id/games?page=1&limit=10` — historique des parties
+
+Pas d'auth. Seules les parties terminées (`finished` / `abandoned`), triées de la
+plus récente à la plus ancienne. `page` ≥ 1 (défaut 1), `limit` ∈ [1, 50] (défaut 10).
+Réponse `200` :
+```json
+{
+  "page": 1,
+  "limit": 10,
+  "total": 12,
+  "games": [
+    {
+      "id": 42,
+      "mode": "connect4",
+      "result": "win",
+      "status": "finished",
+      "isAiOpponent": false,
+      "aiDifficulty": null,
+      "opponent": { "id": 7, "username": "alice", "avatarUrl": "/uploads/..." },
+      "finishedAt": "2026-05-30T18:21:00.000Z"
+    }
+  ]
+}
+```
+`result` est du point de vue du user demandé : `"win"` | `"loss"` | `"draw"`.
+Pour une partie IA : `opponent = { "id": null, "username": "IA", "avatarUrl": null }`
+et `aiDifficulty` est renseigné.
+
+### `GET /api/users/:id/opponents` — top 3 adversaires les plus fréquents
+
+Pas d'auth. Adversaires humains uniquement (les parties IA sont exclues), triés par
+nombre de parties jouées ensemble. Réponse `200` :
+```json
+{
+  "opponents": [
+    { "id": 7, "username": "alice", "avatarUrl": "/uploads/...", "gamesAgainst": 5 }
+  ]
+}
+```
 
 ---
 
