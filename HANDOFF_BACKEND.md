@@ -684,12 +684,14 @@ handler JS qui fait `fetch(POST /api/auth/logout)` puis
 **Statut (juin 2026).** ✅ Livré sur la branche `kgriset_settings`
 (commits `26ccaac` + `cf4dd29`). Décomposition réelle :
 
-- **Logout content-negotiation** (`26ccaac`). `/api/auth/logout` lit
-  l'header `Accept` :
-  - si `text/html` présent et `application/json` absent → 302 redirect
+- **Logout content-negotiation** (`26ccaac` + correctifs). `/api/auth/logout` lit
+  les headers :
+  - si `Accept` contient `text/html` OU si le `Content-Type` est `application/x-www-form-urlencoded` (ce que les formulaires HTML natifs envoient toujours) → 302 redirect
     vers `/` (chemin `<form>` du TopNav, sans JS).
   - sinon → `200 { message: "Logged out" }` (chemin fetch/curl/future
     client-side flow).
+  Un parseur de contenu pour `application/x-www-form-urlencoded` a été ajouté
+  dans `server.ts` pour éviter l'erreur 415 (Unsupported Media Type) lors du POST.
   L'ordre des args de `reply.redirect()` suit la signature Fastify v5
   (`url, statusCode?`) — petit gotcha trouvé à `tsc --noEmit`.
 
