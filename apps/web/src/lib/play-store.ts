@@ -228,8 +228,10 @@ class PlayStore {
       p2Username: opts.p2Username ?? (opts.isAiOpponent ? "AI" : "Opponent"),
     });
 
-    // Establish WebSocket connection
-    const socket = io();
+    // Establish WebSocket connection directly to bypass ModSecurity polling blocks
+    const socket = io({
+      transports: ["websocket"],
+    });
     this.socket = socket;
 
     socket.on("connect", () => {
