@@ -90,7 +90,7 @@ export function RightToolPanel({
         </>
       ) : (
         /* Confirmation Modal Overlay - taking full height of RightToolPanel */
-        <div className="absolute inset-y-0 right-0 left-0 md:left-6 flex flex-col items-center justify-center bg-surface z-10 px-2 text-center animate-fade-in">
+        <div className="absolute inset-y-1 right-1 left-1 md:left-7 flex flex-col items-center justify-center bg-surface rounded-xl border border-border shadow-xl z-10 p-4 text-center">
           <div className="flex flex-col gap-4 items-center">
             <div>
               <h3 className="font-display text-2xl font-light italic text-foreground">
