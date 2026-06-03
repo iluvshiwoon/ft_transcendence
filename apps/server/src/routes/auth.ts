@@ -143,9 +143,18 @@ export async function authRoutes(app: FastifyInstance) {
     });
   });
 
-  app.post("/logout", async (_request, reply) => {
-    // Efface le cookie : le navigateur ne saura plus qui il est.
+  app.post("/logout", async (request, reply) => {
+    // §3.12 — content negotiation. The TopNav's logout is a plain HTML
+    // <form> POST (no JS), so a JSON response would render as raw text in
+    // the browser. A fetch-based logout (e.g. a future client-side flow)
+    // expects JSON. Decision: if the caller accepts HTML or submits a form,
+    // they're a browser form — redirect. Otherwise return JSON.
     reply.clearCookie("auth_token", { path: "/" });
+    const accept = request.headers.accept ?? "";
+    const contentType = request.headers["content-type"] ?? "";
+    if (accept.includes("text/html") || contentType.includes("application/x-www-form-urlencoded")) {
+      return reply.redirect("/", 302);
+    }
     return reply.send({ message: "Logged out" });
   });
 
@@ -365,6 +374,36 @@ export async function authRoutes(app: FastifyInstance) {
           ? `${frontendUrl}/signup?step=3`
           : `${frontendUrl}/`;
       return reply.redirect(target);
+    }
+  );
+
+  app.post(
+    "/oauth42/unlink",
+    { preHandler: requireAuth },
+    async (request, reply) => {
+      // Dissocie le compte 42 du user courant. Bloqué si l'user n'a pas
+      // de mot de passe (sinon il perdrait tout moyen de se reconnecter —
+      // le flow OAuth n'est qu'un raccourci). On force la mise en place
+      // d'un password d'abord via PUT /api/profile/password.
+      const [user] = await db
+        .select({ id: users.id, password: users.password, oauth42Id: users.oauth42Id })
+        .from(users)
+        .where(eq(users.id, request.userId!));
+      if (!user) return reply.code(404).send({ error: "User not found" });
+      if (!user.oauth42Id) {
+        return reply.code(400).send({ error: "No 42 account linked" });
+      }
+      if (!user.password) {
+        return reply.code(409).send({
+          error:
+            "Set a password before unlinking 42 (otherwise you'd be locked out)",
+        });
+      }
+      await db
+        .update(users)
+        .set({ oauth42Id: null, updatedAt: new Date() })
+        .where(eq(users.id, request.userId!));
+      return reply.send({ ok: true });
     }
   );
 }

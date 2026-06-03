@@ -11,12 +11,13 @@
 //   - No DB persistence — anonymous play is intentionally ephemeral. TTL
 //     cleanup evicts idle games after IDLE_TTL_MS.
 //
-// ERROR CODES (returned as JSON { error: "<code>", message: "..." }):
+// ERROR CODES (returned as JSON { error: "<human>", code: "<code>", status }):
 //   400 INVALID_BODY   — body missing or malformed
 //   400 INVALID_COL    — col is not an integer 0..6
 //   400 COL_FULL       — column is already full
 //   401 NO_SESSION     — no session cookie or session expired/unknown
 //   410 GAME_OVER      — game has finished, call /start to begin a new one
+//   410 NOT_YOUR_TURN  — client sent a move while AI was computing
 //   500 INTERNAL       — anything else (logged server-side)
 
 import type { FastifyInstance, FastifyReply, FastifyRequest } from "fastify";
@@ -24,6 +25,7 @@ import { randomBytes } from "node:crypto";
 import { GameState } from "../game/gameState.js";
 import { findBestMove, type MoveTelemetry } from "../game/ai.js";
 import { findWinningLine } from "../game/check_board.js";
+import { sendError } from "../lib/errors.js";
 
 const COOKIE_NAME = "play_session";
 const COOKIE_MAX_AGE_S = 60 * 60 * 24; // 24h browser-side
@@ -99,10 +101,6 @@ function publicView(state: GameState): PublicGameView {
   };
 }
 
-function err(reply: FastifyReply, status: number, code: string, message: string) {
-  return reply.status(status).send({ error: code, message });
-}
-
 /** Read the session cookie and return its entry. Touches lastActivityMs.
  *  Returns null if the cookie is missing or doesn't map to anything. */
 function getActiveSession(request: FastifyRequest): SessionEntry | null {
@@ -134,7 +132,7 @@ export async function playRoutes(app: FastifyInstance) {
   // GET /api/play/state — return the current public state for the session.
   app.get("/play/state", async (request, reply) => {
     const entry = getActiveSession(request);
-    if (!entry) return err(reply, 401, "NO_SESSION", "No active game session.");
+    if (!entry) return sendError(reply, 401, "NO_SESSION", "No active game session.");
     return reply.send({ state: publicView(entry.state) });
   });
 
@@ -143,30 +141,30 @@ export async function playRoutes(app: FastifyInstance) {
   // Response on success: { state, aiMove?, telemetry? }
   app.post("/play/move", async (request, reply) => {
     const entry = getActiveSession(request);
-    if (!entry) return err(reply, 401, "NO_SESSION", "No active game session.");
+    if (!entry) return sendError(reply, 401, "NO_SESSION", "No active game session.");
 
     const body = request.body as { col?: unknown } | undefined;
     if (!body || typeof body !== "object") {
-      return err(reply, 400, "INVALID_BODY", "Body must be { col: number }.");
+      return sendError(reply, 400, "INVALID_BODY", "Body must be { col: number }.");
     }
     const col = body.col;
     if (typeof col !== "number" || !Number.isInteger(col) || col < 0 || col > 6) {
-      return err(reply, 400, "INVALID_COL", "col must be an integer 0..6.");
+      return sendError(reply, 400, "INVALID_COL", "col must be an integer 0..6.");
     }
 
     if (entry.state.getState().status !== "in_progress") {
-      return err(reply, 410, "GAME_OVER", "Game is finished. POST /play/start to begin a new one.");
+      return sendError(reply, 410, "GAME_OVER", "Game is finished. POST /play/start to begin a new one.");
     }
     if (entry.state.getState().currentPlayer !== 1) {
       // Defensive — shouldn't happen via normal flow, but possible if a
       // client sends two move requests in flight. Reject the second.
-      return err(reply, 410, "NOT_YOUR_TURN", "Not your turn. AI move pending.");
+      return sendError(reply, 410, "NOT_YOUR_TURN", "Not your turn. AI move pending.");
     }
 
     // Apply player move. Returns false if the column is full.
     const playerOk = entry.state.makeMove(col);
     if (!playerOk) {
-      return err(reply, 400, "COL_FULL", "Column is full.");
+      return sendError(reply, 400, "COL_FULL", "Column is full.");
     }
 
     // If the player's move ended the game, we're done.
@@ -192,11 +190,11 @@ export async function playRoutes(app: FastifyInstance) {
       if (!aiOk) {
         // Should be impossible — findBestMove only returns valid columns.
         request.log.error({ col: result.col }, "AI returned an invalid move");
-        return err(reply, 500, "INTERNAL", "AI returned an invalid move.");
+        return sendError(reply, 500, "INTERNAL", "AI returned an invalid move.");
       }
     } catch (e) {
       request.log.error({ err: e }, "AI computation failed");
-      return err(reply, 500, "INTERNAL", "AI computation failed.");
+      return sendError(reply, 500, "INTERNAL", "AI computation failed.");
     }
 
     return reply.send({

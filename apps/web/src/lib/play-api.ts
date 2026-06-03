@@ -8,7 +8,9 @@
  *   - calls reset() to start fresh after a finished game
  *
  * Errors are surfaced as PlayApiError with a typed code so the UI can react
- * (e.g. show a toast on COL_FULL, auto-restart on GAME_OVER).
+ * (e.g. show a toast on COL_FULL, auto-restart on GAME_OVER). The server
+ * follows the same `{ error: <human>, code, status }` shape as the rest of
+ * the backend — see apps/server/src/lib/errors.ts.
  *
  * `credentials: "include"` makes the browser send/receive the play_session
  * cookie. The cookie is HttpOnly and not visible to JavaScript — the client
@@ -101,9 +103,9 @@ async function request<T>(path: string, init: RequestInit = {}): Promise<T> {
   }
 
   if (!res.ok) {
-    const errBody = body as { error?: string; message?: string } | null;
-    const code = (errBody?.error ?? "INTERNAL") as PlayErrorCode;
-    const msg = errBody?.message ?? `Request failed with status ${res.status}`;
+    const errBody = body as { error?: string; code?: string; status?: number } | null;
+    const code = (errBody?.code ?? "INTERNAL") as PlayErrorCode;
+    const msg = errBody?.error ?? `Request failed with status ${res.status}`;
     throw new PlayApiError(code, msg, res.status);
   }
   return body as T;

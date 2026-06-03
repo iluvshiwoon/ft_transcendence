@@ -1,6 +1,7 @@
 // Routes utilisateurs : profils publics, recherche, lecture/édition de son propre profil.
 //
 // GET  /api/users/:id              — profil public d'un user (n'importe qui peut le voir)
+// GET  /api/users/by-username/:username — idem, mais par username (pour les URLs /profile/<username>)
 // GET  /api/users/check-username   — vérifie si un username est dispo (UNAUTH, pour le signup)
 // GET  /api/users/search           — recherche par username (auth requise)
 // GET  /api/profile                — son propre profil (avec email, infos privées)
@@ -20,6 +21,7 @@ import { users, games } from "../db/schema.js";
 import { requireAuth } from "../auth/middleware.js";
 import { hashPassword, verifyPassword } from "../auth/password.js";
 import { titleForRating } from "../game/elo.js";
+import { sendError } from "../lib/errors.js";
 import { getUserRank } from "../lib/rank.js";
 
 // Dossier de destination des avatars (créé au démarrage par server.ts).
@@ -31,7 +33,7 @@ const ALLOWED_MIMETYPES = ["image/jpeg", "image/png", "image/webp"];
 // a new pawn or grid skin there, add it here too.
 const BIO_MAX_LEN = 160;
 const ALLOWED_PAWN_SKINS = ["default", "wine", "coral", "brick"] as const;
-const ALLOWED_GRID_SKINS = ["default", "ink", "slate"] as const;
+const ALLOWED_GRID_SKINS = ["default", "liquid-glass"] as const;
 
 interface UpdateProfileBody {
   username?: string;
@@ -50,6 +52,39 @@ interface UpdatePasswordBody {
   newPassword: string;
 }
 
+// Construit la réponse publique d'un profil user. Même shape pour /users/:id
+// et /users/by-username/:username — comme ça le front a un seul `User` type
+// à typer des deux côtés. Renvoie un placeholder minimal "Joueur supprimé"
+// quand `isDeleted` est vrai, pour préserver la cohérence de l'historique
+// des parties (cf. DELETE /api/profile).
+async function publicProfilePayload(user: typeof users.$inferSelect) {
+  if (user.isDeleted) {
+    return {
+      id: user.id,
+      username: "Joueur supprimé",
+      avatarUrl: null as string | null,
+    };
+  }
+
+  const rank = await getUserRank(user.rating, user.peakRating, user.id);
+  return {
+    id: user.id,
+    username: user.username,
+    avatarUrl: user.avatarUrl,
+    bio: user.bio,
+    status: user.status,
+    gamesPlayed: user.gamesPlayed,
+    gamesWon: user.gamesWon,
+    gamesLost: user.gamesLost,
+    gamesDrawn: user.gamesDrawn,
+    rating: user.rating,
+    peakRating: user.peakRating,
+    rank,
+    title: titleForRating(user.rating),
+    createdAt: user.createdAt.toISOString(),
+  };
+}
+
 export async function userRoutes(app: FastifyInstance) {
   app.get<{ Params: { id: string } }>("/users/:id", async (request, reply) => {
     // Profil public : pas besoin d'être connecté pour voir.
@@ -59,29 +94,31 @@ export async function userRoutes(app: FastifyInstance) {
     const [user] = await db.select().from(users).where(eq(users.id, id));
     if (!user) return reply.code(404).send({ error: "User not found" });
 
-    // Si l'user a supprimé son compte, on renvoie un placeholder.
-    if (user.isDeleted) {
-      return reply.send({ id: user.id, username: "Joueur supprimé", avatarUrl: null });
-    }
-
-    // Renvoie uniquement les infos publiques (pas d'email, pas de password).
-    const rank = await getUserRank(user.rating, user.peakRating, user.id);
-    return reply.send({
-      id: user.id,
-      username: user.username,
-      avatarUrl: user.avatarUrl,
-      bio: user.bio,
-      status: user.status,
-      gamesPlayed: user.gamesPlayed,
-      gamesWon: user.gamesWon,
-      gamesLost: user.gamesLost,
-      gamesDrawn: user.gamesDrawn,
-      rating: user.rating,
-      peakRating: user.peakRating,
-      rank,
-      title: titleForRating(user.rating),
-    });
+    return reply.send(await publicProfilePayload(user));
   });
+
+  app.get<{ Params: { username: string } }>(
+    "/users/by-username/:username",
+    async (request, reply) => {
+      // Profil public lookupé par username — utilisé par la future page
+      // /profile/<username> (côté front, dynamic route Astro). Pas d'auth :
+      // un profil public reste public, comme via /users/:id.
+      //
+      // URLs sensibles à la casse : on stocke en `eq` (case-sensitive) comme
+      // le reste du schéma. /users/by-username/sarah_w ≠ /users/by-username/Sarah_w.
+      // C'est volontaire et aligné avec /users/check-username (cf. signup).
+      const username = request.params.username?.trim();
+      if (!username) return reply.code(404).send({ error: "User not found" });
+
+      const [user] = await db
+        .select()
+        .from(users)
+        .where(eq(users.username, username));
+      if (!user) return reply.code(404).send({ error: "User not found" });
+
+      return reply.send(await publicProfilePayload(user));
+    }
+  );
 
   app.get<{ Querystring: { q?: string } }>(
     "/users/check-username",
@@ -155,6 +192,9 @@ export async function userRoutes(app: FastifyInstance) {
         peakRating: user.peakRating,
         rank,
         title: titleForRating(user.rating),
+        // ISO 8601 or null. null for OAuth-only accounts that have
+        // never set a password. Surfaced in /settings as "Last changed".
+        passwordChangedAt: user.passwordChangedAt?.toISOString() ?? null,
       });
     }
   );
@@ -227,24 +267,29 @@ export async function userRoutes(app: FastifyInstance) {
       // Re-auth obligatoire : on demande le mot de passe actuel avant de changer l'email.
       const { currentPassword, newEmail } = request.body;
       if (!currentPassword || !newEmail) {
-        return reply.code(400).send({ error: "Missing fields" });
+        return sendError(reply, 400, "INVALID_BODY", "Missing fields");
       }
 
       const [user] = await db.select().from(users).where(eq(users.id, request.userId!));
       if (!user || !user.password) {
         // Compte OAuth-only : on bloque (faudrait d'abord set un password).
-        return reply.code(400).send({ error: "Cannot change email without a password set" });
+        return sendError(
+          reply,
+          400,
+          "PASSWORD_REQUIRED",
+          "Cannot change email without a password set",
+        );
       }
 
       const valid = await verifyPassword(currentPassword, user.password);
       if (!valid) {
-        return reply.code(401).send({ error: "Wrong current password" });
+        return sendError(reply, 401, "WRONG_PASSWORD", "Wrong current password");
       }
 
       // Vérifie que le nouvel email n'est pas déjà pris par un autre user.
       const existing = await db.select().from(users).where(eq(users.email, newEmail));
       if (existing.length > 0 && existing[0].id !== request.userId) {
-        return reply.code(409).send({ error: "Email already in use" });
+        return sendError(reply, 409, "EMAIL_IN_USE", "Email already in use");
       }
 
       await db
@@ -263,29 +308,56 @@ export async function userRoutes(app: FastifyInstance) {
       // Re-auth obligatoire : on demande le mot de passe actuel avant de changer.
       const { currentPassword, newPassword } = request.body;
       if (!currentPassword || !newPassword) {
-        return reply.code(400).send({ error: "Missing fields" });
+        return sendError(reply, 400, "INVALID_BODY", "Missing fields");
       }
       if (newPassword.length < 8) {
-        return reply.code(400).send({ error: "Password must be at least 8 chars" });
+        return sendError(
+          reply,
+          400,
+          "PASSWORD_TOO_SHORT",
+          "Password must be at least 8 chars",
+        );
       }
 
       const [user] = await db.select().from(users).where(eq(users.id, request.userId!));
       if (!user || !user.password) {
-        return reply.code(400).send({ error: "Cannot change password without one set" });
+        return sendError(
+          reply,
+          400,
+          "PASSWORD_REQUIRED",
+          "Cannot change password without one set",
+        );
       }
 
       const valid = await verifyPassword(currentPassword, user.password);
       if (!valid) {
-        return reply.code(401).send({ error: "Wrong current password" });
+        return sendError(reply, 401, "WRONG_PASSWORD", "Wrong current password");
+      }
+
+      // Refuse same-as-current. Defense in depth: the frontend also blocks
+      // this client-side so the user gets the inline error before submit,
+      // but the server enforces it too — never trust the client.
+      if (await verifyPassword(newPassword, user.password)) {
+        return sendError(
+          reply,
+          400,
+          "PASSWORD_SAME_AS_CURRENT",
+          "New password must be different from current password",
+        );
       }
 
       const newHash = await hashPassword(newPassword);
+      const now = new Date();
       await db
         .update(users)
-        .set({ password: newHash, updatedAt: new Date() })
+        .set({
+          password: newHash,
+          passwordChangedAt: now,
+          updatedAt: now,
+        })
         .where(eq(users.id, request.userId!));
 
-      return reply.send({ message: "Password updated" });
+      return reply.send({ message: "Password updated", passwordChangedAt: now.toISOString() });
     }
   );
 
@@ -293,21 +365,53 @@ export async function userRoutes(app: FastifyInstance) {
     "/profile/avatar",
     { preHandler: requireAuth },
     async (request, reply) => {
-      // Récupère le fichier uploadé (limit 2 MB déjà configuré côté plugin).
-      const data = await request.file();
+      // Récupère le fichier uploadé. @fastify/multipart's fileSize limit
+      // (2 MB, set in server.ts) is enforced inside the busboy stream, so
+      // request.file() throws a Fastify error with code FST_REQ_FILE_TOO_LARGE
+      // (statusCode 413) before returning a usable stream. Without this
+      // catch the request would still resolve to a typed 413 (Fastify's
+      // default error handler), but in the bare `{ error, statusCode }`
+      // shape — the frontend's typed-error switch wouldn't match and the
+      // user would see the raw 'Payload Too Large' string. We catch it
+      // and re-emit through sendError so the response carries our code.
+      let data;
+      try {
+        data = await request.file();
+      } catch (err) {
+        const e = err as { statusCode?: number; code?: string };
+        if (e.statusCode === 413 || e.code === "FST_REQ_FILE_TOO_LARGE") {
+          return sendError(
+            reply,
+            413,
+            "FILE_TOO_LARGE",
+            "Image must be 2 MB or smaller.",
+          );
+        }
+        throw err;
+      }
       if (!data) {
-        return reply.code(400).send({ error: "No file uploaded" });
+        return sendError(reply, 400, "INVALID_FILE", "No file uploaded.");
       }
 
       // Vérifie le type MIME (le plugin a déjà coupé si > 2 MB).
       if (!ALLOWED_MIMETYPES.includes(data.mimetype)) {
-        return reply.code(400).send({ error: "Unsupported file type (JPG/PNG/WebP only)" });
+        return sendError(
+          reply,
+          400,
+          "INVALID_FILE",
+          "Unsupported file type (JPG, PNG, WebP only).",
+        );
       }
 
       // Lit tout le fichier en mémoire (OK car ≤ 2 MB).
       const buffer = await data.toBuffer();
       if (data.file.truncated) {
-        return reply.code(400).send({ error: "File too large (max 2 MB)" });
+        return sendError(
+          reply,
+          400,
+          "FILE_TOO_LARGE",
+          "Image must be 2 MB or smaller.",
+        );
       }
 
       // Redimensionne en 500x500 max (sans agrandir si plus petit) et convertit en webp.
@@ -321,7 +425,12 @@ export async function userRoutes(app: FastifyInstance) {
           .toBuffer();
       } catch (err) {
         request.log.warn({ err }, "avatar: sharp processing failed");
-        return reply.code(400).send({ error: "Invalid or corrupt image data" });
+        return sendError(
+          reply,
+          400,
+          "INVALID_FILE",
+          "Couldn't read the image data — file may be corrupt.",
+        );
       }
 
       // Sauvegarde sur disque. Nom de fichier = userId pour éviter les collisions.

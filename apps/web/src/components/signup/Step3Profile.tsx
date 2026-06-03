@@ -40,9 +40,8 @@ const PAWN_SKINS: SkinOption[] = [
 ];
 
 const GRID_SKINS: SkinOption[] = [
-  { id: "default", label: "Linen", swatchClass: "bg-grid-linen" },
-  { id: "ink", label: "Ink", swatchClass: "bg-grid-ink" },
-  { id: "slate", label: "Slate", swatchClass: "bg-grid-slate" },
+  { id: "liquid-glass", label: "Liquid glass", swatchClass: "bg-sky-200 dark:bg-sky-900" },
+  { id: "default", label: "Classic", swatchClass: "bg-board" },
 ];
 
 export function Step3Profile() {
@@ -55,7 +54,7 @@ export function Step3Profile() {
 
   const [bio, setBio] = useState("");
   const [pawnSkin, setPawnSkin] = useState<string>("default");
-  const [gridSkin, setGridSkin] = useState<string>("default");
+  const [gridSkin, setGridSkin] = useState<string>("liquid-glass");
 
   const [formError, setFormError] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
@@ -240,8 +239,8 @@ export function Step3Profile() {
 
         {/* Pawn skin — right column, top row */}
         <fieldset className="flex flex-col gap-2 md:col-start-2 md:row-start-1 md:h-full">
-          <legend className="text-sm font-medium leading-none text-foreground">Your pawn</legend>
-          <div className="flex gap-3 pt-4 md:flex-1 md:items-center md:gap-2 md:pt-2">
+          <legend className="text-sm font-medium leading-none text-foreground">Pawn skin</legend>
+          <div className="flex flex-wrap gap-x-2 gap-y-3 pt-4 md:flex-1 md:items-center md:gap-x-1.5 md:gap-y-2 md:pt-2">
             {PAWN_SKINS.map((skin) => (
               <SkinSwatch
                 key={skin.id}
@@ -257,8 +256,8 @@ export function Step3Profile() {
 
         {/* Grid skin — right column, bottom row */}
         <fieldset className="flex flex-col gap-2 md:col-start-2 md:row-start-2 md:h-full">
-          <legend className="text-sm font-medium leading-none text-foreground">Your grid</legend>
-          <div className="flex gap-3 pt-4 md:flex-1 md:items-center md:gap-2 md:pt-2">
+          <legend className="text-sm font-medium leading-none text-foreground">Grid skin</legend>
+          <div className="flex flex-wrap gap-x-2 gap-y-3 pt-4 md:flex-1 md:items-center md:gap-x-1.5 md:gap-y-2 md:pt-2">
             {GRID_SKINS.map((skin) => (
               <SkinSwatch
                 key={skin.id}
@@ -316,7 +315,7 @@ function SkinSwatch({
   return (
     <label
       htmlFor={id}
-      className="group flex w-16 cursor-pointer flex-col items-center gap-1.5 rounded-md p-1 transition-colors"
+      className="group flex w-[84px] cursor-pointer flex-col items-center gap-1.5 rounded-md p-1 text-center transition-colors"
     >
       <input
         id={id}
@@ -330,21 +329,24 @@ function SkinSwatch({
       <span
         aria-hidden="true"
         className={cn(
-          // Uniform 2px ring + 2px offset across all swatches so they have
-          // identical visual size regardless of selection state.
-          //
-          // ring-offset-white gives every swatch a clearly visible white
-          // halo between its fill and the ring — including grid-linen
-          // whose cream fill used to blend with a bg-colored offset.
-          "size-9 ring-2 ring-offset-2 ring-offset-white",
-          shape === "circle" ? "rounded-full" : "rounded-md",
-          skin.swatchClass,
+          "size-11 flex items-center justify-center border-2 bg-surface transition-all",
+          shape === "circle" ? "rounded-full" : "rounded-lg",
           selected
-            ? "ring-foreground"
-            : "ring-foreground/30 opacity-80 group-hover:opacity-100",
+            ? "border-foreground"
+            : "border-foreground/30 opacity-80 group-hover:opacity-100",
         )}
-      />
-      <span className="font-mono text-mono-sm uppercase text-muted-foreground">{skin.label}</span>
+      >
+        <span
+          className={cn(
+            "size-9",
+            shape === "circle" ? "rounded-full" : "rounded-md",
+            skin.swatchClass,
+          )}
+        />
+      </span>
+      <span className="font-mono text-mono-sm uppercase text-muted-foreground whitespace-nowrap">
+        {skin.label}
+      </span>
     </label>
   );
 }
