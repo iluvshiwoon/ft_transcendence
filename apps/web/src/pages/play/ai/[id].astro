@@ -21,6 +21,8 @@ import { Board } from "~/components/landing/Board";
 import { EndGameOverlay } from "~/components/landing/EndGameOverlay";
 import { AITelemetry } from "~/components/landing/AITelemetry";
 import { PlayerTimer } from "~/components/landing/PlayerTimer";
+import { NewGameButton } from "~/components/landing/NewGameButton";
+import { ResignButton } from "~/components/landing/ResignButton";
 import { buttonVariants } from "~/components/ui/button";
 import { isAuthenticated } from "~/lib/auth";
 import { cn } from "~/lib/utils";
@@ -139,7 +141,14 @@ const cardCls = "rounded-xl border border-border bg-surface text-surface-foregro
           class="page-reveal relative"
           style="--reveal-delay: 0.2s"
         >
-          <Board variant={gridSkin as any} client:load />
+          <Board
+            gameId={gameId}
+            difficulty={difficulty as any}
+            timeLimit={timePerPlayerSeconds}
+            isAi={isAiOpponent}
+            variant={gridSkin as any}
+            client:load
+          />
           <EndGameOverlay authed={authed} client:load />
         </div>
       </div>
@@ -198,28 +207,8 @@ const cardCls = "rounded-xl border border-border bg-surface text-surface-foregro
               aligned with the rest of the column so they read as part
               of the same stack (not separate full-width buttons). */}
           <div class="flex flex-col items-center gap-3 pt-1">
-            <button
-              type="button"
-              data-new-game-button
-              class="inline-flex items-center gap-1.5 rounded-full bg-muted px-4 py-1.5 font-mono text-mono-sm uppercase text-muted-foreground hover:bg-foreground hover:text-background active:scale-[0.98] focus-visible:outline-none focus-visible:bg-foreground focus-visible:text-background cursor-pointer"
-            >
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="size-3.5" aria-hidden="true">
-                <polyline points="1 4 1 10 7 10" />
-                <path d="M3.51 15a9 9 0 1 0 2.13-9.36L1 10" />
-              </svg>
-              New game
-            </button>
-            <button
-              type="button"
-              data-resign-button
-              class="inline-flex items-center gap-1.5 rounded-full bg-muted px-4 py-1.5 font-mono text-mono-sm uppercase text-muted-foreground hover:bg-foreground hover:text-background active:scale-[0.98] focus-visible:outline-none focus-visible:bg-foreground focus-visible:text-background cursor-pointer"
-            >
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="size-3.5" aria-hidden="true">
-                <line x1="4" y1="22" x2="4" y2="15" />
-                <path d="M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1z" />
-              </svg>
-              Resign
-            </button>
+            <NewGameButton client:load />
+            <ResignButton client:load />
           </div>
 
         </div>
@@ -240,48 +229,4 @@ const cardCls = "rounded-xl border border-border bg-surface text-surface-foregro
       </filter>
     </defs>
   </svg>
-
-  <script>
-    import { playStore } from "~/lib/play-store";
-
-    const main = document.getElementById("main");
-    if (main) {
-      const gameId = parseInt(main.getAttribute("data-game-id") || "", 10);
-      const difficulty = main.getAttribute("data-difficulty") || "medium";
-      const timeLimit = parseInt(main.getAttribute("data-time-limit") || "300", 10);
-      const isAi = main.getAttribute("data-is-ai") === "true";
-
-      if (!isNaN(gameId)) {
-        // Connect to real-time socket game
-        playStore.connectGame(gameId, {
-          aiDifficulty: difficulty as any,
-          timePerPlayerSeconds: timeLimit,
-          isAiOpponent: isAi,
-        });
-      }
-    }
-
-    // New Game control
-    const newGameBtn = document.querySelector("[data-new-game-button]");
-    if (newGameBtn) {
-      newGameBtn.addEventListener("click", () => {
-        void playStore.restart();
-      });
-    }
-
-    // Resign control
-    const resignBtn = document.querySelector("[data-resign-button]");
-    if (resignBtn) {
-      resignBtn.addEventListener("click", () => {
-        if (confirm("Are you sure you want to resign? This will count as a loss.")) {
-          playStore.resign();
-        }
-      });
-    }
-
-    // Disconnect socket on leaving
-    window.addEventListener("beforeunload", () => {
-      playStore.disconnectGame();
-    });
-  </script>
 </RootLayout>

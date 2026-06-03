@@ -86,6 +86,12 @@ interface BoardProps {
   className?: string;
   /** EXPERIMENT — visual variant. Defaults to "default" (current style). */
   variant?: BoardVariant;
+  
+  // Socket game properties
+  gameId?: number;
+  difficulty?: "easy" | "medium" | "hard";
+  timeLimit?: number;
+  isAi?: boolean;
 }
 
 function cellLabel(cell: Cell, row: number, col: number): string {
@@ -143,7 +149,15 @@ function emptyCellClasses(variant: BoardVariant): string {
   }
 }
 
-export function Board({ pieces, className, variant = "default" }: BoardProps) {
+export function Board({
+  pieces,
+  className,
+  variant = "default",
+  gameId,
+  difficulty,
+  timeLimit,
+  isAi,
+}: BoardProps) {
   // Subscribe to the play store. SSR returns initialState (view=null), so
   // we fall back to the explicit `pieces` prop or WIREFRAME_BOARD until the
   // server-side game session is up.
@@ -153,10 +167,27 @@ export function Board({ pieces, className, variant = "default" }: BoardProps) {
     playStore.getSnapshot,
   );
 
+  // Connect synchronously if in socket mode and not already connected to this game
+  if (typeof window !== "undefined" && gameId !== undefined && snap.gameId !== gameId) {
+    playStore.connectGame(gameId, {
+      aiDifficulty: difficulty,
+      timePerPlayerSeconds: timeLimit,
+      isAiOpponent: isAi,
+    });
+  }
+
   // Kick off /api/play/start once on mount (idempotent inside the store).
   useEffect(() => {
-    playStore.ensureStarted();
-  }, []);
+    if (gameId === undefined) {
+      playStore.ensureStarted();
+    }
+    return () => {
+      // Disconnect socket connection on unmount if it was connected here
+      if (gameId !== undefined) {
+        playStore.disconnectGame();
+      }
+    };
+  }, [gameId]);
 
   // Track the cursor's last-known position. Used to re-evaluate which
   // column should be highlighted after the end-game card unmounts on
