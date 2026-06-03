@@ -147,12 +147,12 @@ export async function authRoutes(app: FastifyInstance) {
     // §3.12 — content negotiation. The TopNav's logout is a plain HTML
     // <form> POST (no JS), so a JSON response would render as raw text in
     // the browser. A fetch-based logout (e.g. a future client-side flow)
-    // expects JSON. Decision: if the caller's Accept includes HTML and
-    // not JSON, they're a browser form — redirect. Otherwise they're a
-    // script caller — return JSON.
+    // expects JSON. Decision: if the caller accepts HTML or submits a form,
+    // they're a browser form — redirect. Otherwise return JSON.
     reply.clearCookie("auth_token", { path: "/" });
     const accept = request.headers.accept ?? "";
-    if (accept.includes("text/html") && !accept.includes("application/json")) {
+    const contentType = request.headers["content-type"] ?? "";
+    if (accept.includes("text/html") || contentType.includes("application/x-www-form-urlencoded")) {
       return reply.redirect("/", 302);
     }
     return reply.send({ message: "Logged out" });

@@ -28,7 +28,7 @@ export const users = pgTable("users", {
   isDeleted: boolean("is_deleted").notNull().default(false),
   oauth42Id: text("oauth_42_id").unique(),
   pawnSkin: text("pawn_skin").notNull().default("default"),
-  gridSkin: text("grid_skin").notNull().default("default"),
+  gridSkin: text("grid_skin").notNull().default("liquid-glass"),
   gamesPlayed: integer("games_played").notNull().default(0),
   gamesWon: integer("games_won").notNull().default(0),
   gamesLost: integer("games_lost").notNull().default(0),

@@ -79,7 +79,7 @@ export function SettingsProfile({ initial }: SettingsProfileProps) {
             void updateProfile({ pawnSkin: next }).catch((e: unknown) => {
               setPawnSkin(prev);
               const msg = e instanceof ProfileApiError ? e.message : "Save failed";
-              window.alert(`Pawn colour: ${msg}`);
+              window.alert(`Pawn skin: ${msg}`);
             });
           }}
         />
@@ -212,11 +212,11 @@ function PawnSkinBlock({
 }) {
   return (
     <div className="flex flex-col gap-2 border-t border-border pt-6">
-      <p className="font-mono text-mono-sm uppercase text-muted-foreground">Pawn colour</p>
+      <p className="font-mono text-mono-sm uppercase text-muted-foreground">Pawn skin</p>
       <p className="font-sans text-sm text-muted-foreground">
         Your in-game piece on the board.
       </p>
-      <ul role="radiogroup" aria-label="Pawn colour" className="mt-1 flex flex-wrap gap-2">
+      <ul role="radiogroup" aria-label="Pawn skin" className="mt-1 flex flex-wrap gap-2">
         {PAWN_SKINS.map((skin) => (
           <li key={skin.id}>
             <button

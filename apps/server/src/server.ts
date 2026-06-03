@@ -45,6 +45,16 @@ export async function buildServer() {
     limits: { fileSize: 2 * 1024 * 1024 },
   });
 
+  // Support standard HTML form submissions (x-www-form-urlencoded) for logout.
+  // We don't read the body for logout, so we can just return an empty object.
+  app.addContentTypeParser(
+    "application/x-www-form-urlencoded",
+    { parseAs: "string" },
+    (req, body, done) => {
+      done(null, {});
+    }
+  );
+
   // Sert les fichiers uploadés (avatars) à l'URL /uploads/...
   await app.register(fastifyStatic, {
     root: UPLOADS_DIR,

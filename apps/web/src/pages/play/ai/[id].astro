@@ -37,6 +37,25 @@ if (!(await isAuthenticated(Astro))) {
 }
 const authed = true;
 
+// Fetch user profile SSR-side to get the user's customized skin preferences.
+const backendUrl = process.env.BACKEND_URL ?? "http://localhost:3000";
+const authToken = Astro.cookies.get("auth_token")?.value;
+let gridSkin = "liquid-glass"; // fallback default
+if (authToken) {
+  try {
+    const res = await fetch(`${backendUrl}/api/profile`, {
+      headers: { Cookie: `auth_token=${authToken}` },
+      signal: AbortSignal.timeout(1500),
+    });
+    if (res.ok) {
+      const profile = await res.json();
+      gridSkin = profile.gridSkin;
+    }
+  } catch (e) {
+    // fallback silently
+  }
+}
+
 // ─── Right-column mock data ─────────────────────────────────────────────────
 // All replaced once backend lands. Game id + state will come from GET
 // /api/games/:id (Tim, exists). Form / streak come from §3.2 (Elo) +
@@ -116,7 +135,7 @@ const cardCls = "rounded-xl border border-border bg-surface text-surface-foregro
           class="page-reveal relative"
           style="--reveal-delay: 0.2s"
         >
-          <Board variant="liquid-glass" client:load />
+          <Board variant={gridSkin as any} client:load />
           <EndGameOverlay authed={authed} client:load />
         </div>
       </div>

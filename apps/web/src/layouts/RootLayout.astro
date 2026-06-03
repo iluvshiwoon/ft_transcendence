@@ -181,8 +181,6 @@ const user = await getCurrentUser(Astro);
         //   - auto: clears storage, picks based on prefers-color-scheme now
         //     and lets the OS-preference listener take over going forward.
         window.__4thewinSetTheme = function (theme) {
-          var previous = null;
-          try { previous = document.documentElement.classList.contains("dark") ? "dark" : "light"; } catch (e) {}
           try {
             if (theme === "auto") {
               localStorage.removeItem("theme");
@@ -196,9 +194,7 @@ const user = await getCurrentUser(Astro);
             // localStorage unavailable — apply the requested mode without persisting.
             if (theme === "light" || theme === "dark") setTheme(theme);
           }
-          var current = null;
-          try { current = document.documentElement.classList.contains("dark") ? "dark" : "light"; } catch (e) {}
-          if (current !== null && current !== previous) dispatchThemeChange();
+          dispatchThemeChange();
         };
         // Reads the current effective choice (light / dark / auto) for the
         // /settings radio to initialise to.

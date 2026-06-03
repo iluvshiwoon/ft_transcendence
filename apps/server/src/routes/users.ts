@@ -33,7 +33,7 @@ const ALLOWED_MIMETYPES = ["image/jpeg", "image/png", "image/webp"];
 // a new pawn or grid skin there, add it here too.
 const BIO_MAX_LEN = 160;
 const ALLOWED_PAWN_SKINS = ["default", "wine", "coral", "brick"] as const;
-const ALLOWED_GRID_SKINS = ["default", "ink", "slate"] as const;
+const ALLOWED_GRID_SKINS = ["default", "liquid-glass"] as const;
 
 interface UpdateProfileBody {
   username?: string;

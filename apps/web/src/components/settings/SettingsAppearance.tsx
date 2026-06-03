@@ -29,23 +29,10 @@ type Theme = "light" | "dark" | "auto";
 type Status = "idle" | "saving" | "saved" | "error";
 
 // Backend allow-list (apps/server/src/routes/users.ts:34). Mirrored in
-// SettingsProfile.tsx — if you add a grid there, add it here too.
+// SettingsProfile.tsx / Step3Profile.tsx.
 const GRID_SKINS = [
-  { id: "default", label: "Linen", swatchClass: "bg-grid-linen" },
-  { id: "ink",     label: "Ink",   swatchClass: "bg-grid-ink"   },
-  { id: "slate",   label: "Slate", swatchClass: "bg-grid-slate" },
-] as const;
-
-// Board variants — frontend-only for v1. No schema column yet. Match the
-// names in the old .astro mock; the actual visual switching happens
-// elsewhere once the Board component reads this preference.
-const BOARD_VARIANTS = [
-  { id: "liquid-glass", label: "Liquid glass" },
-  { id: "default",      label: "Default"      },
-  { id: "raised",       label: "Raised"       },
-  { id: "wood",         label: "Wood"         },
-  { id: "glass",        label: "Glass"        },
-  { id: "recessed",     label: "Recessed"     },
+  { id: "liquid-glass", label: "Liquid glass", swatchClass: "bg-sky-200 dark:bg-sky-900" },
+  { id: "default", label: "Classic", swatchClass: "bg-board" },
 ] as const;
 
 const THEME_OPTIONS: { id: Theme; label: string }[] = [
@@ -57,8 +44,6 @@ const THEME_OPTIONS: { id: Theme; label: string }[] = [
 const PILL_CLS =
   "px-3 py-1 rounded-full font-mono text-mono-sm uppercase border border-border bg-muted text-muted-foreground transition-colors hover:border-foreground hover:bg-foreground/20 hover:text-foreground data-[state=checked]:border-foreground data-[state=checked]:bg-foreground data-[state=checked]:text-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-foreground";
 
-const BOARD_VARIANT_KEY = "settings.boardVariant";
-
 interface SettingsAppearanceProps {
   initial: ProfileMe;
 }
@@ -69,43 +54,7 @@ export function SettingsAppearance({ initial }: SettingsAppearanceProps) {
   const [gridError, setGridError] = useState<string | null>(null);
   const [, startGridTransition] = useTransition();
 
-  const [boardVariant, setBoardVariant] = useState<string>(() => {
-    if (typeof window === "undefined") return "liquid-glass";
-    return window.localStorage.getItem(BOARD_VARIANT_KEY) ?? "liquid-glass";
-  });
 
-  // Re-sync board variant from localStorage when:
-  //   1. The window regains focus (user switched back to this tab).
-  //   2. The page becomes visible (mobile sleep, tab restore).
-  //   3. A "themechange" event fires (any code path that changes the
-  //      theme can also clear or re-write the localStorage key as a
-  //      side effect of its own bookkeeping — we don't want a
-  //      mid-render mismatch if a future change does that).
-  // The onClick handler is the only authoritative writer (it also
-  // writes to localStorage), so this listener is a re-read safety net
-  // — never a writer. Without it, the radio could stick on the
-  // default 'liquid-glass' even when the user has saved a different
-  // choice in another tab/session, or after a theme change exposes
-  // a pre-existing mismatch.
-  useEffect(() => {
-    function resync() {
-      try {
-        const stored = window.localStorage.getItem(BOARD_VARIANT_KEY);
-        const next = stored ?? "liquid-glass";
-        setBoardVariant((prev) => (prev === next ? prev : next));
-      } catch (_) {
-        // localStorage may be disabled — silently keep the in-memory value.
-      }
-    }
-    window.addEventListener("focus", resync);
-    document.addEventListener("visibilitychange", resync);
-    window.addEventListener("themechange", resync);
-    return () => {
-      window.removeEventListener("focus", resync);
-      document.removeEventListener("visibilitychange", resync);
-      window.removeEventListener("themechange", resync);
-    };
-  }, []);
 
   return (
     <section
@@ -143,17 +92,7 @@ export function SettingsAppearance({ initial }: SettingsAppearanceProps) {
           status={gridStatus}
           error={gridError}
         />
-        <BoardVariantBlock
-          value={boardVariant}
-          onChange={(next) => {
-            setBoardVariant(next);
-            try {
-              window.localStorage.setItem(BOARD_VARIANT_KEY, next);
-            } catch (_) {
-              /* localStorage may be disabled — silently degrade */
-            }
-          }}
-        />
+
       </div>
     </section>
   );
@@ -165,12 +104,7 @@ function ThemeBlock() {
   // The window.__4thewin* helpers are set by RootLayout.astro's IIFE;
   // they may not exist in early hydration flashes (very rare) so the
   // typecheck is loose and we fall back to defaults.
-  const [theme, setThemeState] = useState<Theme>(() => {
-    if (typeof window === "undefined") return "auto";
-    const get = (window as unknown as { __4thewinGetTheme?: () => string })
-      .__4thewinGetTheme;
-    return (get ? get() : "auto") as Theme;
-  });
+  const [theme, setThemeState] = useState<Theme>("auto");
 
   // Keep the radio in sync with whatever the DOM's authoritative state is.
   // Three sources can change the theme out-of-band from this radio:
@@ -191,6 +125,10 @@ function ThemeBlock() {
       const next = get() as Theme;
       setThemeState((prev) => (prev === next ? prev : next));
     }
+
+    // Sync initial state safely on client mount to avoid hydration mismatch
+    onThemeChange();
+
     window.addEventListener("themechange", onThemeChange);
     return () => window.removeEventListener("themechange", onThemeChange);
   }, []);
@@ -272,37 +210,4 @@ function GridSkinBlock({
   );
 }
 
-// ─── Board variant (localStorage) ────────────────────────────────────
 
-function BoardVariantBlock({
-  value,
-  onChange,
-}: {
-  value: string;
-  onChange: (next: string) => void;
-}) {
-  return (
-    <div className="flex flex-col gap-2">
-      <p className="font-mono text-mono-sm uppercase text-muted-foreground">Board variant</p>
-      <ul role="radiogroup" aria-label="Board variant" className="flex flex-wrap gap-2">
-        {BOARD_VARIANTS.map((opt) => (
-          <li key={opt.id}>
-            <button
-              type="button"
-              role="radio"
-              aria-checked={value === opt.id ? "true" : "false"}
-              data-state={value === opt.id ? "checked" : "unchecked"}
-              onClick={() => value !== opt.id && onChange(opt.id)}
-              className={PILL_CLS}
-            >
-              {opt.label}
-            </button>
-          </li>
-        ))}
-      </ul>
-      <p className="font-mono text-mono-sm uppercase text-muted-foreground">
-        Frontend only for now — saved on this device
-      </p>
-    </div>
-  );
-}
