@@ -1,18 +1,13 @@
 /**
- * Shared game-state store for the landing page.
+ * Shared game-state store. Supports both:
+ *   1. Anonymous play vs AI (via REST `/api/play/*`)
+ *   2. Authenticated play vs AI / multiplayer (via Socket.io)
  *
- * Two React islands subscribe to this store:
- *   - <Board>          renders cells + handles column clicks
- *   - <AITelemetry>    renders depth/nodes/eval-time + per-column scores
- *
- * Single source of truth, no prop drilling. Subscribe via `useSyncExternalStore`
- * inside components.
- *
- * Server-authoritative: the store never mutates the board on the client. It
- * only mirrors the snapshot the server returned. The only inputs are
- * column-index clicks, which round-trip through `/api/play/move`.
+ * Single source of truth. Subscribe via `useSyncExternalStore` inside components.
  */
 
+import { io } from "socket.io-client";
+import type { Socket } from "socket.io-client";
 import {
   startGame,
   makeMove,
@@ -24,14 +19,38 @@ import {
 
 type Listener = () => void;
 
+function findWinningLine(board: number[][]): Array<[number, number]> | null {
+  const rows = board.length;
+  const cols = board[0].length;
+  const directions: Array<[number, number]> = [
+    [0, 1], // horizontal
+    [1, 0], // vertical
+    [1, 1], // diag down-right
+    [1, -1], // diag down-left
+  ];
+  for (let row = 0; row < rows; row++) {
+    for (let col = 0; col < cols; col++) {
+      const cell = board[row][col];
+      if (cell === 0) continue;
+      for (const [dr, dc] of directions) {
+        const line: Array<[number, number]> = [[row, col]];
+        for (let i = 1; i < 4; i++) {
+          const r = row + dr * i;
+          const c = col + dc * i;
+          if (r < 0 || r >= rows || c < 0 || c >= cols) break;
+          if (board[r][c] !== cell) break;
+          line.push([r, c]);
+        }
+        if (line.length === 4) return line;
+      }
+    }
+  }
+  return null;
+}
+
 /**
  * Apply the player's move to the local view immediately for optimistic UI.
- * Returns null when the move is locally invalid (column full, game over,
- * not your turn) so we can skip the round-trip.
- *
- * The dropped piece is placed at the lowest empty row of the chosen column,
- * mirroring the server's gravity logic. Server response is still
- * authoritative — when it arrives we replace this view with the real one.
+ * Returns null when the move is locally invalid.
  */
 function applyPlayerMoveLocally(view: PublicGameView, col: number): PublicGameView | null {
   if (col < 0 || col > 6) return null;
@@ -53,51 +72,56 @@ function applyPlayerMoveLocally(view: PublicGameView, col: number): PublicGameVi
   return {
     ...view,
     board: newBoard,
-    currentPlayer: 2, // AI's turn after player drops
+    currentPlayer: 2, // AI / Opponent's turn after player drops
   };
 }
 
 export interface PlayStoreState {
+  gameId: number | null;
+  timerP1: number | null; // User seconds remaining
+  timerP2: number | null; // Opponent seconds remaining
+  p1Username: string;
+  p2Username: string;
+  aiDifficulty: "easy" | "medium" | "hard" | null;
+  timePerPlayerSeconds: number | null;
+  isAiOpponent: boolean;
+
   /** Latest server snapshot, or null before the first /start round-trip. */
   view: PublicGameView | null;
-  /** Latest AI telemetry from the most recent move. Persists across the
-   *  player's optimistic update so the matrix stays anchored to the
-   *  previous AI evaluation until a new one arrives. */
+  /** Latest AI telemetry from the most recent move. */
   telemetry: AiTelemetry | null;
-  /** Last AI move (col + row). Persists across the player's optimistic
-   *  update for the same reason as telemetry. */
+  /** Last AI move (col + row). */
   lastAiMove: { col: number; row: number } | null;
-  /** Board state at the time of the last AI response. Used by the matrix
-   *  to compute landing rows so they don't shift when the player drops
-   *  a piece (which would otherwise change snap.view's landing rows). */
+  /** Board state at the time of the last AI response. */
   telemetryBoard: number[][] | null;
-  /** Last known AI bestScore — used by the position slider. Unlike
-   *  `telemetry`, this is NOT cleared on the player's optimistic update,
-   *  so the slider keeps showing the previous evaluation until the new
-   *  AI response arrives instead of snapping back to center. */
+  /** Last known AI bestScore — used by the position slider. */
   positionScore: number | null;
   /** True between sending /move and receiving the response. */
   thinking: boolean;
-  /** True after the user has dropped their first piece (drives "Pick a column" prompt). */
+  /** True after the user has dropped their first piece. */
   hasPlayed: boolean;
   /** Set when the current game finishes. null while the game is in progress. */
   gameEndState: "won" | "lost" | "draw" | null;
-  /** Computed user score for the just-finished game (null while in progress). */
+  /** Computed user score for the just-finished game. */
   gameScore: number | null;
-  /** Maximum AI search depth seen across all AI moves this game.
-   *  Used in the score formula. */
+  /** Maximum AI search depth seen across all AI moves this game. */
   maxAiDepth: number;
-  /** End-game UI phase. Advances on a timer after gameEndState is set:
-   *  - 'idle'   : game in progress (or just finished, animations still running)
-   *  - 'glow'   : winning line glow visible, no overlay yet
-   *  - 'status' : brief 'You win' / 'You lose' / 'Draw' text overlay
-   *  - 'card'   : board blurs, signup-prompt card visible */
+  /** End-game UI phase. */
   endGamePhase: "idle" | "glow" | "status" | "card";
   /** Last error from the API, or null. */
   error: PlayApiError | null;
 }
 
 const initialState: PlayStoreState = {
+  gameId: null,
+  timerP1: null,
+  timerP2: null,
+  p1Username: "You",
+  p2Username: "AI",
+  aiDifficulty: null,
+  timePerPlayerSeconds: null,
+  isAiOpponent: true,
+
   view: null,
   telemetry: null,
   lastAiMove: null,
@@ -112,13 +136,6 @@ const initialState: PlayStoreState = {
   error: null,
 };
 
-/**
- * Compute the user's score for a finished game.
- * Formula: 1000 + maxAiDepth*50 - moveCount*20 + outcomeBonus
- * - maxAiDepth: how deep the AI searched (harder AI -> bigger bonus)
- * - moveCount: total pieces on the board (faster wins -> higher score)
- * - outcomeBonus: 500 for win, 100 for draw, 0 for loss
- */
 function computeScore(
   view: PublicGameView,
   maxAiDepth: number,
@@ -130,9 +147,8 @@ function computeScore(
   return Math.max(0, 1000 + maxAiDepth * 50 - moveCount * 20 + outcomeBonus);
 }
 
-/** Map server's view.status + winner to our local gameEndState. */
 function deriveEndState(view: PublicGameView): "won" | "lost" | "draw" | null {
-  if (view.status !== "finished") return null;
+  if (view.status !== "finished" && view.status !== "abandoned") return null;
   if (view.winner === 1) return "won";
   if (view.winner === 2) return "lost";
   return "draw";
@@ -142,14 +158,12 @@ class PlayStore {
   private state: PlayStoreState = initialState;
   private listeners = new Set<Listener>();
   private startPromise: Promise<void> | null = null;
-  /** Timers scheduled by scheduleEndGamePhases — cleared on game restart
-   *  to avoid stale phase advancements firing on the next game. */
   private endGameTimers: ReturnType<typeof setTimeout>[] = [];
 
-  /** Schedule the post-game phase advancement: glow → card.
-   *  Called once per game-end event. Timings:
-   *    t=0      : 'glow'   (winning line glowing in CSS; this just records the phase)
-   *    t=1100ms : 'card'   (board blurs, signup card slides in) */
+  // Socket properties
+  private socket: Socket | null = null;
+  private localCountdownInterval: ReturnType<typeof setInterval> | null = null;
+
   private scheduleEndGamePhases() {
     this.clearEndGameTimers();
     this.set({ endGamePhase: "glow" });
@@ -157,6 +171,7 @@ class PlayStore {
       setTimeout(() => this.set({ endGamePhase: "card" }), 1100),
     );
   }
+
   private clearEndGameTimers() {
     for (const t of this.endGameTimers) clearTimeout(t);
     this.endGameTimers = [];
@@ -176,8 +191,167 @@ class PlayStore {
     for (const fn of this.listeners) fn();
   }
 
-  /** Idempotent — only triggers one /start request even if called multiple times. */
+  /**
+   * Connect to Socket.io for authenticated game play
+   */
+  connectGame = (
+    gameId: number,
+    opts: {
+      aiDifficulty?: "easy" | "medium" | "hard";
+      timePerPlayerSeconds?: number;
+      isAiOpponent?: boolean;
+      p1Username?: string;
+      p2Username?: string;
+    } = {},
+  ) => {
+    if (typeof window === "undefined") return;
+
+    this.disconnectGame();
+
+    this.set({
+      gameId,
+      view: null,
+      telemetry: null,
+      lastAiMove: null,
+      telemetryBoard: null,
+      positionScore: null,
+      gameEndState: null,
+      gameScore: null,
+      maxAiDepth: 0,
+      endGamePhase: "idle",
+      hasPlayed: false,
+      error: null,
+      aiDifficulty: opts.aiDifficulty ?? null,
+      timePerPlayerSeconds: opts.timePerPlayerSeconds ?? null,
+      isAiOpponent: opts.isAiOpponent ?? true,
+      p1Username: opts.p1Username ?? "You",
+      p2Username: opts.p2Username ?? (opts.isAiOpponent ? "AI" : "Opponent"),
+    });
+
+    // Establish WebSocket connection
+    const socket = io();
+    this.socket = socket;
+
+    socket.on("connect", () => {
+      socket.emit("game:join", { gameId });
+    });
+
+    socket.on("game:state", (data: { state: any }) => {
+      const serverState = data.state;
+      if (!serverState) return;
+
+      const isDraw = serverState.status === "finished" && serverState.winner === null;
+      const winningLine =
+        serverState.status === "finished" && serverState.winner !== null
+          ? findWinningLine(serverState.board)
+          : null;
+
+      const view: PublicGameView = {
+        board: serverState.board,
+        currentPlayer: serverState.currentPlayer,
+        status: serverState.status,
+        winner: serverState.winner,
+        isDraw,
+        winningLine,
+      };
+
+      const endState = deriveEndState(view);
+      const score = endState ? computeScore(view, 0, endState) : null;
+
+      this.set({
+        view,
+        timerP1: serverState.timerP1,
+        timerP2: serverState.timerP2,
+        gameEndState: endState,
+        gameScore: score,
+        thinking: view.currentPlayer === 2 && view.status === "in_progress",
+      });
+
+      if (endState) {
+        this.scheduleEndGamePhases();
+      }
+    });
+
+    socket.on("game:timer", (data: { timerP1: number; timerP2: number }) => {
+      this.set({
+        timerP1: data.timerP1,
+        timerP2: data.timerP2,
+      });
+    });
+
+    socket.on("game:over", (data: { winner: 1 | 2 | null; status: string }) => {
+      if (!this.state.view) return;
+
+      const view: PublicGameView = {
+        ...this.state.view,
+        status: data.status as any,
+        winner: data.winner,
+        isDraw: data.winner === null,
+        winningLine:
+          data.winner !== null ? findWinningLine(this.state.view.board) : null,
+      };
+
+      const endState = deriveEndState(view);
+      const score = endState ? computeScore(view, 0, endState) : null;
+
+      this.set({
+        view,
+        gameEndState: endState,
+        gameScore: score,
+        thinking: false,
+      });
+
+      this.scheduleEndGamePhases();
+    });
+
+    socket.on("game:error", (data: { error: string }) => {
+      this.set({
+        error: new PlayApiError("INTERNAL", data.error || "Game error occurred"),
+        thinking: false,
+      });
+    });
+
+    // Start local countdown intervals to make timer visual ticking smooth
+    this.localCountdownInterval = setInterval(() => {
+      const { view, timerP1, timerP2 } = this.state;
+      if (!view || view.status !== "in_progress") return;
+
+      if (view.currentPlayer === 1 && timerP1 !== null && timerP1 > 0) {
+        this.set({ timerP1: timerP1 - 1 });
+      } else if (view.currentPlayer === 2 && timerP2 !== null && timerP2 > 0) {
+        this.set({ timerP2: timerP2 - 1 });
+      }
+    }, 1000);
+  };
+
+  /**
+   * Disconnect WebSocket game play
+   */
+  disconnectGame = () => {
+    if (this.socket) {
+      this.socket.disconnect();
+      this.socket = null;
+    }
+    if (this.localCountdownInterval) {
+      clearInterval(this.localCountdownInterval);
+      this.localCountdownInterval = null;
+    }
+    this.clearEndGameTimers();
+  };
+
+  /**
+   * Handle resigning
+   */
+  resign = () => {
+    if (this.state.gameId && this.socket) {
+      this.socket.emit("game:surrender", { gameId: this.state.gameId });
+    }
+  };
+
   ensureStarted = async (): Promise<void> => {
+    // If in Socket mode, ensureStarted is managed by connectGame
+    if (this.state.gameId !== null) return;
+
     if (this.state.view) return;
     if (this.startPromise) return this.startPromise;
     this.startPromise = (async () => {
@@ -193,19 +367,35 @@ class PlayStore {
     return this.startPromise;
   };
 
-  /**
-   * Force a fresh game. Used by the end-game card's "Play again" button.
-   * Clears all per-game state (telemetry, last AI move, position score,
-   * end-game data) and calls /start. Subsequent clicks resume normal play.
-   *
-   * Resets the local view to an empty board SYNCHRONOUSLY (in the same
-   * set() call that clears endGamePhase). Without this, the card unmounts
-   * but the board behind it still shows the last game's state until the
-   * server's /start response arrives, producing a brief flash of stale
-   * pieces.
-   */
   restart = async (): Promise<void> => {
     this.clearEndGameTimers();
+
+    // If in socket mode, restart creates a new game vs AI with same settings and redirects
+    if (this.state.gameId !== null) {
+      try {
+        const res = await fetch("/api/games/ai", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            difficulty: this.state.aiDifficulty || "medium",
+            timePerPlayerSeconds: this.state.timePerPlayerSeconds || 300,
+          }),
+        });
+        if (res.ok) {
+          const data = await res.json();
+          window.location.href = `/play/ai/${data.gameId}`;
+        } else {
+          window.location.href = "/play";
+        }
+      } catch (e) {
+        window.location.href = "/play";
+      }
+      return;
+    }
+
+    // Anonymous restart
     const prev = this.state.view;
     const emptyBoard: number[][] = Array.from({ length: 6 }, () => Array(7).fill(0));
     this.set({
@@ -239,61 +429,46 @@ class PlayStore {
     }
   };
 
-  /**
-   * User clicked a column. Returns silently if:
-   *   - AI is thinking (debounce double-click)
-   *   - column is invalid (server will reject anyway, but skip the round-trip)
-   * Auto-restarts a finished game.
-   */
   play = async (col: number): Promise<void> => {
     if (this.state.thinking) return;
     if (col < 0 || col > 6) return;
 
-    // Game over → ignore the click. The user has to use the Play again
-    // button on the end-game card to start a new round; auto-restart on
-    // any board click was confusing because the click also dropped a
-    // piece into the new game before the user realized what happened.
     if (this.state.view && this.state.view.status !== "in_progress") {
       return;
     }
 
+    // Handle play via Socket.io in authenticated mode
+    if (this.state.gameId !== null && this.socket) {
+      const optimistic = applyPlayerMoveLocally(this.state.view!, col);
+      if (!optimistic) return;
+
+      this.set({
+        view: optimistic,
+        thinking: true,
+        error: null,
+        hasPlayed: true,
+      });
+
+      this.socket.emit("game:move", { gameId: this.state.gameId, col });
+      return;
+    }
+
+    // Handle play via REST in anonymous mode
     if (!this.state.view) {
-      // No session yet — start one first, then play.
       await this.ensureStarted();
       if (!this.state.view) return;
     }
 
-    // Optimistic update: apply the player's piece locally so the yellow
-    // pawn renders + animates IMMEDIATELY on click. The /move request
-    // fires in parallel; while it's in flight (~200-500ms for AI compute)
-    // the player's drop animation is already running, making the AI's
-    // computation overlap with visible motion. Server response then adds
-    // the AI's piece on top.
     const optimistic = applyPlayerMoveLocally(this.state.view, col);
-    if (!optimistic) {
-      // Column full or other client-detectable invalidity — skip the
-      // round-trip entirely.
-      return;
-    }
+    if (!optimistic) return;
 
     this.set({
       view: optimistic,
-      // Don't clear telemetry / lastAiMove / telemetryBoard / positionScore
-      // here — they're pinned to the AI's last response so the matrix and
-      // slider keep showing it until the new AI response arrives. The
-      // matrix's landing rows are computed from telemetryBoard, not
-      // snap.view, so the player's optimistic piece doesn't shift them.
       thinking: true,
       error: null,
       hasPlayed: true,
     });
 
-    // Run the request and the minimum animation delay in parallel. We
-    // don't apply the AI's piece until both promises resolve, so even if
-    // the AI computes very fast (obvious move = ~50ms) the red piece
-    // still waits for the yellow piece's drop to finish before appearing.
-    // PIECE_ANIM_MS must match the .piece-drop animation duration in
-    // globals.css.
     const PIECE_ANIM_MS = 450;
     const animationFinished = new Promise<void>((resolve) =>
       setTimeout(resolve, PIECE_ANIM_MS),
@@ -317,17 +492,11 @@ class PlayStore {
         maxAiDepth: newMaxDepth,
         gameEndState: endState,
         gameScore: score,
-        // thinking stays true while red drops — prevents clicks during
-        // the AI's piece animation. Cleared after another PIECE_ANIM_MS.
       });
-      // If the AI actually played (game still in progress), wait for
-      // the red piece's drop animation to finish before unlocking input.
       if (res.aiMove) {
         await new Promise<void>((resolve) => setTimeout(resolve, PIECE_ANIM_MS));
       }
       this.set({ thinking: false });
-      // Game just ended (either the player or the AI made the deciding
-      // move) — schedule the post-game UI phases.
       if (this.state.gameEndState) {
         this.scheduleEndGamePhases();
       }
@@ -335,9 +504,6 @@ class PlayStore {
       this.set({ thinking: false });
       if (e instanceof PlayApiError) {
         this.set({ error: e });
-        // Revert the optimistic update by re-fetching the authoritative
-        // server state. If that also fails, fall back to a fresh /start
-        // so the next click still works.
         if (e.code === "GAME_OVER" || e.code === "NO_SESSION") {
           this.startPromise = null;
           this.set({ view: null });

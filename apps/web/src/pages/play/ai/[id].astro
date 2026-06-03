@@ -6,61 +6,76 @@
  * AITelemetry + EndGameOverlay) but swaps the marketing Leaderboard
  * on the right for a gameplay-focused tool stack:
  *   - AI opponent card (difficulty + your form last 5 + current streak)
- *   - Move history (compact column-by-column log)
  *   - Game controls (New game, Resign)
+ *   - Visual chess-style PlayerTimer above the board
  *
  * Layout matches landing's 3-col grid so the board reads as the
  * focal point with AITelemetry on the left and the right tool stack
- * flanking it. No hero text, no marketing CTAs — this is a tool
- * surface for in-game use.
+ * flanking it.
  *
- * Auth: gated behind isAuthenticated(). Unauthed visitors get bounced
- * to /signup?step=1. The :id parameter is the game ID returned by POST
- * /api/games/ai (Tim's endpoint, exists post-rebase).
- *
- * Board variant: 'liquid-glass' to match the landing page exactly.
- * The lg-dist SVG filter has to live on every page that uses this
- * variant (referenced via filter URL).
+ * Auth: gated behind isAuthenticated(). The :id parameter is the game ID
+ * returned by POST /api/games/ai.
  */
 import RootLayout from "~/layouts/RootLayout.astro";
 import { Board } from "~/components/landing/Board";
 import { EndGameOverlay } from "~/components/landing/EndGameOverlay";
 import { AITelemetry } from "~/components/landing/AITelemetry";
+import { PlayerTimer } from "~/components/landing/PlayerTimer";
 import { buttonVariants } from "~/components/ui/button";
 import { isAuthenticated } from "~/lib/auth";
 import { cn } from "~/lib/utils";
 
-const { id: _gameId } = Astro.params;
+const { id: gameIdStr } = Astro.params;
+const gameId = parseInt(gameIdStr ?? "", 10);
+
+if (isNaN(gameId)) {
+  return Astro.redirect("/play");
+}
 
 if (!(await isAuthenticated(Astro))) {
   return Astro.redirect("/signup?step=1");
 }
 const authed = true;
 
-// Fetch user profile SSR-side to get the user's customized skin preferences.
+// Fetch user profile and game information SSR-side
 const backendUrl = process.env.BACKEND_URL ?? "http://localhost:3000";
 const authToken = Astro.cookies.get("auth_token")?.value;
 let gridSkin = "liquid-glass"; // fallback default
+let gameData: any = null;
+
 if (authToken) {
   try {
-    const res = await fetch(`${backendUrl}/api/profile`, {
+    // 1. Fetch Profile
+    const profileRes = await fetch(`${backendUrl}/api/profile`, {
       headers: { Cookie: `auth_token=${authToken}` },
       signal: AbortSignal.timeout(1500),
     });
-    if (res.ok) {
-      const profile = await res.json();
+    if (profileRes.ok) {
+      const profile = await profileRes.json();
       gridSkin = profile.gridSkin;
     }
+
+    // 2. Fetch Game Info
+    const gameRes = await fetch(`${backendUrl}/api/games/${gameId}`, {
+      headers: { Cookie: `auth_token=${authToken}` },
+      signal: AbortSignal.timeout(1500),
+    });
+    if (gameRes.ok) {
+      gameData = await gameRes.json();
+    } else {
+      return Astro.redirect("/play");
+    }
   } catch (e) {
-    // fallback silently
+    // Fail silently on profile, but redirect on missing/broken game
+    if (!gameData) {
+      return Astro.redirect("/play");
+    }
   }
 }
 
-// ─── Right-column mock data ─────────────────────────────────────────────────
-// All replaced once backend lands. Game id + state will come from GET
-// /api/games/:id (Tim, exists). Form / streak come from §3.2 (Elo) +
-// §3.3 (history) once those ship — we'll filter the history endpoint
-// by aiDifficulty match.
+const difficulty = gameData?.game?.aiDifficulty ?? "medium";
+const timePerPlayerSeconds = gameData?.game?.timePerPlayerSeconds ?? 300;
+const isAiOpponent = gameData?.game?.isAiOpponent ?? true;
 
 type Difficulty = "easy" | "medium" | "hard";
 type GameResult = "win" | "loss" | "draw";
@@ -73,27 +88,12 @@ interface AiOpponentMock {
   totalGames: number;
 }
 const aiOpponent: AiOpponentMock = {
-  difficulty: "medium",
+  difficulty: difficulty as Difficulty,
   formLast5: ["win", "win", "loss", "win", "win"],
   currentStreak: 3,
   longestStreak: 7,
   totalGames: 28,
 };
-
-interface MoveRow {
-  num: number;
-  player: "you" | "ai";
-  column: number;                        // 1..7
-}
-const moves: MoveRow[] = [
-  { num: 1, player: "you", column: 4 },
-  { num: 1, player: "ai",  column: 3 },
-  { num: 2, player: "you", column: 4 },
-  { num: 2, player: "ai",  column: 5 },
-  { num: 3, player: "you", column: 2 },
-  { num: 3, player: "ai",  column: 1 },
-  { num: 4, player: "you", column: 3 },
-];
 
 const resultDot: Record<GameResult, string> = {
   win:  "bg-pawn-yellow",
@@ -105,11 +105,15 @@ const cardCls = "rounded-xl border border-border bg-surface text-surface-foregro
 ---
 
 <RootLayout
-  title="Game vs AI — 4thewin"
+  title={`Game vs AI (${difficulty}) — 4thewin`}
   description="Connect 4 vs AI"
 >
   <main
     id="main"
+    data-game-id={gameId}
+    data-difficulty={difficulty}
+    data-time-limit={timePerPlayerSeconds}
+    data-is-ai={isAiOpponent ? "true" : "false"}
     class="relative mx-auto flex w-full max-w-7xl flex-col px-margin-mobile pt-28 pb-8 md:h-full md:overflow-hidden md:px-margin-desktop md:pt-28 md:pb-4"
   >
     {/* 3-col grid mirrors landing: AITelemetry / Board / right-stack.
@@ -128,9 +132,9 @@ const cardCls = "rounded-xl border border-border bg-surface text-surface-foregro
 
       {/* Board — center column. EndGameOverlay shares the same relative
           wrapper so when the game ends the card overlays the board
-          exactly. authed prop drives the CTA — 'Play again' / 'Back to
-          lobby' for authed users (always us on this page). */}
-      <div class="order-1 flex flex-col items-center gap-8 md:order-2 md:col-span-6 md:gap-0 md:relative">
+          exactly. */}
+      <div class="order-1 flex flex-col items-center gap-6 md:order-2 md:col-span-6 md:gap-6 md:relative">
+        <PlayerTimer client:load />
         <div
           class="page-reveal relative"
           style="--reveal-delay: 0.2s"
@@ -144,12 +148,7 @@ const cardCls = "rounded-xl border border-border bg-surface text-surface-foregro
           AITelemetry's no-bg, inline-content tone on the left so the
           two side columns read as a balanced pair flanking the board.
           Single mono typography family throughout (no display italic
-          on this side) for a tool-panel feel.
-
-          Sections: AI header · Form · Streak · Controls. Move history
-          got dropped — Connect-4 games rarely benefit from a move log
-          (board is small enough to scan, games rarely exceed 25 moves)
-          and it just left a 'few dots in a sea of blank space'. */}
+          on this side) for a tool-panel feel. */}
       <div
         class="page-reveal order-3 flex justify-center md:order-3 md:col-span-3 md:justify-start md:pl-gutter"
         style="--reveal-delay: 0s"
@@ -197,36 +196,30 @@ const cardCls = "rounded-xl border border-border bg-surface text-surface-foregro
 
           {/* Controls — small custom pills, content-width and left-
               aligned with the rest of the column so they read as part
-              of the same stack (not separate full-width buttons).
-
-              Default fill = bg-muted so they sit quietly on the page.
-              Hover = bg-foreground / text-background (design-system
-              inverse), instant — transition-colors removed because
-              the muted→foreground interpolation passed through a gray
-              midpoint that looked like the bg was 'disappearing'. */}
+              of the same stack (not separate full-width buttons). */}
           <div class="flex flex-col items-center gap-3 pt-1">
-            <a
-              href="/play"
-              data-todo-integration="POST /api/games/ai with current params, then redirect"
-              class="inline-flex items-center gap-1.5 rounded-full bg-muted px-4 py-1.5 font-mono text-mono-sm uppercase text-muted-foreground hover:bg-foreground hover:text-background active:scale-[0.98] focus-visible:outline-none focus-visible:bg-foreground focus-visible:text-background"
+            <button
+              type="button"
+              data-new-game-button
+              class="inline-flex items-center gap-1.5 rounded-full bg-muted px-4 py-1.5 font-mono text-mono-sm uppercase text-muted-foreground hover:bg-foreground hover:text-background active:scale-[0.98] focus-visible:outline-none focus-visible:bg-foreground focus-visible:text-background cursor-pointer"
             >
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="size-3.5" aria-hidden="true">
                 <polyline points="1 4 1 10 7 10" />
                 <path d="M3.51 15a9 9 0 1 0 2.13-9.36L1 10" />
               </svg>
               New game
-            </a>
-            <a
-              href="/play"
-              data-todo-integration="POST /api/games/:id/surrender (socket: game:surrender)"
-              class="inline-flex items-center gap-1.5 rounded-full bg-muted px-4 py-1.5 font-mono text-mono-sm uppercase text-muted-foreground hover:bg-foreground hover:text-background active:scale-[0.98] focus-visible:outline-none focus-visible:bg-foreground focus-visible:text-background"
+            </button>
+            <button
+              type="button"
+              data-resign-button
+              class="inline-flex items-center gap-1.5 rounded-full bg-muted px-4 py-1.5 font-mono text-mono-sm uppercase text-muted-foreground hover:bg-foreground hover:text-background active:scale-[0.98] focus-visible:outline-none focus-visible:bg-foreground focus-visible:text-background cursor-pointer"
             >
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="size-3.5" aria-hidden="true">
                 <line x1="4" y1="22" x2="4" y2="15" />
                 <path d="M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1z" />
               </svg>
               Resign
-            </a>
+            </button>
           </div>
 
         </div>
@@ -247,4 +240,48 @@ const cardCls = "rounded-xl border border-border bg-surface text-surface-foregro
       </filter>
     </defs>
   </svg>
+
+  <script>
+    import { playStore } from "~/lib/play-store";
+
+    const main = document.getElementById("main");
+    if (main) {
+      const gameId = parseInt(main.getAttribute("data-game-id") || "", 10);
+      const difficulty = main.getAttribute("data-difficulty") || "medium";
+      const timeLimit = parseInt(main.getAttribute("data-time-limit") || "300", 10);
+      const isAi = main.getAttribute("data-is-ai") === "true";
+
+      if (!isNaN(gameId)) {
+        // Connect to real-time socket game
+        playStore.connectGame(gameId, {
+          aiDifficulty: difficulty as any,
+          timePerPlayerSeconds: timeLimit,
+          isAiOpponent: isAi,
+        });
+      }
+    }
+
+    // New Game control
+    const newGameBtn = document.querySelector("[data-new-game-button]");
+    if (newGameBtn) {
+      newGameBtn.addEventListener("click", () => {
+        void playStore.restart();
+      });
+    }
+
+    // Resign control
+    const resignBtn = document.querySelector("[data-resign-button]");
+    if (resignBtn) {
+      resignBtn.addEventListener("click", () => {
+        if (confirm("Are you sure you want to resign? This will count as a loss.")) {
+          playStore.resign();
+        }
+      });
+    }
+
+    // Disconnect socket on leaving
+    window.addEventListener("beforeunload", () => {
+      playStore.disconnectGame();
+    });
+  </script>
 </RootLayout>

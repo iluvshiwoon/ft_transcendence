@@ -188,6 +188,20 @@ function EndGameCard({ outcome, score, rank, authed, onSignup, onReplay }: EndGa
         >
           Play again
         </button>
+        {authed && (
+          <a
+            href="/play"
+            className={cn(
+              "rounded-full px-4 py-1.5",
+              "font-mono text-mono-sm uppercase text-muted-foreground",
+              "transition-colors transition-transform",
+              "hover:bg-foreground/10 hover:text-foreground",
+              "active:scale-[0.98]",
+            )}
+          >
+            Back to lobby
+          </a>
+        )}
       </div>
     </div>
   );
