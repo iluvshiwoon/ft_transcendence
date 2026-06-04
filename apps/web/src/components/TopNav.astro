@@ -207,7 +207,7 @@ const initial = user?.username?.[0]?.toUpperCase() ?? "?";
             {user!.username}
           </span>
           <span class="font-mono text-mono-sm uppercase tabular-nums text-muted-foreground">
-            {user!.title} · {user!.rating}
+            {user!.title} · {user!.rating}{user!.gamesPlayed < 20 ? "?" : ""}
           </span>
         </span>
       </a>

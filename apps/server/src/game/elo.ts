@@ -38,3 +38,9 @@ export function titleForRating(rating: number): Title {
   if (rating >= 1000) return "Apprentice";
   return "Beginner";
 }
+
+export function getKFactor(rating: number, gamesPlayed: number): number {
+  if (gamesPlayed < 20) return 40;
+  if (rating >= 2400) return 10;
+  return 20;
+}

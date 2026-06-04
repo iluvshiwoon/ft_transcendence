@@ -1,5 +1,20 @@
 # Handoff backend — page `/profile`
 
+État au 2026-06-04, après implémentation de la transition du Resume strip, ELO AI bypass, dynamic K-factor, et du FOUC shield :
+
+- ✅ **Ajustements ELO livrés** :
+  - Les parties vs IA n'impactent plus l'ELO (guard `aiDifficulty !== null` dans `applyEloForPlayer`).
+  - ELO plancher à 100 appliqué.
+  - K-Factor dynamique selon les parties jouées ($K=40$ pour provisional $<20$ parties, $K=10$ si $\ge 2400$, sinon $K=20$).
+  - Indicateur `?` pour le statut provisional (games played $<20$) affiché partout à côté de l'ELO.
+- ✅ **Transitions Resume strip livrées** :
+  - À l'expiration du temps : passage à `"GAME OVER"` et `"Lost"`.
+  - Délai de 3 secondes avant de disparaître.
+  - Disparition progressive par CSS (opacity, scale, height, max-height sur 500ms).
+  - Transition fluide et sans à-coups vers le placeholder `"No active games"` en gardant le placeholder toujours présent dans le DOM et en le révélant par transition CSS de sa hauteur (`max-height` 0 à 200px) et de son opacité.
+- ✅ **FOUC Shield livré** :
+  - Prévention globale du Flash of Unstyled Content via l'ajout de règles CSS inlinées dans le `<head>` de `RootLayout.astro` pour `.page-reveal` (masqué par défaut à opacity 0.001 et translateY 20px avant le chargement des feuilles de style).
+
 État au 2026-06-02, après merge de `kgriset_landing_wire` dans `main`
 et début de la branche `kgriset_settings` :
 

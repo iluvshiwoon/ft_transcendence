@@ -49,6 +49,12 @@ export async function setupSocket(app: FastifyInstance) {
   app.io.on("connection", async (socket) => {
     const userId = socket.data.userId;
 
+    // Branche les handlers d'events specifiques de maniere synchrone avant tout await
+    // pour ne pas rater les premiers messages du client (ex: game:join)
+    registerChatHandlers(socket, app.io);
+    registerLobbyHandlers(socket, app.io);
+    registerGameHandlers(socket, app.io);
+
     // Chaque user rejoint sa room personnelle (utilisée pour le push ciblé : notifs, chat).
     socket.join(`user:${userId}`);
 
@@ -63,11 +69,6 @@ export async function setupSocket(app: FastifyInstance) {
     for (const fid of friendIds) {
       app.io.to(`user:${fid}`).emit("user:online", { userId });
     }
-
-    // Branche les handlers d'events specifiques.
-    registerChatHandlers(socket, app.io);
-    registerLobbyHandlers(socket, app.io);
-    registerGameHandlers(socket, app.io);
 
     socket.on("disconnect", async () => {
       // Marque offline en DB.

@@ -66,11 +66,11 @@ export async function lobbyRoutes(app: FastifyInstance) {
     "/lobbies",
     { preHandler: requireAuth },
     async (request, reply) => {
-      const { isPublic = true, mode = "connect4", timePerPlayerSeconds = 300 } = request.body ?? {};
+      const { isPublic = true, mode = "connect4", timePerPlayerSeconds = 180 } = request.body ?? {};
 
-      const validTimes = [300, 600, 3600];
+      const validTimes = [180, 600, 3600];
       if (!validTimes.includes(timePerPlayerSeconds)) {
-        return reply.status(400).send({ error: "timePerPlayerSeconds doit être 300, 600 ou 3600" });
+        return reply.status(400).send({ error: "timePerPlayerSeconds doit être 180, 600 ou 3600" });
       }
 
       const code = await uniqueCode();

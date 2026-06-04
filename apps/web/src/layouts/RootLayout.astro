@@ -82,20 +82,18 @@ const user = await getCurrentUser(Astro);
       FOUC shield — inline critical initial states BEFORE the external
       stylesheet loads.  Without this, the browser renders SSR HTML at
       default browser styles (opacity: 1, static position, etc.), then
-      the external CSS arrives, .topnav-pill snaps from flow to fixed —
-      visible flash.
+      the external CSS arrives, causing a visible flash of unstyled content.
 
-      NOTE: We intentionally do NOT set opacity on .page-reveal here
-      because that element's opacity is driven by a CSS animation
-      (page-reveal keyframes). Inline opacity would override the
-      animation endpoint (both use the same property). Instead, the
-      external CSS's .page-reveal { opacity: 0.001 } base rule plus
-      animation-fill-mode: both handles the initial hidden state — the
-      flash there is sub-frame and invisible to the eye.
+      We define the initial state of `.page-reveal` elements (opacity: 0.001 and translateY(20px))
+      here to keep them hidden and positioned correctly before the external stylesheet loads
+      and triggers the fade-up animations. Because these are defined in a stylesheet block
+      (and not inline html style attributes), the animation's keyframes will cleanly override them
+      at runtime.
     */}
     <style is:inline>
       .topnav-pill { position: fixed; top: 1.5rem; left: 50%; transform: translate(-50%, 0); }
       .topnav-bar { position: fixed; top: 0; inset-inline: 0; }
+      .page-reveal { opacity: 0.001; transform: translateY(20px); }
     </style>
 
     {/*

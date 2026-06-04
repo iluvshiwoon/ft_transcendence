@@ -89,6 +89,7 @@ interface BoardProps {
   
   // Socket game properties
   gameId?: number;
+  userId?: number;
   difficulty?: "easy" | "medium" | "hard";
   timeLimit?: number;
   isAi?: boolean;
@@ -154,6 +155,7 @@ export function Board({
   className,
   variant = "default",
   gameId,
+  userId,
   difficulty,
   timeLimit,
   isAi,
@@ -167,27 +169,25 @@ export function Board({
     playStore.getSnapshot,
   );
 
-  // Connect synchronously if in socket mode and not already connected to this game
-  if (typeof window !== "undefined" && gameId !== undefined && snap.gameId !== gameId) {
-    playStore.connectGame(gameId, {
-      aiDifficulty: difficulty,
-      timePerPlayerSeconds: timeLimit,
-      isAiOpponent: isAi,
-    });
-  }
-
-  // Kick off /api/play/start once on mount (idempotent inside the store).
+  // Connect socket or initialize anonymous game on mount / settings update
   useEffect(() => {
-    if (gameId === undefined) {
+    if (gameId !== undefined) {
+      playStore.connectGame(gameId, {
+        userId,
+        aiDifficulty: difficulty,
+        timePerPlayerSeconds: timeLimit,
+        isAiOpponent: isAi,
+      });
+    } else {
       playStore.ensureStarted();
     }
+
     return () => {
-      // Disconnect socket connection on unmount if it was connected here
       if (gameId !== undefined) {
         playStore.disconnectGame();
       }
     };
-  }, [gameId]);
+  }, [gameId, userId, difficulty, timeLimit, isAi]);
 
   // Track the cursor's last-known position. Used to re-evaluate which
   // column should be highlighted after the end-game card unmounts on
@@ -230,11 +230,35 @@ export function Board({
   }, [snap.endGamePhase]);
 
   const livePieces: BoardState | null = snap.view ? viewBoardFromServer(snap.view.board) : null;
-  // Default to an empty board (not the wireframe) when neither live data
-  // nor an explicit prop is provided — avoids the "wireframe pieces flash
-  // on first paint before /start completes" problem that was visible on
-  // page refresh.
   const renderedPieces: BoardState = livePieces ?? pieces ?? EMPTY_BOARD;
+
+  // Keep track of the initial game board to prevent drop/fade animations for pre-existing cells
+  const initialPiecesRef = useRef<BoardState | null>(null);
+  const prevGameIdRef = useRef<number | undefined | null>(null);
+
+  // If the game ID changed, reset the initial pieces ref
+  if (gameId !== prevGameIdRef.current) {
+    initialPiecesRef.current = null;
+    prevGameIdRef.current = gameId;
+  }
+
+  // Capture initial pieces on the board to prevent them from animating on mount/load
+  const isGameLoaded = !!snap.view || !!pieces;
+  if (isGameLoaded) {
+    const isBoardEmpty = (board: BoardState) =>
+      board.every((row) => row.every((cell) => cell === "empty"));
+
+    if (isBoardEmpty(renderedPieces)) {
+      initialPiecesRef.current = renderedPieces;
+    } else if (!initialPiecesRef.current) {
+      initialPiecesRef.current = renderedPieces;
+    }
+  }
+
+  const isPreExisting = (row: number, col: number) => {
+    if (!initialPiecesRef.current) return false;
+    return initialPiecesRef.current[row]?.[col] !== "empty";
+  };
 
   // Set of "r,c" keys for cells in the winning 4-in-a-row. Empty when
   // game is in progress or ended in a draw. Cells in this set get the
@@ -288,16 +312,19 @@ export function Board({
               {renderedPieces.map((row, rowIdx) =>
                 row.map((cell, colIdx) => {
                   const isFilled = cell !== "empty";
+                  const shouldAnimate = isFilled && !isPreExisting(rowIdx, colIdx);
                   return (
                     <div
                       key={`under-${rowIdx}-${colIdx}`}
                       className={cn(
                         "size-9 rounded-full sm:size-12",
-                        cell === "red" && "bg-pawn-red piece-drop",
-                        cell === "yellow" && "bg-pawn-yellow piece-drop",
+                        cell === "red" && "bg-pawn-red",
+                        cell === "red" && shouldAnimate && "piece-drop",
+                        cell === "yellow" && "bg-pawn-yellow",
+                        cell === "yellow" && shouldAnimate && "piece-drop",
                       )}
                       style={
-                        isFilled
+                        shouldAnimate
                           ? ({ ["--drop-start" as never]: `-${(rowIdx + 1) * 100}%` } as React.CSSProperties)
                           : undefined
                       }
@@ -348,7 +375,8 @@ export function Board({
                       {isFilled && (
                         <div
                           className={cn(
-                            "absolute inset-0 rounded-full piece-fade-in",
+                            "absolute inset-0 rounded-full",
+                            !isPreExisting(rowIdx, colIdx) && "piece-fade-in",
                             cell === "red" && "pawn-red",
                             cell === "yellow" && "pawn-yellow",
                             winningCellSet.has(`${rowIdx},${colIdx}`) && "winning-cell",
@@ -395,7 +423,7 @@ export function Board({
       aria-rowcount={ROWS}
       aria-colcount={COLS}
       className={cn(
-        "inline-block rounded-xl p-4 sm:p-6",
+        "relative inline-block rounded-xl p-4 sm:p-6",
         plateClasses(variant),
         snap.endGamePhase === "card" && "endgame-blur",
         className,
@@ -424,13 +452,16 @@ export function Board({
                 {isFilled && (
                   <div
                     className={cn(
-                      "absolute inset-0 rounded-full piece-drop",
+                      "absolute inset-0 rounded-full",
+                      !isPreExisting(rowIdx, colIdx) && "piece-drop",
                       cell === "red" && "pawn-red",
                       cell === "yellow" && "pawn-yellow",
                       winningCellSet.has(`${rowIdx},${colIdx}`) && "winning-cell",
                     )}
                     style={
-                      { ["--drop-start" as never]: `-${(rowIdx + 1) * 100}%` } as React.CSSProperties
+                      !isPreExisting(rowIdx, colIdx)
+                        ? ({ ["--drop-start" as never]: `-${(rowIdx + 1) * 100}%` } as React.CSSProperties)
+                        : undefined
                     }
                   />
                 )}
@@ -438,6 +469,28 @@ export function Board({
             );
           }),
         )}
+      </div>
+
+      {/* Column hit zones — overlaid on the board, extending 60px above
+          and below it so users can hover slightly outside the plate and
+          still target a column. cursor:pointer overrides the default
+          text-cursor that was visible over the cells. */}
+      <div
+        className="absolute -top-[60px] -bottom-[60px] left-0 right-0 z-20 grid grid-cols-7 gap-2 px-4 sm:gap-3 sm:px-5 md:gap-4 md:px-6"
+        onMouseLeave={() => setHoveredCol(null)}
+        aria-hidden="true"
+      >
+        {Array.from({ length: COLS }).map((_, c) => (
+          <button
+            key={`hit-${c}`}
+            type="button"
+            aria-label={`Drop in column ${c + 1}`}
+            className="h-full cursor-pointer bg-transparent p-0 focus:outline-none"
+            onMouseEnter={() => setHoveredCol(c)}
+            onClick={() => handleColumnClick(c)}
+            disabled={snap.thinking}
+          />
+        ))}
       </div>
     </div>
   );

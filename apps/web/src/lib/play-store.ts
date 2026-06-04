@@ -52,10 +52,15 @@ function findWinningLine(board: number[][]): Array<[number, number]> | null {
  * Apply the player's move to the local view immediately for optimistic UI.
  * Returns null when the move is locally invalid.
  */
-function applyPlayerMoveLocally(view: PublicGameView, col: number): PublicGameView | null {
+/**
+ * Apply the player's move to the local view immediately for optimistic UI.
+ * Returns null when the move is locally invalid.
+ */
+function applyPlayerMoveLocally(view: PublicGameView | null, col: number, userSlot: 1 | 2): PublicGameView | null {
+  if (!view) return null;
   if (col < 0 || col > 6) return null;
   if (view.status !== "in_progress") return null;
-  if (view.currentPlayer !== 1) return null;
+  if (view.currentPlayer !== userSlot) return null;
 
   let row = -1;
   for (let r = view.board.length - 1; r >= 0; r--) {
@@ -67,17 +72,19 @@ function applyPlayerMoveLocally(view: PublicGameView, col: number): PublicGameVi
   if (row === -1) return null; // column full
 
   const newBoard = view.board.map((r) => [...r]);
-  newBoard[row][col] = 1;
+  newBoard[row][col] = userSlot;
 
   return {
     ...view,
     board: newBoard,
-    currentPlayer: 2, // AI / Opponent's turn after player drops
+    currentPlayer: userSlot === 1 ? 2 : 1,
   };
 }
 
 export interface PlayStoreState {
   gameId: number | null;
+  userId: number | null; // The authenticated user ID
+  userSlot: 1 | 2;       // Slot 1 (yellow) or Slot 2 (red)
   timerP1: number | null; // User seconds remaining
   timerP2: number | null; // Opponent seconds remaining
   p1Username: string;
@@ -114,6 +121,8 @@ export interface PlayStoreState {
 
 const initialState: PlayStoreState = {
   gameId: null,
+  userId: null,
+  userSlot: 1,
   timerP1: null,
   timerP2: null,
   p1Username: "You",
@@ -197,6 +206,7 @@ class PlayStore {
   connectGame = (
     gameId: number,
     opts: {
+      userId?: number;
       aiDifficulty?: "easy" | "medium" | "hard";
       timePerPlayerSeconds?: number;
       isAiOpponent?: boolean;
@@ -210,6 +220,8 @@ class PlayStore {
 
     this.set({
       gameId,
+      userId: opts.userId ?? null,
+      userSlot: 1,
       view: null,
       telemetry: null,
       lastAiMove: null,
@@ -235,10 +247,18 @@ class PlayStore {
     this.socket = socket;
 
     socket.on("connect", () => {
+      console.log("[PlayStore] Socket connected successfully, joining game:", gameId);
       socket.emit("game:join", { gameId });
     });
 
-    socket.on("game:state", (data: { state: any }) => {
+    socket.on("connect_error", (err) => {
+      console.error("[PlayStore] Socket connect error:", err);
+      this.set({
+        error: new PlayApiError("INTERNAL", `Connection error: ${err.message}`),
+      });
+    });
+
+    socket.on("game:state", (data: { state: any; aiMove?: { col: number; row: number; telemetry: AiTelemetry } }) => {
       const serverState = data.state;
       if (!serverState) return;
 
@@ -257,16 +277,49 @@ class PlayStore {
         winningLine,
       };
 
+      const userSlot =
+        this.state.userId !== null
+          ? serverState.players[1] === this.state.userId
+            ? 1
+            : serverState.players[2] === this.state.userId
+            ? 2
+            : 1
+          : 1;
+
       const endState = deriveEndState(view);
-      const score = endState ? computeScore(view, 0, endState) : null;
+      
+      const newMaxDepth = data.aiMove
+        ? Math.max(this.state.maxAiDepth, data.aiMove.telemetry.depth)
+        : this.state.maxAiDepth;
+
+      const score = endState ? computeScore(view, newMaxDepth, endState) : null;
+
+      const telemetry = data.aiMove 
+        ? data.aiMove.telemetry 
+        : this.state.telemetry;
+      const lastAiMove = data.aiMove 
+        ? { col: data.aiMove.col, row: data.aiMove.row } 
+        : this.state.lastAiMove;
+      const telemetryBoard = data.aiMove 
+        ? view.board 
+        : this.state.telemetryBoard;
+      const positionScore = data.aiMove 
+        ? data.aiMove.telemetry.bestScore 
+        : this.state.positionScore;
 
       this.set({
         view,
+        userSlot,
         timerP1: serverState.timerP1,
         timerP2: serverState.timerP2,
         gameEndState: endState,
         gameScore: score,
-        thinking: view.currentPlayer === 2 && view.status === "in_progress",
+        thinking: view.currentPlayer !== userSlot && view.status === "in_progress",
+        telemetry,
+        lastAiMove,
+        telemetryBoard,
+        positionScore,
+        maxAiDepth: newMaxDepth,
       });
 
       if (endState) {
@@ -374,6 +427,10 @@ class PlayStore {
 
     // If in socket mode, restart creates a new game vs AI with same settings and redirects
     if (this.state.gameId !== null) {
+      if (!this.state.isAiOpponent) {
+        window.location.href = "/play";
+        return;
+      }
       try {
         const res = await fetch("/api/games/ai", {
           method: "POST",
@@ -382,7 +439,7 @@ class PlayStore {
           },
           body: JSON.stringify({
             difficulty: this.state.aiDifficulty || "medium",
-            timePerPlayerSeconds: this.state.timePerPlayerSeconds || 300,
+            timePerPlayerSeconds: this.state.timePerPlayerSeconds || 180,
           }),
         });
         if (res.ok) {
@@ -441,7 +498,8 @@ class PlayStore {
 
     // Handle play via Socket.io in authenticated mode
     if (this.state.gameId !== null && this.socket) {
-      const optimistic = applyPlayerMoveLocally(this.state.view!, col);
+      if (!this.state.view) return;
+      const optimistic = applyPlayerMoveLocally(this.state.view, col, this.state.userSlot);
       if (!optimistic) return;
 
       this.set({
@@ -461,7 +519,7 @@ class PlayStore {
       if (!this.state.view) return;
     }
 
-    const optimistic = applyPlayerMoveLocally(this.state.view, col);
+    const optimistic = applyPlayerMoveLocally(this.state.view, col, this.state.userSlot);
     if (!optimistic) return;
 
     this.set({

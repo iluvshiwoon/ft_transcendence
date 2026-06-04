@@ -30,6 +30,7 @@ export interface LeaderboardEntry {
   peakRating: number;
   winRate: number;
   title: "Beginner" | "Apprentice" | "Expert" | "Master" | "Grandmaster";
+  gamesPlayed: number;
 }
 
 export async function leaderboardRoutes(app: FastifyInstance) {
@@ -54,6 +55,7 @@ export async function leaderboardRoutes(app: FastifyInstance) {
           username: users.username,
           rating: users.rating,
           peakRating: users.peakRating,
+          gamesPlayed: users.gamesPlayed,
           winRate: sql<number>`CASE WHEN ${users.gamesPlayed} > 0 THEN ROUND((${users.gamesWon}::numeric / ${users.gamesPlayed}) * 100, 1) ELSE 0 END`,
           title: sql<LeaderboardEntry["title"]>`CASE
             WHEN ${users.rating} >= 2200 THEN 'Grandmaster'
@@ -79,6 +81,7 @@ export async function leaderboardRoutes(app: FastifyInstance) {
         peakRating: Number(r.peakRating),
         winRate: Number(r.winRate),
         title: r.title,
+        gamesPlayed: Number(r.gamesPlayed),
       }));
 
       return reply.send({ entries });

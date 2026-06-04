@@ -184,6 +184,7 @@ export async function authRoutes(app: FastifyInstance) {
       signupCompletedAt: user.signupCompletedAt,
       rating: user.rating,
       peakRating: user.peakRating,
+      gamesPlayed: user.gamesPlayed,
       rank,
       title: titleForRating(user.rating),
     });

@@ -17,15 +17,21 @@ export function socketAuthMiddleware(app: FastifyInstance) {
   return (socket: Socket, next: (err?: Error) => void) => {
     try {
       const rawCookie = socket.handshake.headers.cookie ?? "";
+      console.log(`[SocketAuth] rawCookie: "${rawCookie}"`);
       const cookies = app.parseCookie(rawCookie);
       const token = cookies.auth_token;
 
-      if (!token) return next(new Error("Not authenticated"));
+      if (!token) {
+        console.log(`[SocketAuth] Missing auth_token cookie!`);
+        return next(new Error("Not authenticated"));
+      }
 
       const payload = verifyToken(token);
+      console.log(`[SocketAuth] Valid token for userId: ${payload.userId}`);
       socket.data.userId = payload.userId;
       next();
-    } catch {
+    } catch (err: any) {
+      console.error(`[SocketAuth] Authentication failed:`, err);
       next(new Error("Invalid token"));
     }
   };

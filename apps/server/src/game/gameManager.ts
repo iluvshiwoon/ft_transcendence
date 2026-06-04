@@ -9,8 +9,9 @@ import { eq, sql } from "drizzle-orm";
 import { db } from "../db/client.js";
 import { games, moves, users } from "../db/schema.js";
 import { GameState } from "./gameState.js";
-import { getBestMove } from "./ai.js";
-import { eloDelta, phantomRatingForDifficulty, type AiDifficulty, type GameOutcome } from "./elo.js";
+import { findBestMove, type FindBestMoveOptions, type MoveTelemetry, type MoveResult } from "./ai.js";
+import { getValidMoves } from "./board.js";
+import { eloDelta, phantomRatingForDifficulty, getKFactor, type AiDifficulty, type GameOutcome } from "./elo.js";
 
 interface CreateOpts
 {
@@ -19,6 +20,17 @@ interface CreateOpts
   player2Id: number | null;     // null si IA
   timePerPlayerSeconds: number;
   isAi: boolean;
+  aiDifficulty?: AiDifficulty;
+}
+
+/** Difficulty → AI search parameters. Easy uses shallow search + random blunders. */
+function aiOptionsForDifficulty(d?: AiDifficulty): FindBestMoveOptions {
+  switch (d) {
+    case "easy":   return { maxDepth: 2, timeBudgetMs: 100 };
+    case "medium": return { maxDepth: 6, timeBudgetMs: 300 };
+    case "hard":   return { maxDepth: 16, timeBudgetMs: 500 };
+    default:       return { maxDepth: 16, timeBudgetMs: 500 };
+  }
 }
 
 interface ActiveGame
@@ -28,6 +40,9 @@ interface ActiveGame
   timerHandle: NodeJS.Timeout | null;
   disconnectTimers: Map<number, NodeJS.Timeout>;   // userId -> handle 60 s
   isAi: boolean;
+  aiDifficulty?: AiDifficulty;
+  lastAiTelemetry?: MoveTelemetry | null;
+  lastAiMove?: { col: number; row: number } | null;
 }
 
 class GameManager
@@ -45,6 +60,62 @@ class GameManager
     return this.games.get(gameId);
   }
 
+  async restoreGame(gameId: number): Promise<ActiveGame | null>
+  {
+    console.log(`[GameManager restoreGame] gameId: ${gameId}`);
+    if (!this.io) {
+      console.log(`[GameManager restoreGame] this.io is null/undefined!`);
+      return null;
+    }
+
+    // Check if game exists in DB
+    const [game] = await db.select().from(games).where(eq(games.id, gameId));
+    console.log(`[GameManager restoreGame] game from DB:`, game);
+    if (!game || game.status !== "in_progress") {
+      console.log(`[GameManager restoreGame] game not found or status is not in_progress (status: ${game?.status})`);
+      return null;
+    }
+
+    const state = new GameState(
+      { 1: game.player1Id, 2: game.player2Id },
+      game.timePerPlayerSeconds
+    );
+
+    // Fetch all moves for this game in order of moveNumber
+    const gameMoves = await db
+      .select()
+      .from(moves)
+      .where(eq(moves.gameId, gameId))
+      .orderBy(moves.moveNumber);
+
+    // Replay moves
+    for (const move of gameMoves) {
+      state.currentPlayer = move.playerId === game.player1Id ? 1 : 2;
+      state.makeMove(move.column);
+    }
+
+    const active: ActiveGame = {
+      state,
+      io: this.io,
+      timerHandle: null,
+      disconnectTimers: new Map(),
+      isAi: game.isAiOpponent,
+      aiDifficulty: (game.aiDifficulty as AiDifficulty) ?? undefined,
+    };
+    this.games.set(gameId, active);
+
+    this.startTimer(gameId);
+    return active;
+  }
+
+  async getOrRestore(gameId: number): Promise<ActiveGame | undefined>
+  {
+    const active = this.games.get(gameId);
+    if (active) return active;
+    return (await this.restoreGame(gameId)) ?? undefined;
+  }
+
+
   createGame(opts: CreateOpts): ActiveGame
   {
     if (!this.io)
@@ -61,6 +132,7 @@ class GameManager
       timerHandle: null,
       disconnectTimers: new Map(),
       isAi: opts.isAi,
+      aiDifficulty: opts.aiDifficulty,
     };
     this.games.set(opts.gameId, active);
 
@@ -92,6 +164,11 @@ class GameManager
     const result = g.state.makeMove(col);
     if (!result.ok)
       return { ok: false, error: "invalid move" };
+
+    if (userId !== null) {
+      g.lastAiTelemetry = null;
+      g.lastAiMove = null;
+    }
 
     await db.insert(moves).values({
       gameId,
@@ -132,6 +209,7 @@ class GameManager
       if (g.state.slotForUser(userId) === null) continue;
       if (g.state.status !== "in_progress") continue;
       if (g.disconnectTimers.has(userId)) continue;
+      if (g.isAi) continue;
 
       const t = setTimeout(async () => {
         // Toujours en cours apres 60 s ? -> abandon.
@@ -169,7 +247,45 @@ class GameManager
     if (!g) return;
     if (g.state.status !== "in_progress") return;
     if (g.state.currentPlayer !== 2) return;
-    const col = getBestMove(g.state.board, 2);
+
+    let col: number;
+    let telemetry: MoveTelemetry | null = null;
+
+    // Easy mode: 30% chance of picking a random valid column (blunder)
+    if (g.aiDifficulty === "easy" && Math.random() < 0.3) {
+      const valid = getValidMoves(g.state.board);
+      col = valid[Math.floor(Math.random() * valid.length)];
+      telemetry = {
+        depth: 0,
+        nodesEvaluated: 1,
+        nodesPerSecond: 0,
+        evalTimeMs: 0,
+        bestScore: 0,
+        columnScores: new Array(7).fill(null),
+      };
+    } else {
+      const opts = aiOptionsForDifficulty(g.aiDifficulty);
+      const res = findBestMove(g.state.board, 2, opts);
+      col = res.col;
+      telemetry = res.telemetry;
+    }
+
+    const boardBefore = g.state.board;
+    let landingRow = -1;
+    for (let r = boardBefore.length - 1; r >= 0; r--) {
+      if (boardBefore[r][col] === 0) {
+        landingRow = r;
+        break;
+      }
+    }
+
+    g.lastAiTelemetry = telemetry;
+    if (landingRow !== -1) {
+      g.lastAiMove = { col, row: landingRow };
+    } else {
+      g.lastAiMove = null;
+    }
+
     await this.applyMove(gameId, null, col);
   }
 
@@ -180,11 +296,14 @@ class GameManager
     score: GameOutcome,
   ): Promise<void> {
     if (myId === null) return;
-    const myRow = (await db.select({ rating: users.rating })
+    if (aiDifficulty !== null) return; // Guard: skip Elo update for vs-AI games
+
+    const myRow = (await db.select({ rating: users.rating, gamesPlayed: users.gamesPlayed })
       .from(users)
       .where(eq(users.id, myId)))[0];
     if (!myRow) return;
     const myRating = myRow.rating;
+    const myGamesPlayed = myRow.gamesPlayed;
 
     let oppRating: number;
     if (oppId === null) {
@@ -198,12 +317,13 @@ class GameManager
       oppRating = oppRow.rating;
     }
 
-    const delta = eloDelta(myRating, oppRating, score);
-    const newRating = myRating + delta;
+    const k = getKFactor(myRating, myGamesPlayed);
+    const delta = eloDelta(myRating, oppRating, score, k);
+    const newRating = Math.max(100, myRating + delta); // Clamp to rating floor of 100
 
     await db.update(users)
       .set({
-        rating: sql`${users.rating} + ${delta}`,
+        rating: newRating,
         peakRating: sql`GREATEST(${users.peakRating}, ${newRating})`,
       })
       .where(eq(users.id, myId));
@@ -213,7 +333,15 @@ class GameManager
   {
     const g = this.games.get(gameId);
     if (!g) return;
-    g.io.to(`game:${gameId}`).emit("game:state", { gameId, state: g.state.getState() });
+    const payload: any = { gameId, state: g.state.getState() };
+    if (g.isAi && g.lastAiTelemetry && g.lastAiMove) {
+      payload.aiMove = {
+        col: g.lastAiMove.col,
+        row: g.lastAiMove.row,
+        telemetry: g.lastAiTelemetry,
+      };
+    }
+    g.io.to(`game:${gameId}`).emit("game:state", payload);
   }
 
   private startTimer(gameId: number): void

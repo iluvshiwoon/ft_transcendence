@@ -190,6 +190,7 @@ export async function userRoutes(app: FastifyInstance) {
         oauth42Linked: user.oauth42Id !== null,
         rating: user.rating,
         peakRating: user.peakRating,
+        gamesPlayed: user.gamesPlayed,
         rank,
         title: titleForRating(user.rating),
         // ISO 8601 or null. null for OAuth-only accounts that have

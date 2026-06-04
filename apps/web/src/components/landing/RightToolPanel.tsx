@@ -4,7 +4,10 @@ import { cn } from "~/lib/utils";
 import { NewGameButton } from "./NewGameButton";
 
 interface RightToolPanelProps {
-  difficulty: string;
+  difficulty?: string;
+  isAi?: boolean;
+  opponentName?: string;
+  opponentRating?: number | string;
   totalGames?: number;
   currentStreak?: number;
   longestStreak?: number;
@@ -13,6 +16,9 @@ interface RightToolPanelProps {
 
 export function RightToolPanel({
   difficulty,
+  isAi = true,
+  opponentName = "Opponent",
+  opponentRating = 1000,
   totalGames = 28,
   currentStreak = 3,
   longestStreak = 7,
@@ -31,46 +37,52 @@ export function RightToolPanel({
     draw: "bg-muted-foreground",
   };
 
+  const resolvedIsAi = difficulty !== undefined ? isAi : false;
+
   return (
     <div className="relative flex w-full max-w-[220px] min-h-[340px] flex-col items-center justify-between py-2 text-center font-mono text-mono-sm text-muted-foreground md:pl-6 md:before:absolute md:before:left-0 md:before:top-1/2 md:before:h-2/3 md:before:w-px md:before:-translate-y-1/2 md:before:bg-border md:before:content-['']">
       {!isConfirmingResign ? (
         <>
-          {/* AI opponent header */}
+          {/* Opponent header */}
           <div>
             <p className="font-mono text-mono-md uppercase text-foreground">
-              AI · {difficulty}
+              {resolvedIsAi ? `AI · ${difficulty}` : opponentName}
             </p>
             <p className="mt-1 font-mono text-mono-sm uppercase text-muted-foreground tabular-nums">
-              {totalGames} games played
+              {resolvedIsAi ? `${totalGames} games played` : `Rating ${opponentRating}`}
             </p>
           </div>
 
           {/* Form (last 5) */}
-          <div>
-            <p className="font-mono text-mono-sm uppercase text-muted-foreground">
-              Form · last 5
-            </p>
-            <ol className="mt-2 flex items-center gap-2" aria-label={`Last 5 results vs AI ${difficulty}`}>
-              {formLast5.map((r, idx) => (
-                <li
-                  key={idx}
-                  aria-label={r}
-                  className={cn("size-3 rounded-full border border-border", resultDot[r])}
-                />
-              ))}
-            </ol>
-          </div>
+          {resolvedIsAi && (
+            <div>
+              <p className="font-mono text-mono-sm uppercase text-muted-foreground">
+                Form · last 5
+              </p>
+              <ol className="mt-2 flex items-center gap-2" aria-label={`Last 5 results vs AI ${difficulty}`}>
+                {formLast5.map((r, idx) => (
+                  <li
+                    key={idx}
+                    aria-label={r}
+                    className={cn("size-3 rounded-full border border-border", resultDot[r])}
+                  />
+                ))}
+              </ol>
+            </div>
+          )}
 
           {/* Current streak */}
-          <div>
-            <p className="font-mono text-mono-sm uppercase text-muted-foreground">
-              Current streak
-            </p>
-            <p className="mt-1 font-mono text-mono-md uppercase tabular-nums">
-              <span className="text-foreground">{currentStreak} W</span>
-              <span className="ml-2 text-muted-foreground">· best {longestStreak}</span>
-            </p>
-          </div>
+          {resolvedIsAi && (
+            <div>
+              <p className="font-mono text-mono-sm uppercase text-muted-foreground">
+                Current streak
+              </p>
+              <p className="mt-1 font-mono text-mono-md uppercase tabular-nums">
+                <span className="text-foreground">{currentStreak} W</span>
+                <span className="ml-2 text-muted-foreground">· best {longestStreak}</span>
+              </p>
+            </div>
+          )}
 
           {/* Controls */}
           <div className="flex flex-col items-center gap-3 pt-1">
