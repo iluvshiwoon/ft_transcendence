@@ -172,6 +172,9 @@ class PlayStore {
   // Socket properties
   private socket: Socket | null = null;
   private localCountdownInterval: ReturnType<typeof setInterval> | null = null;
+  private lastTimerUpdateAt: number | null = null;
+  private serverTimerP1: number | null = null;
+  private serverTimerP2: number | null = null;
 
   private scheduleEndGamePhases() {
     this.clearEndGameTimers();
@@ -217,6 +220,10 @@ class PlayStore {
     if (typeof window === "undefined") return;
 
     this.disconnectGame();
+
+    this.lastTimerUpdateAt = Date.now();
+    this.serverTimerP1 = opts.timePerPlayerSeconds ?? null;
+    this.serverTimerP2 = opts.timePerPlayerSeconds ?? null;
 
     this.set({
       gameId,
@@ -307,6 +314,10 @@ class PlayStore {
         ? data.aiMove.telemetry.bestScore 
         : this.state.positionScore;
 
+      this.lastTimerUpdateAt = Date.now();
+      this.serverTimerP1 = serverState.timerP1;
+      this.serverTimerP2 = serverState.timerP2;
+
       this.set({
         view,
         userSlot,
@@ -328,6 +339,9 @@ class PlayStore {
     });
 
     socket.on("game:timer", (data: { timerP1: number; timerP2: number }) => {
+      this.lastTimerUpdateAt = Date.now();
+      this.serverTimerP1 = data.timerP1;
+      this.serverTimerP2 = data.timerP2;
       this.set({
         timerP1: data.timerP1,
         timerP2: data.timerP2,
@@ -366,17 +380,25 @@ class PlayStore {
       });
     });
 
-    // Start local countdown intervals to make timer visual ticking smooth
+    // Start local countdown intervals to make timer visual ticking smooth and sync-safe
     this.localCountdownInterval = setInterval(() => {
-      const { view, timerP1, timerP2 } = this.state;
-      if (!view || view.status !== "in_progress") return;
+      const { view } = this.state;
+      if (!view || view.status !== "in_progress" || this.lastTimerUpdateAt === null) return;
 
-      if (view.currentPlayer === 1 && timerP1 !== null && timerP1 > 0) {
-        this.set({ timerP1: timerP1 - 1 });
-      } else if (view.currentPlayer === 2 && timerP2 !== null && timerP2 > 0) {
-        this.set({ timerP2: timerP2 - 1 });
+      const elapsedSeconds = Math.floor((Date.now() - this.lastTimerUpdateAt) / 1000);
+
+      if (view.currentPlayer === 1 && this.serverTimerP1 !== null) {
+        const remaining = Math.max(0, this.serverTimerP1 - elapsedSeconds);
+        if (this.state.timerP1 !== remaining) {
+          this.set({ timerP1: remaining });
+        }
+      } else if (view.currentPlayer === 2 && this.serverTimerP2 !== null) {
+        const remaining = Math.max(0, this.serverTimerP2 - elapsedSeconds);
+        if (this.state.timerP2 !== remaining) {
+          this.set({ timerP2: remaining });
+        }
       }
-    }, 1000);
+    }, 100);
   };
 
   /**
@@ -501,6 +523,10 @@ class PlayStore {
       if (!this.state.view) return;
       const optimistic = applyPlayerMoveLocally(this.state.view, col, this.state.userSlot);
       if (!optimistic) return;
+
+      this.lastTimerUpdateAt = Date.now();
+      this.serverTimerP1 = this.state.timerP1;
+      this.serverTimerP2 = this.state.timerP2;
 
       this.set({
         view: optimistic,

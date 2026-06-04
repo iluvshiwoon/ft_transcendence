@@ -14,6 +14,8 @@
   - Transition fluide et sans à-coups vers le placeholder `"No active games"` en gardant le placeholder toujours présent dans le DOM et en le révélant par transition CSS de sa hauteur (`max-height` 0 à 200px) et de son opacité.
 - ✅ **FOUC Shield livré** :
   - Prévention globale du Flash of Unstyled Content via l'ajout de règles CSS inlinées dans le `<head>` de `RootLayout.astro` pour `.page-reveal` (masqué par défaut à opacity 0.001 et translateY 20px avant le chargement des feuilles de style).
+- ✅ **Comptage robuste du temps de jeu** :
+  - Refonte des timers client-side dans `play-store.ts` pour utiliser la différence de temps absolue (`Date.now() - lastTimerUpdateAt`) par rapport au dernier tick serveur, éliminant les stutters, les longueurs de seconde variables et le saut de 1 seconde au changement de tour.
 
 État au 2026-06-02, après merge de `kgriset_landing_wire` dans `main`
 et début de la branche `kgriset_settings` :
