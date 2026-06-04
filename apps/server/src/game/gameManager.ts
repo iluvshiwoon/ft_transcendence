@@ -101,6 +101,8 @@ class GameManager
       disconnectTimers: new Map(),
       isAi: game.isAiOpponent,
       aiDifficulty: (game.aiDifficulty as AiDifficulty) ?? undefined,
+      lastAiTelemetry: (game.lastAiTelemetry as MoveTelemetry) ?? null,
+      lastAiMove: (game.lastAiMove as { col: number; row: number }) ?? null,
     };
     this.games.set(gameId, active);
 
@@ -285,6 +287,14 @@ class GameManager
     } else {
       g.lastAiMove = null;
     }
+
+    // Persist AI telemetry and move coordinates to database
+    await db.update(games)
+      .set({
+        lastAiTelemetry: telemetry,
+        lastAiMove: g.lastAiMove,
+      })
+      .where(eq(games.id, gameId));
 
     await this.applyMove(gameId, null, col);
   }

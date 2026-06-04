@@ -30,7 +30,16 @@ export function registerGameHandlers(socket: Socket, io: Server)
     if (slot === null) return;
 
     socket.join(`game:${gameId}`);
-    socket.emit("game:state", { gameId, state: g.state.getState() });
+    
+    const responsePayload: any = { gameId, state: g.state.getState() };
+    if (g.isAi && g.lastAiTelemetry && g.lastAiMove) {
+      responsePayload.aiMove = {
+        col: g.lastAiMove.col,
+        row: g.lastAiMove.row,
+        telemetry: g.lastAiTelemetry,
+      };
+    }
+    socket.emit("game:state", responsePayload);
   });
 
   socket.on("game:move", async (payload: { gameId: number; col: number }) => {

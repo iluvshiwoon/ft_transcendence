@@ -16,6 +16,9 @@
   - Prévention globale du Flash of Unstyled Content via l'ajout de règles CSS inlinées dans le `<head>` de `RootLayout.astro` pour `.page-reveal` (masqué par défaut à opacity 0.001 et translateY 20px avant le chargement des feuilles de style).
 - ✅ **Comptage robuste du temps de jeu** :
   - Refonte des timers client-side dans `play-store.ts` pour utiliser la différence de temps absolue (`Date.now() - lastTimerUpdateAt`) par rapport au dernier tick serveur, éliminant les stutters, les longueurs de seconde variables et le saut de 1 seconde au changement de tour.
+- ✅ **Persistance de la télémétrie IA** :
+  - Ajout des colonnes `last_ai_telemetry` et `last_ai_move` (jsonb) à la table `games`, et mise à jour de `playAiMove` pour persister ces valeurs.
+  - Restauration de la télémétrie lors de `restoreGame` et envoi dans le payload `game:state` lors de l'event `game:join` pour rétablir les données d'évaluation de l'IA immédiatement après un rafraîchissement ou retour sur la page.
 
 État au 2026-06-02, après merge de `kgriset_landing_wire` dans `main`
 et début de la branche `kgriset_settings` :
