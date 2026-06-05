@@ -359,27 +359,32 @@ The frontend talks to the backend through `/api/*` (proxied to Fastify by ModSec
 |---|---|
 | `POST /api/auth/signup` | ✅ Step 2 |
 | `POST /api/auth/login` | ✅ LoginForm |
-| `POST /api/auth/logout` | ✅ (no UI yet) |
+| `POST /api/auth/logout` | ✅ Redirects on HTML Accept, returns JSON on script Accept |
+| `POST /api/auth/oauth42/unlink` | ✅ Unlinks 42 account in SettingsAccount |
 | `GET  /api/auth/me` | ✅ used by `getCurrentUser()` |
 | `POST /api/auth/signup-complete` | ✅ fired by `SignupCompleteTracker` on step 4 mount |
 | `GET  /api/auth/42` / `/callback` | ✅ Step 1 + Login OAuth buttons |
 | `GET  /api/users/check-username` | ✅ Step 2 live availability |
-| `PUT  /api/profile` | ✅ Step 3 |
-| `POST /api/profile/avatar` | ✅ Step 3 |
+| `GET  /api/users/by-username/:username` | ✅ lookup profile by username |
+| `GET  /api/users/:id` | ✅ lookup profile by ID |
+| `GET  /api/profile` | ✅ load own profile (settings) |
+| `PUT  /api/profile` | ✅ update username/bio/pawnSkin/gridSkin in settings |
+| `POST /api/profile/avatar` | ✅ upload custom avatar |
+| `PUT  /api/profile/password` | ✅ change password in settings |
 | `GET  /uploads/avatars/{id}.webp` | ✅ avatar serving via WAF |
+| `GET  /api/leaderboard` | ✅ real database ELO leaderboard |
+| `POST /api/games/ai` | ✅ start AI game (difficulty + timeLimit) |
+| `GET  /api/games/active` | ✅ list active games for Resume strip |
+| `GET  /api/games/:id` | ✅ load game metadata |
 | `POST /api/play/start` | ✅ Board mount + `EndGameOverlay` Play again |
 | `POST /api/play/move` | ✅ Board click; returns `aiMove` + telemetry + `winningLine` on game-end |
 | `GET  /api/play/state` | ✅ used after a server error to revert optimistic update |
 | `POST /api/play/reset` | ✅ alias for `/start`, kept for clarity |
 
-### Pending (Chunk B)
+### Pending / Future
 
 - `GET /api/anon/session/me` — server-authoritative anon stats for the carry-over story on Step 1. Until built, Step 1 renders generic copy.
-- `GET /api/leaderboard` — real leaderboard data. Currently `Leaderboard.tsx` uses `MOCK_ENTRIES`; the user's row IS injected at its rank, but the surrounding rows are hardcoded.
-
-### Future (game / lobbies / friends)
-
-Not yet defined. Will live under `/api/games`, `/api/lobbies`, `/api/friends`.
+- Real-time multiplayer matching queue and spectator endpoints.
 
 ---
 
