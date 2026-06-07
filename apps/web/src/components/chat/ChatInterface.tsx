@@ -802,7 +802,7 @@ export default function ChatInterface({ currentUserId, currentUsername, embedded
                       className={`flex flex-col ${isMe ? "items-end" : "items-start"} group relative`}
                     >
                       {/* Message Bubble */}
-                      <div className={cn("flex flex-col", challenge ? "w-full max-w-[95%]" : "max-w-[85%]")}>
+                      <div className="flex flex-col max-w-[85%]">
                         {challenge ? (
                           /* CHALLENGE WIDGET CARD */
                           (() => {
@@ -813,15 +813,23 @@ export default function ChatInterface({ currentUserId, currentUsername, embedded
                             let contentNode;
                             if (status === "in_progress") {
                               contentNode = (
-                                <div className="text-[11px] text-muted-foreground font-sans font-medium text-center flex items-center justify-center gap-1.5 py-1.5 bg-muted/40 rounded-lg border border-border/30 w-full">
+                                <div className={`text-[11px] font-sans font-medium text-center flex items-center justify-center gap-1.5 py-1.5 rounded-lg w-full ${
+                                  isMe
+                                    ? "text-accent-foreground bg-accent-foreground/15 border border-accent-foreground/20"
+                                    : "text-muted-foreground bg-muted/40 border border-border/30"
+                                }`}>
                                   <Check className="size-3 text-accent shrink-0" />
                                   <span className="truncate">Challenge Accepted</span>
                                 </div>
                               );
                             } else if (status === "closed" || isTimeExpired) {
                               contentNode = (
-                                <div className="text-[11px] text-muted-foreground font-sans font-medium text-center flex items-center justify-center gap-1.5 py-1.5 bg-muted/20 rounded-lg border border-border/20 opacity-75 w-full">
-                                  <X className="size-3 text-muted-foreground/60 shrink-0" />
+                                <div className={`text-[11px] font-sans font-medium text-center flex items-center justify-center gap-1.5 py-1.5 rounded-lg opacity-75 w-full ${
+                                  isMe
+                                    ? "text-accent-foreground/70 bg-accent-foreground/10 border border-accent-foreground/15"
+                                    : "text-muted-foreground bg-muted/20 border border-border/20"
+                                }`}>
+                                  <X className="size-3 shrink-0" />
                                   <span className="truncate">Expired / Declined</span>
                                 </div>
                               );
@@ -830,14 +838,14 @@ export default function ChatInterface({ currentUserId, currentUsername, embedded
                               if (isMe) {
                                 contentNode = (
                                   <div className="flex flex-col gap-1.5 w-full">
-                                    <div className="text-[11px] text-muted-foreground text-center italic py-0.5 truncate">
+                                    <div className="text-[11px] text-accent-foreground/70 text-center italic py-0.5 truncate">
                                       Waiting for friend...
                                     </div>
                                     <button
                                       onClick={() => handleDeclineChallenge(challenge.lobbyId)}
                                       className={cn(
                                         buttonVariants({ variant: "outline", size: "sm" }),
-                                        "w-full justify-center rounded-lg text-xs py-1 cursor-pointer bg-surface hover:bg-destructive hover:text-destructive-foreground hover:border-destructive transition-colors"
+                                        "w-full justify-center rounded-lg text-xs py-1 cursor-pointer bg-transparent border-accent-foreground/30 text-accent-foreground hover:bg-destructive hover:text-destructive-foreground hover:border-destructive transition-colors"
                                       )}
                                     >
                                       Cancel Challenge
@@ -871,13 +879,21 @@ export default function ChatInterface({ currentUserId, currentUsername, embedded
                             }
 
                             return (
-                              <div className="border border-border bg-surface rounded-xl p-3 flex flex-col gap-2.5 shadow-sm w-full max-w-[16rem] min-w-0">
+                              <div className={`rounded-2xl p-3 flex flex-col gap-2.5 min-w-0 ${
+                                isMe
+                                  ? "bg-accent text-accent-foreground border border-accent/10 rounded-tr-sm"
+                                  : "bg-muted text-foreground border border-border rounded-tl-sm"
+                              }`}>
                                 <div className="flex items-center gap-1.5 min-w-0">
-                                  <Gamepad2 className="size-4 text-accent shrink-0 animate-pulse" />
-                                  <span className="font-sans font-semibold text-xs text-foreground truncate">
+                                  <Gamepad2 className={`size-4 shrink-0 animate-pulse ${isMe ? "text-accent-foreground" : "text-accent"}`} />
+                                  <span className={`font-sans font-semibold text-xs truncate ${isMe ? "text-accent-foreground" : "text-foreground"}`}>
                                     Connect 4
                                   </span>
-                                  <span className="font-mono text-[9px] uppercase text-muted-foreground ml-auto bg-muted px-1.5 py-0.5 rounded shrink-0">
+                                  <span className={`font-mono text-[9px] uppercase ml-auto px-1.5 py-0.5 rounded shrink-0 ${
+                                    isMe
+                                      ? "text-accent-foreground bg-accent-foreground/15"
+                                      : "text-muted-foreground bg-muted"
+                                  }`}>
                                     {formatLobbyDuration(challenge.time)}
                                   </span>
                                 </div>
