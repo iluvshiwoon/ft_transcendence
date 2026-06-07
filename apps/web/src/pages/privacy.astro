@@ -1,41 +1,41 @@
 ---
 import RootLayout from "~/layouts/RootLayout.astro";
 
-const lastUpdated = "Mai 2026";
+const lastUpdated = "May 2026";
 
 const sections = [
   {
-    title: "Données collectées",
-    body: `Informations de compte — votre email, nom d'utilisateur, et (si vous vous inscrivez avec un mot de passe) un hash sécurisé, jamais stocké en clair. Profil — bio optionnelle, avatar, skins choisis. Données de jeu — votre historique de parties, résultats et statistiques. Si vous vous connectez via 42, nous recevons uniquement votre login, email et avatar depuis leur API.`,
+    title: "Data collected",
+    body: `Account information — your email, username, and (if you sign up with a password) a securely hashed password, never stored in plain text. Profile — optional bio, avatar, chosen skins. Game data — your match history, results, and statistics. If you log in via 42, we only receive your login, email, and avatar from their API.`,
   },
   {
-    title: "Utilisation",
-    body: `Vos données font tourner la plateforme : authentification, affichage de votre profil aux autres joueurs, matchmaking, livraison des messages, calcul de vos stats. Nous ne vendons pas vos données, n'affichons pas de publicités, et ne partageons rien avec des tiers.`,
+    title: "Usage",
+    body: `Your data powers the platform: authentication, displaying your profile to other players, matchmaking, delivering messages, and calculating your stats. We do not sell your data, show advertisements, or share anything with third parties.`,
   },
   {
-    title: "Sécurité",
-    body: `Les mots de passe sont hashés avec bcrypt. Les sessions utilisent des tokens signés dans des cookies HttpOnly, inaccessibles aux scripts côté client. Les secrets sont gérés via HashiCorp Vault, et le trafic passe à travers un pare-feu applicatif (WAF).`,
+    title: "Security",
+    body: `Passwords are hashed with bcrypt. Sessions use signed tokens in HttpOnly cookies, inaccessible to client-side scripts. Secrets are managed via HashiCorp Vault, and traffic passes through a web application firewall (WAF).`,
   },
   {
-    title: "Vos droits",
-    body: `Vous pouvez modifier votre profil à tout moment et supprimer votre compte depuis vos paramètres. À la suppression, vos données personnelles sont anonymisées — votre pseudo devient « Joueur supprimé » — tandis que les parties passées restent dans l'historique des autres joueurs par souci d'intégrité.`,
+    title: "Your rights",
+    body: `You can update your profile at any time and delete your account from your settings. Upon deletion, your personal data is anonymized — your username becomes "Deleted player" — while past games remain in other players' history for data integrity.`,
   },
   {
     title: "Contact",
-    body: `Ceci est un projet scolaire non-commercial. Pour toute question concernant vos données, contactez l'équipe du projet via l'école.`,
+    body: `This is a non-commercial school project. For any questions about your data, contact the project team through the school.`,
   },
 ];
 ---
 
-<RootLayout title="4thewin — Politique de confidentialité" description="Comment 4thewin gère vos données.">
+<RootLayout title="4thewin — Privacy Policy" description="How 4thewin handles your data.">
   <main
     id="main"
     class="mx-auto w-full max-w-3xl flex-1 px-margin-mobile pt-[120px] pb-20 md:pt-[150px]"
   >
     <header class="page-reveal flex flex-col gap-4" style="--reveal-delay: 0.1s">
-      <span class="font-mono text-mono-sm uppercase text-accent">Légal</span>
+      <span class="font-mono text-mono-sm uppercase text-accent">Legal</span>
       <h1 class="font-display text-5xl font-semibold tracking-tight text-foreground md:text-6xl">
-        Politique de <span class="italic font-light">confidentialité</span>
+        Privacy <span class="italic font-light">policy</span>
       </h1>
       <p class="font-mono text-mono-sm uppercase text-muted-foreground">
         Dernière mise à jour · {lastUpdated}
@@ -43,7 +43,7 @@ const sections = [
     </header>
 
     <p class="page-reveal mt-8 font-display text-xl font-light italic leading-relaxed text-foreground/70" style="--reveal-delay: 0.25s">
-      Un projet étudiant qui garde ses données au minimum — alors ça reste court.
+      A student project that keeps data to a minimum — so this stays short.
     </p>
 
     <hr class="page-reveal mt-10 border-t border-border" style="--reveal-delay: 0.35s" />
@@ -72,7 +72,7 @@ const sections = [
         href="/"
         class="font-mono text-mono-md uppercase text-muted-foreground underline underline-offset-4 decoration-transparent transition-colors duration-75 hover:text-accent hover:decoration-accent"
       >
-        ← Retour à l'accueil
+        ← Back to home
       </a>
     </div>
   </main>

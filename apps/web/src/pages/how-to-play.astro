@@ -3,29 +3,29 @@ import RootLayout from "~/layouts/RootLayout.astro";
 
 const sections = [
   {
-    title: "L'objectif",
-    body: `Le Puissance 4 se joue sur une grille de 7 colonnes et 6 lignes. Deux joueurs déposent à tour de rôle un jeton dans une colonne — le jeton tombe dans la case libre la plus basse. Le premier à aligner quatre jetons — horizontalement, verticalement ou en diagonale — gagne.`,
+    title: "The objective",
+    body: `Connect 4 is played on a 7-column, 6-row grid. Two players take turns dropping a token into a column — the token falls to the lowest available cell. The first to connect four tokens in a row — horizontally, vertically, or diagonally — wins.`,
   },
   {
-    title: "Jouer un coup",
-    body: `Cliquez sur une colonne pour y déposer votre jeton. Vous ne pouvez jouer que pendant votre tour — le plateau indique à qui c'est le tour. Si la grille se remplit sans alignement de quatre, c'est un match nul.`,
+    title: "Making a move",
+    body: `Click on a column to drop your token. You can only play during your turn — the board indicates whose turn it is. If the grid fills up without a four-in-a-row, it's a draw.`,
   },
   {
-    title: "Le chrono",
-    body: `Chaque joueur dispose d'un temps total (style échecs), pas d'une limite par coup. Votre chrono ne décompte que pendant votre tour. Choisissez 5, 10 ou 60 minutes à la création d'une partie. Si votre temps est écoulé, vous perdez.`,
+    title: "The timer",
+    body: `Each player gets a total time (chess-style), not a per-move limit. Your timer only counts down during your turn. Choose 5, 10, or 60 minutes when creating a game. If your time runs out, you lose.`,
   },
   {
-    title: "Les modes de jeu",
-    body: `Contre l'IA — lancez une partie instantanément depuis l'accueil, sans compte, trois niveaux de difficulté. Contre un ami — inscrivez-vous, puis créez ou rejoignez un lobby. Les lobbies publics sont ouverts à tous ; les privés nécessitent un code.`,
+    title: "Game modes",
+    body: `Against the AI — start a game instantly from the home page, no account needed, three difficulty levels. Against a friend — sign up, then create or join a lobby. Public lobbies are open to everyone; private ones require a code.`,
   },
   {
-    title: "Abandon & déconnexion",
-    body: `Vous pouvez abandonner à tout moment via le bouton de reddition. Si vous perdez la connexion, vous avez une minute pour vous reconnecter avant que la partie ne soit automatiquement abandonnée.`,
+    title: "Forfeit & disconnection",
+    body: `You can forfeit at any time via the surrender button. If you lose connection, you have one minute to reconnect before the game is automatically abandoned.`,
   },
 ];
 ---
 
-<RootLayout title="4thewin — Comment jouer" description="Règles du Puissance 4 et comment démarrer.">
+<RootLayout title="4thewin — How to play" description="Connect 4 rules and how to get started.">
   <main
     id="main"
     class="mx-auto w-full max-w-3xl flex-1 px-margin-mobile pt-[120px] pb-20 md:pt-[150px]"
@@ -33,12 +33,12 @@ const sections = [
     <header class="page-reveal flex flex-col gap-4" style="--reveal-delay: 0.1s">
       <span class="font-mono text-mono-sm uppercase text-accent">Guide</span>
       <h1 class="font-display text-5xl font-semibold tracking-tight text-foreground md:text-6xl">
-        Comment <span class="italic font-light">jouer</span>
+        How to <span class="italic font-light">play</span>
       </h1>
     </header>
 
     <p class="page-reveal mt-8 font-display text-xl font-light italic leading-relaxed text-foreground/70" style="--reveal-delay: 0.25s">
-      Quatre à la suite pour gagner. Le reste, c'est de la stratégie.
+      Four in a row to win. The rest is strategy.
     </p>
 
     <hr class="page-reveal mt-10 border-t border-border" style="--reveal-delay: 0.35s" />
@@ -67,7 +67,7 @@ const sections = [
         href="/play"
         class="font-mono text-mono-md uppercase font-bold text-emphasis underline underline-offset-4 transition-opacity hover:opacity-70"
       >
-        Commencer à jouer →
+        Start playing →
       </a>
     </div>
   </main>

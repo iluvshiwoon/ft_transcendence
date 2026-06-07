@@ -1,66 +1,152 @@
-# Project: Transcendence — Puissance 4 (Connect 4)
+# ft_transcendence — Claimed Modules
 
-## Description
+## Major Modules (8 x 2 = 16 pts)
 
-Application web multijoueur de **Puissance 4**. Les joueurs peuvent s'affronter en ligne via des lobbies publics/privés, jouer contre une IA, gérer leur profil et statistiques, discuter en direct, et recevoir des notifications en temps réel. La plateforme est sécurisée par un WAF et une gestion des secrets via HashiCorp Vault.
+### 1. Framework Frontend + Backend (Web)
+- Frontend: Astro + React (interactive islands)
+- Backend: Fastify + TypeScript
 
----
+### 2. Real-time Features via WebSockets (Web)
+- Socket.io for real-time updates across all connected clients
+- Connection/disconnection handled gracefully with user status tracking
+- Efficient broadcasting via Socket.io rooms
 
-## Technical Stack
+### 3. User Interaction (Web)
+- Basic chat system: 1-to-1 direct messages with persistent history
+- Profile system: public profiles, editable profile with avatar, bio, and skins
+- Friends system: friend requests, friends list with online status, block/unblock
 
-*   **Frontend :** **Astro** (SSR pour les pages publiques) + **React** (islands pour les pages interactives)
-*   **Styling :** **Tailwind CSS** + **shadcn/ui** (TBD)
-*   **Backend :** **Fastify** + **TypeScript** (mode non-strict)
-*   **Real-time :** **Socket.io**
-*   **ORM :** **Drizzle ORM** + **Drizzle Kit** (migrations)
-*   **Database :** **PostgreSQL**
-*   **Auth :** JWT en HttpOnly cookie (7 jours) + OAuth 42
-*   **Security :** ModSecurity (WAF) + HashiCorp Vault
-*   **Deployment :** **Podman + podman-compose** (Docker-compatible) + `make`
-*   **Package manager :** **pnpm** (monorepo workspaces)
+### 4. Standard User Management (User Management)
+- Users can update profile information (username, bio, skins)
+- Users can upload an avatar with default fallback
+- Users can add friends and see online/offline/in_game status
+- Users have a public profile page
 
----
+### 5. AI Opponent (Artificial Intelligence)
+- Minimax with alpha-beta pruning and transposition table
+- Three difficulty levels: Easy, Medium, Hard
+- Human-like behavior: artificial delay, random blunders on easy
 
-## Module List (19 Points)
+### 6. WAF + Vault (Cybersecurity)
+- ModSecurity WAF with OWASP CRS rules
+- HashiCorp Vault manages all secrets (JWT, DB password, OAuth credentials)
 
-### Major Modules (6 × 2 = 12 pts)
+### 7. Web-based Game (Gaming)
+- Connect 4: 7x6 grid, real-time multiplayer
+- Clear rules: 4-in-a-row win, draw on full board
+- Chess-style timer system
 
-1.  **Framework Front + Back**
-    *   Astro (SSR + React islands) pour le frontend, Fastify pour le backend.
-2.  **Puissance 4 Web Game**
-    *   Jeu en 7×6 (ou 5×5 en Connect 5) entièrement jouable dans le navigateur, avec détection de victoire et gestion du timer.
-3.  **Remote Players**
-    *   Multijoueur en ligne via Socket.io : deux joueurs sur des machines différentes, état de jeu synchronisé par le serveur.
-4.  **AI Opponent**
-    *   Bot jouable solo. Algorithme minimax avec élagage alpha-bêta. Trois niveaux de difficulté (easy / medium / hard). Délai artificiel entre les coups pour simuler une réflexion humaine.
-5.  **User Management**
-    *   Comptes avec inscription/connexion (email+mot de passe ou OAuth 42), profil (avatar, bio, skins), statut en ligne/hors-ligne/en-jeu, système d'amis (demande/acceptation/refus/blocage).
-6.  **User Interaction**
-    *   Chat direct entre utilisateurs (historique persistant), liste d'amis avec statuts, consultation des profils publics, recherche d'utilisateurs par pseudonyme.
-7.  **WAF + Vault**
-    *   ModSecurity en reverse proxy bloquant les attaques OWASP courantes. HashiCorp Vault pour stocker et distribuer tous les secrets (JWT secret, DB password, OAuth client_secret).
-
-### Minor Modules (7 × 1 = 7 pts)
-
-8.  **Notification System**
-    *   Notifications in-app uniquement : toast temps réel via Socket.io + persistance en base. Dropdown depuis l'icône cloche dans le header avec badge de non-lus.
-9.  **Game Stats**
-    *   Historique des parties, win rate, parties jouées/gagnées/perdues/nulles. Les stats sont stockées directement sur la table `users`. Les 10 dernières parties et les 3 adversaires les plus fréquents sont affichés sur le profil.
-10. **ORM**
-    *   Drizzle ORM pour toutes les interactions avec la base de données. Drizzle Kit pour la gestion des migrations.
-11. **Game Customization**
-    *   Skins de pions et de grille sélectionnables par l'utilisateur. Variante Connect 5. Chaque joueur voit son propre skin de grille et ses propres pions ; les pions adverses adoptent le skin de l'adversaire.
-12. **OAuth Authentication**
-    *   Connexion via l'OAuth 42. Crée un compte automatiquement au premier login. Les utilisateurs inscrits par email peuvent lier leur compte 42 ultérieurement.
-13. **SSR**
-    *   Pages publiques rendues côté serveur via Astro pour améliorer les performances et le SEO.
+### 8. Remote Players (Gaming)
+- Two players on separate computers play in real-time via WebSocket
+- 60-second grace period on disconnection
+- Reconnection logic restores game state from DB
 
 ---
 
-## Point Breakdown
+## Minor Modules (3 x 1 = 3 pts)
 
-| Category | Calculation | Total |
-| :--- | :--- | :--- |
-| **Major Modules** | 6 Modules × 2 Points | 12 pts |
-| **Minor Modules** | 7 Modules × 1 Point | 7 pts |
-| **Total Score** | | **19 / 19 pts** |
+### 9. ORM (Web)
+- Drizzle ORM for all database interactions
+- Drizzle Kit for schema migrations
+
+### 10. SSR (Web)
+- Astro SSR mode for all pages
+- Server-side data fetching for game and profile pages
+
+### 11. OAuth (User Management)
+- OAuth 2.0 via 42 API with CSRF protection
+- Auto-creates account on first login
+- Account linking for existing users
+
+---
+
+## Partially Implemented Modules (NOT claimed)
+
+These modules have some sub-requirements met but are incomplete. They are NOT counted toward the 19-point total.
+
+### Game Customization (Minor, 1pt) — Gaming
+**Implemented:**
+- Pawn skins (4): default, sunset, royal, forest — persisted in DB, validated, displayed in Settings
+- Grid skins (2): liquid-glass, frosted-obsidian — persisted in DB, validated, displayed in Settings
+- Game settings: mode selection (Connect 4/5), timer options (5/10/60 min)
+
+**Missing:**
+- Power-ups, attacks, or special abilities (core sub-requirement)
+- Connect 5 win condition not implemented (DB schema supports it, but `check_board.ts` hardcodes 4-in-a-row)
+- Board variant only in frontend (localStorage, not DB-persisted)
+
+### Game Statistics (Minor, 1pt) — User Management
+**Implemented:**
+- Win/loss/draw tracking on users table (atomic increments)
+- ELO rating system with K-factor and rank titles
+- Match history endpoint (last 10 games with opponent info, result, move count)
+- Streaks (current + longest), form (last 5), milestones (fastest win, highest rating)
+- Top 3 opponents endpoint
+- Leaderboard (SQL ROW_NUMBER ranking, public, no auth)
+- Stats breakdown by time control and opponent strength
+
+**Missing:**
+- Achievements / badges / progression system (core sub-requirement: "Show achievements and progression")
+
+### Advanced Chat (Minor, 1pt) — Gaming
+**Implemented:**
+- Block users from messaging (server-side check before sending)
+- Invite users to play from chat (challenge widget with `__CHALLENGE__` messages)
+- Chat history persistence (DB-persisted, loaded on conversation open)
+- Typing indicators via Socket.io
+- Emoji reactions on messages
+- Rate limiting (10 msgs/5s per socket)
+- Chat message notifications to receiver
+
+**Missing:**
+- DB-persisted read receipts (frontend shows checkmarks, but no `read` column in DB — all loaded as "read")
+- Game/tournament notifications displayed in chat interface
+
+### File Upload (Minor, 1pt) — Web
+**Implemented:**
+- Avatar upload with MIME validation (JPG/PNG/WebP only)
+- 2 MB max file size enforced
+- Auto-resize to 500x500 and WebP conversion (sharp)
+- Corrupt file detection
+- Cache-busting on avatar URL
+
+**Missing:**
+- Multiple file types beyond images (core sub-requirement: "images, documents, etc.")
+- Progress indicators for uploads
+- Ability to delete uploaded files
+- General-purpose file management (only avatar upload exists)
+
+### Notification System (Minor, 1pt) — Web
+**Implemented:**
+- DB-persisted notifications with types, JSON content, read status
+- Real-time push via Socket.io (`notification:new`)
+- REST endpoints: list, unread-count, mark-read, mark-all-read, clear-all
+- Enriched with resolved user info (username, avatar), game status, friendship status
+- Frontend dropdown with unread count badge
+- Events: friend_request, friend_accepted, game_invite, chat_message, game_finished
+
+**Missing:**
+- Notifications for profile update/delete actions
+- Friend removal notification
+- Block/unblock notifications
+- Lobby creation/closure/decline notifications
+- "Your turn" notification when returning to a game mid-turn
+- The module requires notifications for "all creation, update, and deletion actions" — currently only social/game events are covered
+
+### Public API (Major, 2pts) — Web
+**Implemented:**
+- `/api/` prefix on all routes (auth, users, friends, chat, notifications, lobbies, games, leaderboard)
+- Public unauthenticated endpoints (leaderboard, public profiles, health check)
+- Multiple HTTP methods (GET, POST, PUT, DELETE) across route groups
+
+**Missing:**
+- API key system (no `api_keys` table, no middleware)
+- HTTP rate limiting (TODO comments exist in code, not implemented)
+- Formal API documentation (no Swagger/OpenAPI)
+- Standardized response format
+- CORS configured for single origin only (not suitable for third-party consumption)
+
+---
+
+## Total: 19 points claimed (minimum required: 14)
+## Partial modules: 8 pts worth (not claimed)

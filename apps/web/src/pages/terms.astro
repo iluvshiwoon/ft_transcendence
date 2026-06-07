@@ -1,41 +1,41 @@
 ---
 import RootLayout from "~/layouts/RootLayout.astro";
 
-const lastUpdated = "Mai 2026";
+const lastUpdated = "May 2026";
 
 const sections = [
   {
-    title: "Votre compte",
-    body: `Vous êtes responsable de la sécurité de vos identifiants et de l'activité sur votre compte. Choisissez un pseudo qui n'est ni offensant ni une usurpation d'identité — nous pouvons supprimer les comptes qui abusent de cette règle.`,
+    title: "Your account",
+    body: `You are responsible for the security of your credentials and the activity on your account. Choose a username that is neither offensive nor impersonating others — we may delete accounts that abuse this rule.`,
   },
   {
-    title: "Utilisation acceptable",
-    body: `Ne harcelez pas, ne menacez pas, ne spammez pas les autres joueurs. Ne trichez pas, n'exploitez pas de bugs, ne perturbez pas les parties. Ne tentez pas de casser, surcharger ou attaquer la plateforme. N'uploadez pas de contenu illégal ou offensant en avatar.`,
+    title: "Acceptable use",
+    body: `Do not harass, threaten, or spam other players. Do not cheat, exploit bugs, or disrupt games. Do not attempt to break, overload, or attack the platform. Do not upload illegal or offensive content as your avatar.`,
   },
   {
-    title: "Contenu uploadé",
-    body: `Vous conservez la propriété de ce que vous uploadez (avatar, bio). En l'uploadant, vous nous autorisez à l'afficher au sein de la plateforme dans le cadre d'une utilisation normale. Vous êtes responsable d'avoir le droit d'utiliser tout contenu que vous uploadez.`,
+    title: "Uploaded content",
+    body: `You retain ownership of what you upload (avatar, bio). By uploading it, you grant us permission to display it within the platform as part of normal use. You are responsible for having the right to use any content you upload.`,
   },
   {
-    title: "Disponibilité",
-    body: `Le service est fourni « tel quel ». En tant que projet scolaire, il peut tomber en panne, perdre des données ou changer à tout moment sans préavis. Ne comptez pas dessus pour quoi que ce soit d'important.`,
+    title: "Availability",
+    body: `The service is provided "as is." As a school project, it may go down, lose data, or change at any time without notice. Do not rely on it for anything important.`,
   },
   {
-    title: "Résiliation",
-    body: `Vous pouvez supprimer votre compte à tout moment depuis vos paramètres. Nous pouvons suspendre les comptes qui enfreignent ces conditions.`,
+    title: "Termination",
+    body: `You can delete your account at any time from your settings. We may suspend accounts that violate these terms.`,
   },
 ];
 ---
 
-<RootLayout title="4thewin — Conditions d'utilisation" description="Les règles d'utilisation de 4thewin.">
+<RootLayout title="4thewin — Terms of Service" description="The rules for using 4thewin.">
   <main
     id="main"
     class="mx-auto w-full max-w-3xl flex-1 px-margin-mobile pt-[120px] pb-20 md:pt-[150px]"
   >
     <header class="page-reveal flex flex-col gap-4" style="--reveal-delay: 0.1s">
-      <span class="font-mono text-mono-sm uppercase text-accent">Légal</span>
+      <span class="font-mono text-mono-sm uppercase text-accent">Legal</span>
       <h1 class="font-display text-5xl font-semibold tracking-tight text-foreground md:text-6xl">
-        Conditions <span class="italic font-light">d'utilisation</span>
+        Terms of <span class="italic font-light">service</span>
       </h1>
       <p class="font-mono text-mono-sm uppercase text-muted-foreground">
         Dernière mise à jour · {lastUpdated}
@@ -43,7 +43,7 @@ const sections = [
     </header>
 
     <p class="page-reveal mt-8 font-display text-xl font-light italic leading-relaxed text-foreground/70" style="--reveal-delay: 0.25s">
-      Un projet gratuit et non-commercial — pas de garantie, pas d'abonnement, pas de petites lignes.
+      A free, non-commercial project — no warranties, no subscriptions, no fine print.
     </p>
 
     <hr class="page-reveal mt-10 border-t border-border" style="--reveal-delay: 0.35s" />
@@ -72,7 +72,7 @@ const sections = [
         href="/"
         class="font-mono text-mono-md uppercase text-muted-foreground underline underline-offset-4 decoration-transparent transition-colors duration-75 hover:text-accent hover:decoration-accent"
       >
-        ← Retour à l'accueil
+        ← Back to home
       </a>
     </div>
   </main>

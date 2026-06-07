@@ -27,6 +27,9 @@
 
           # Automation
           gnumake
+
+          # Utilities
+          poppler-utils
         ];
 
         shellHook = ''
