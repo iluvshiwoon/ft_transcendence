@@ -15,9 +15,9 @@ import { join } from "node:path";
 import { writeFile } from "node:fs/promises";
 import type { FastifyInstance } from "fastify";
 import sharp from "sharp";
-import { eq, ilike } from "drizzle-orm";
+import { eq, ilike, and, or, desc, asc, sql, inArray } from "drizzle-orm";
 import { db } from "../db/client.js";
-import { users } from "../db/schema.js";
+import { users, games, moves } from "../db/schema.js";
 import { requireAuth } from "../auth/middleware.js";
 import { hashPassword, verifyPassword } from "../auth/password.js";
 import { titleForRating } from "../game/elo.js";
@@ -32,8 +32,22 @@ const ALLOWED_MIMETYPES = ["image/jpeg", "image/png", "image/webp"];
 // equivalents in apps/web/src/components/signup/Step3Profile.tsx — if you add
 // a new pawn or grid skin there, add it here too.
 const BIO_MAX_LEN = 160;
-const ALLOWED_PAWN_SKINS = ["default", "wine", "coral", "brick"] as const;
-const ALLOWED_GRID_SKINS = ["default", "liquid-glass"] as const;
+const ALLOWED_PAWN_SKINS = ["default", "sunset", "royal", "forest"] as const;
+const ALLOWED_GRID_SKINS = ["liquid-glass", "frosted-obsidian"] as const;
+
+function sanitizeSkins(pawnSkin: string, gridSkin: string) {
+  let pSkin = pawnSkin;
+  if (pSkin === "wine") pSkin = "royal";
+  else if (pSkin === "coral") pSkin = "sunset";
+  else if (pSkin === "brick") pSkin = "forest";
+  else if (!ALLOWED_PAWN_SKINS.includes(pSkin as any)) pSkin = "default";
+
+  let gSkin = gridSkin;
+  if (gSkin === "default") gSkin = "frosted-obsidian";
+  else if (!ALLOWED_GRID_SKINS.includes(gSkin as any)) gSkin = "liquid-glass";
+
+  return { pawnSkin: pSkin, gridSkin: gSkin };
+}
 
 interface UpdateProfileBody {
   username?: string;
@@ -179,14 +193,15 @@ export async function userRoutes(app: FastifyInstance) {
       if (!user) return reply.code(404).send({ error: "User not found" });
 
       const rank = await getUserRank(user.rating, user.peakRating, user.id);
+      const sanitized = sanitizeSkins(user.pawnSkin, user.gridSkin);
       return reply.send({
         id: user.id,
         email: user.email,
         username: user.username,
         avatarUrl: user.avatarUrl,
         bio: user.bio,
-        pawnSkin: user.pawnSkin,
-        gridSkin: user.gridSkin,
+        pawnSkin: sanitized.pawnSkin,
+        gridSkin: sanitized.gridSkin,
         oauth42Linked: user.oauth42Id !== null,
         rating: user.rating,
         peakRating: user.peakRating,
@@ -251,12 +266,13 @@ export async function userRoutes(app: FastifyInstance) {
         .where(eq(users.id, request.userId!))
         .returning();
 
+      const sanitized = sanitizeSkins(updated.pawnSkin, updated.gridSkin);
       return reply.send({
         id: updated.id,
         username: updated.username,
         bio: updated.bio,
-        pawnSkin: updated.pawnSkin,
-        gridSkin: updated.gridSkin,
+        pawnSkin: sanitized.pawnSkin,
+        gridSkin: sanitized.gridSkin,
       });
     }
   );
@@ -473,6 +489,359 @@ export async function userRoutes(app: FastifyInstance) {
       // Déconnecte le user en effaçant son cookie.
       reply.clearCookie("auth_token", { path: "/" });
       return reply.send({ message: "Account deleted" });
+    }
+  );
+
+  app.get<{ Params: { id: string }; Querystring: { limit?: string; offset?: string } }>(
+    "/users/:id/games",
+    async (request, reply) => {
+      const userId = Number(request.params.id);
+      if (isNaN(userId)) return reply.code(400).send({ error: "Invalid user id" });
+
+      const limit = Math.min(Number(request.query.limit ?? 20), 50);
+      const offset = Number(request.query.offset ?? 0);
+
+      // Check if user exists
+      const [userExists] = await db.select({ id: users.id }).from(users).where(eq(users.id, userId));
+      if (!userExists) return reply.code(404).send({ error: "User not found" });
+
+      // Fetch finished or abandoned games for user
+      const userGames = await db
+        .select()
+        .from(games)
+        .where(
+          and(
+            or(eq(games.player1Id, userId), eq(games.player2Id, userId)),
+            or(eq(games.status, "finished"), eq(games.status, "abandoned"))
+          )
+        )
+        .orderBy(desc(games.finishedAt))
+        .limit(limit)
+        .offset(offset);
+
+      const results = [];
+
+      for (const game of userGames) {
+        // Compute moveCount
+        const [moveCountRes] = await db
+          .select({ count: sql<number>`count(*)` })
+          .from(moves)
+          .where(eq(moves.gameId, game.id));
+        const moveCount = Number(moveCountRes?.count ?? 0);
+
+        // Determine opponent
+        let opponentInfo = {
+          id: null as number | null,
+          username: "AI",
+          avatarUrl: null as string | null,
+          rating: 1000,
+          isAi: true,
+          aiDifficulty: null as string | null,
+        };
+
+        if (game.isAiOpponent) {
+          opponentInfo.aiDifficulty = game.aiDifficulty;
+          opponentInfo.username = `AI (${game.aiDifficulty || "medium"})`;
+          // Phantom rating
+          if (game.aiDifficulty === "easy") opponentInfo.rating = 800;
+          else if (game.aiDifficulty === "hard") opponentInfo.rating = 1800;
+          else opponentInfo.rating = 1200; // medium
+        } else {
+          const oppId = game.player1Id === userId ? game.player2Id : game.player1Id;
+          if (oppId !== null) {
+            const [opp] = await db.select().from(users).where(eq(users.id, oppId));
+            if (opp) {
+              if (opp.isDeleted) {
+                opponentInfo = {
+                  id: opp.id,
+                  username: "Joueur supprimé",
+                  avatarUrl: null,
+                  rating: 1000,
+                  isAi: false,
+                  aiDifficulty: null,
+                };
+              } else {
+                opponentInfo = {
+                  id: opp.id,
+                  username: opp.username,
+                  avatarUrl: opp.avatarUrl,
+                  rating: opp.rating,
+                  isAi: false,
+                  aiDifficulty: null,
+                };
+              }
+            }
+          }
+        }
+
+        // POV Result
+        let result: "win" | "loss" | "draw" = "draw";
+        if (game.winnerId === userId) {
+          result = "win";
+        } else if (game.winnerId !== null) {
+          result = "loss";
+        }
+
+        // Detail
+        let detail = "";
+        if (game.status === "abandoned") {
+          detail = game.winnerId === userId ? "Opponent resigned" : "Resigned";
+        } else {
+          detail = `${result === "win" ? "Won" : result === "loss" ? "Lost" : "Draw"} in ${moveCount} moves`;
+        }
+
+        results.push({
+          id: game.id,
+          mode: game.mode,
+          finishedAt: game.finishedAt ? game.finishedAt.toISOString() : null,
+          result,
+          detail,
+          moveCount,
+          timePerPlayerSeconds: game.timePerPlayerSeconds,
+          opponent: opponentInfo,
+        });
+      }
+
+      return reply.send(results);
+    }
+  );
+
+  app.get<{ Params: { id: string }; Querystring: { is_ai?: string; difficulty?: string } }>(
+    "/users/:id/stats",
+    async (request, reply) => {
+      const userId = Number(request.params.id);
+      if (isNaN(userId)) return reply.code(400).send({ error: "Invalid user id" });
+
+      const { is_ai, difficulty } = request.query || {};
+
+      const [user] = await db.select().from(users).where(eq(users.id, userId));
+      if (!user) return reply.code(404).send({ error: "User not found" });
+
+      const conditions = [
+        or(eq(games.player1Id, userId), eq(games.player2Id, userId)),
+        or(eq(games.status, "finished"), eq(games.status, "abandoned"))
+      ];
+
+      if (is_ai === "true") {
+        conditions.push(eq(games.isAiOpponent, true));
+      } else if (is_ai === "false") {
+        conditions.push(eq(games.isAiOpponent, false));
+      }
+
+      if (difficulty) {
+        conditions.push(eq(games.aiDifficulty, difficulty as any));
+      }
+
+      // Fetch filtered finished or abandoned games for user, ordered oldest to newest for streak calculation
+      const userGames = await db
+        .select()
+        .from(games)
+        .where(and(...conditions))
+        .orderBy(asc(games.finishedAt)); // Chronological order
+
+      // 1. Streaks
+      let currentStreak = 0;
+      let longestStreak = 0;
+      let runningStreak = 0;
+
+      // Streaks are computed in chronological order
+      for (const game of userGames) {
+        if (game.winnerId === userId) {
+          runningStreak++;
+          longestStreak = Math.max(longestStreak, runningStreak);
+        } else {
+          runningStreak = 0;
+        }
+      }
+
+      // Current streak: count from newest to oldest
+      for (let i = userGames.length - 1; i >= 0; i--) {
+        const game = userGames[i];
+        if (game.winnerId === userId) {
+          currentStreak++;
+        } else {
+          break;
+        }
+      }
+
+      // 2. Form (last 10 games outcomes, oldest to newest)
+      const last10Games = userGames.slice(-10); // Take last 10
+      const form = last10Games.map((game) => {
+        if (game.winnerId === userId) return "win";
+        if (game.winnerId === null) return "draw";
+        return "loss";
+      });
+
+      // 3. By Time Control
+      // Cadences: Bullet (180s), Blitz (600s), Daily (3600s)
+      const timeControlBuckets = [
+        { label: "Bullet", duration: "3 min", seconds: 180 },
+        { label: "Blitz", duration: "10 min", seconds: 600 },
+        { label: "Daily", duration: "60 min", seconds: 3600 },
+      ];
+
+      const byTimeControl = timeControlBuckets.map((tc) => {
+        const gamesInTc = userGames.filter((g) => g.timePerPlayerSeconds === tc.seconds);
+        const played = gamesInTc.length;
+        const won = gamesInTc.filter((g) => g.winnerId === userId).length;
+        const lost = gamesInTc.filter((g) => g.winnerId !== null && g.winnerId !== userId).length;
+        const drawn = gamesInTc.filter((g) => g.winnerId === null).length;
+        const winRate = played > 0 ? Number(((won / played) * 100).toFixed(1)) : 0.0;
+
+        return {
+          timePerPlayerSeconds: tc.seconds,
+          label: tc.label,
+          duration: tc.duration,
+          played,
+          won,
+          lost,
+          drawn,
+          winRate,
+        };
+      });
+
+      // 4. By Opponent Strength
+      // For each game, find the opponent rating.
+      const opponentIds = Array.from(
+        new Set(
+          userGames
+            .filter((g) => !g.isAiOpponent)
+            .map((g) => (g.player1Id === userId ? g.player2Id : g.player1Id))
+            .filter((id): id is number => id !== null)
+        )
+      );
+
+      const opponentsData = opponentIds.length > 0
+        ? await db.select({ id: users.id, rating: users.rating }).from(users).where(inArray(users.id, opponentIds))
+        : [];
+      
+      const opponentRatingsMap = new Map(opponentsData.map((o) => [o.id, o.rating]));
+
+      let lowerPlayed = 0, lowerWon = 0;
+      let equalPlayed = 0, equalWon = 0;
+      let higherPlayed = 0, higherWon = 0;
+
+      const userRating = user.rating;
+
+      for (const game of userGames) {
+        let opponentRating = 1000;
+        if (game.isAiOpponent) {
+          if (game.aiDifficulty === "easy") opponentRating = 800;
+          else if (game.aiDifficulty === "hard") opponentRating = 1800;
+          else opponentRating = 1200;
+        } else {
+          const oppId = game.player1Id === userId ? game.player2Id : game.player1Id;
+          opponentRating = (oppId !== null ? opponentRatingsMap.get(oppId) : null) ?? 1000;
+        }
+
+        const diff = opponentRating - userRating;
+        const won = game.winnerId === userId;
+
+        if (diff < -50) {
+          lowerPlayed++;
+          if (won) lowerWon++;
+        } else if (diff > 50) {
+          higherPlayed++;
+          if (won) higherWon++;
+        } else {
+          equalPlayed++;
+          if (won) equalWon++;
+        }
+      }
+
+      const byOpponentStrength = [
+        {
+          bucket: "lower" as const,
+          label: "Lower-rated",
+          symbol: "↓",
+          played: lowerPlayed,
+          won: lowerWon,
+          winRate: lowerPlayed > 0 ? Math.round((lowerWon / lowerPlayed) * 100) : 0,
+        },
+        {
+          bucket: "equal" as const,
+          label: "Equal-rated",
+          symbol: "=",
+          played: equalPlayed,
+          won: equalWon,
+          winRate: equalPlayed > 0 ? Math.round((equalWon / equalPlayed) * 100) : 0,
+        },
+        {
+          bucket: "higher" as const,
+          label: "Higher-rated",
+          symbol: "↑",
+          played: higherPlayed,
+          won: higherWon,
+          winRate: higherPlayed > 0 ? Math.round((higherWon / higherPlayed) * 100) : 0,
+        },
+      ];
+
+      // 5. Milestones
+      // - Total play time (seconds)
+      let totalSecondsPlayed = 0;
+      for (const game of userGames) {
+        if (game.finishedAt && game.startedAt) {
+          totalSecondsPlayed += Math.floor((game.finishedAt.getTime() - game.startedAt.getTime()) / 1000);
+        }
+      }
+
+      // - Fastest win (least moves)
+      const wonGameIds = userGames.filter((g) => g.winnerId === userId).map((g) => g.id);
+      let fastestWin = null;
+      if (wonGameIds.length > 0) {
+        const [fastest] = await db
+          .select({ gameId: moves.gameId, moveCount: sql<number>`count(*)` })
+          .from(moves)
+          .where(inArray(moves.gameId, wonGameIds))
+          .groupBy(moves.gameId)
+          .orderBy(asc(sql`count(*)`))
+          .limit(1);
+        if (fastest) {
+          const gameInfo = userGames.find((g) => g.id === fastest.gameId);
+          fastestWin = {
+            gameId: fastest.gameId,
+            moveCount: Number(fastest.moveCount),
+            finishedAt: gameInfo?.finishedAt?.toISOString() ?? "",
+          };
+        }
+      }
+
+      // - Longest game (most moves)
+      const finishedGameIds = userGames.map((g) => g.id);
+      let longestGame = null;
+      if (finishedGameIds.length > 0) {
+        const [longest] = await db
+          .select({ gameId: moves.gameId, moveCount: sql<number>`count(*)` })
+          .from(moves)
+          .where(inArray(moves.gameId, finishedGameIds))
+          .groupBy(moves.gameId)
+          .orderBy(desc(sql`count(*)`))
+          .limit(1);
+        if (longest) {
+          const gameInfo = userGames.find((g) => g.id === longest.gameId);
+          longestGame = {
+            gameId: longest.gameId,
+            moveCount: Number(longest.moveCount),
+            finishedAt: gameInfo?.finishedAt?.toISOString() ?? "",
+          };
+        }
+      }
+
+      const milestones = {
+        fastestWin,
+        longestGame,
+        highestRating: user.gamesPlayed > 0 ? { rating: user.peakRating } : null,
+        totalSecondsPlayed,
+      };
+
+      return reply.send({
+        totalGames: userGames.length,
+        streaks: { current: currentStreak, longest: longestStreak },
+        form,
+        byTimeControl,
+        byOpponentStrength,
+        milestones,
+      });
     }
   );
 }

@@ -9,9 +9,9 @@
 // DELETE /api/block/:id         — débloque un user
 
 import type { FastifyInstance } from "fastify";
-import { and, eq, or } from "drizzle-orm";
+import { and, eq, or, sql } from "drizzle-orm";
 import { db } from "../db/client.js";
-import { friendships, users, blockedUsers } from "../db/schema.js";
+import { friendships, users, blockedUsers, games, notifications } from "../db/schema.js";
 import { requireAuth } from "../auth/middleware.js";
 import { sendNotification } from "../services/notification.js";
 
@@ -43,6 +43,7 @@ export async function friendRoutes(app: FastifyInstance) {
           username: users.username,
           avatarUrl: users.avatarUrl,
           status: users.status,
+          rating: users.rating,
         })
         .from(friendships)
         .innerJoin(
@@ -55,7 +56,30 @@ export async function friendRoutes(app: FastifyInstance) {
         )
         .where(eq(friendships.status, "accepted"));
 
-      return reply.send(rows);
+      const enrichedRows = [];
+      for (const row of rows) {
+        let currentGameId: number | null = null;
+        if (row.status === "in_game") {
+          const [activeGame] = await db
+            .select({ id: games.id })
+            .from(games)
+            .where(
+              and(
+                eq(games.status, "in_progress"),
+                or(eq(games.player1Id, row.id), eq(games.player2Id, row.id))
+              )
+            )
+            .limit(1);
+          currentGameId = activeGame?.id ?? null;
+        }
+
+        enrichedRows.push({
+          ...row,
+          currentGameId,
+        });
+      }
+
+      return reply.send(enrichedRows);
     }
   );
 
@@ -75,6 +99,27 @@ export async function friendRoutes(app: FastifyInstance) {
         .from(friendships)
         .innerJoin(users, eq(users.id, friendships.userId))
         .where(and(eq(friendships.friendId, me), eq(friendships.status, "pending")));
+
+      return reply.send(rows);
+    }
+  );
+
+  app.get(
+    "/friends/requests/sent",
+    { preHandler: requireAuth },
+    async (request, reply) => {
+      // Demandes envoyées : userId = moi, status = pending.
+      const me = request.userId!;
+      const rows = await db
+        .select({
+          friendshipId: friendships.id,
+          id: users.id,
+          username: users.username,
+          avatarUrl: users.avatarUrl,
+        })
+        .from(friendships)
+        .innerJoin(users, eq(users.id, friendships.friendId))
+        .where(and(eq(friendships.userId, me), eq(friendships.status, "pending")));
 
       return reply.send(rows);
     }
@@ -154,6 +199,18 @@ export async function friendRoutes(app: FastifyInstance) {
         return reply.code(404).send({ error: "Request not found" });
       }
 
+      // Mark corresponding friend request notification as read in the database
+      await db
+        .update(notifications)
+        .set({ read: true })
+        .where(
+          and(
+            eq(notifications.userId, me),
+            eq(notifications.type, "friend_request"),
+            sql`${notifications.content}->>'friendshipId' = ${friendshipId.toString()}`
+          )
+        );
+
       if (accept) {
         await db
           .update(friendships)
@@ -190,6 +247,33 @@ export async function friendRoutes(app: FastifyInstance) {
       }
 
       await db.delete(friendships).where(eq(friendships.id, id));
+      return reply.send({ message: "Friendship removed" });
+    }
+  );
+
+  app.delete<{ Params: { userId: string } }>(
+    "/friends/user/:userId",
+    { preHandler: requireAuth },
+    async (request, reply) => {
+      const me = request.userId!;
+      const target = Number(request.params.userId);
+      if (isNaN(target)) return reply.code(400).send({ error: "Invalid userId" });
+
+      const [row] = await db
+        .select()
+        .from(friendships)
+        .where(
+          or(
+            and(eq(friendships.userId, me), eq(friendships.friendId, target)),
+            and(eq(friendships.userId, target), eq(friendships.friendId, me))
+          )
+        );
+
+      if (!row) {
+        return reply.code(404).send({ error: "Friendship not found" });
+      }
+
+      await db.delete(friendships).where(eq(friendships.id, row.id));
       return reply.send({ message: "Friendship removed" });
     }
   );

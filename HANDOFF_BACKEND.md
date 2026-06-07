@@ -381,7 +381,7 @@ LIMIT 1`.
 
 ---
 
-### 3.6 — Spectateur
+### 3.6 — Spectateur (Optionnel)
 
 **Pourquoi.** Bouton « Watch » sur un ami `in_game`. Aujourd'hui, le
 `GET /api/games/:id` de Tim et le socket `game:state` sont gated sur
@@ -565,7 +565,7 @@ gros morceau de la todo restante après §3.2.
 
 ---
 
-### 3.10 — File de matchmaking (`POST /api/match/queue`)
+### 3.10 — File de matchmaking (Optionnelle) (`POST /api/match/queue`)
 
 **Pourquoi.** Le **lobby** (`/play`) propose deux entrées principales :
 **Play AI** (instantané, déjà couvert par `POST /api/games/ai` de Tim) et
@@ -751,10 +751,10 @@ handler JS qui fait `fetch(POST /api/auth/logout)` puis
 6. **3.4 — Parties actives (`/users/me/games/active`).** Dépend de 3.2.
    Sert le panneau Daily games de l'Overview.
 7. **3.5 — `/friends` enrichi.** Petit, complète l'onglet Friends.
-8. **3.6 — Spectate.** Dépend de 3.4 pour le bouton Watch d'un ami.
+8. **3.6 — Spectate (Optionnel).** Dépend de 3.4 pour le bouton Watch d'un ami.
 9. **3.7 — Challenge direct.** Dépend du système de notifications déjà en
    place + lobby de Tim.
-10. **3.10 — Matchmaking queue.** Pas critique. Active le bouton « Find
+10. **3.10 — Matchmaking queue (Optionnel).** Pas critique. Active le bouton « Find
     match » sur le lobby. Peut attendre que le flow Challenge friend
     (3.7) soit éprouvé en prod avant d'ajouter cette deuxième entrée.
 11. **3.12 — Logout content-negotiation.** ✅ FAIT
