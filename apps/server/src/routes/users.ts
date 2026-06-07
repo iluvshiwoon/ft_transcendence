@@ -501,11 +501,9 @@ export async function userRoutes(app: FastifyInstance) {
       const limit = Math.min(Number(request.query.limit ?? 20), 50);
       const offset = Number(request.query.offset ?? 0);
 
-      // Check if user exists
       const [userExists] = await db.select({ id: users.id }).from(users).where(eq(users.id, userId));
       if (!userExists) return reply.code(404).send({ error: "User not found" });
 
-      // Fetch finished or abandoned games for user
       const userGames = await db
         .select()
         .from(games)
@@ -522,14 +520,12 @@ export async function userRoutes(app: FastifyInstance) {
       const results = [];
 
       for (const game of userGames) {
-        // Compute moveCount
         const [moveCountRes] = await db
           .select({ count: sql<number>`count(*)` })
           .from(moves)
           .where(eq(moves.gameId, game.id));
         const moveCount = Number(moveCountRes?.count ?? 0);
 
-        // Determine opponent
         let opponentInfo = {
           id: null as number | null,
           username: "AI",
@@ -542,10 +538,9 @@ export async function userRoutes(app: FastifyInstance) {
         if (game.isAiOpponent) {
           opponentInfo.aiDifficulty = game.aiDifficulty;
           opponentInfo.username = `AI (${game.aiDifficulty || "medium"})`;
-          // Phantom rating
           if (game.aiDifficulty === "easy") opponentInfo.rating = 800;
           else if (game.aiDifficulty === "hard") opponentInfo.rating = 1800;
-          else opponentInfo.rating = 1200; // medium
+          else opponentInfo.rating = 1200;
         } else {
           const oppId = game.player1Id === userId ? game.player2Id : game.player1Id;
           if (oppId !== null) {
@@ -574,7 +569,6 @@ export async function userRoutes(app: FastifyInstance) {
           }
         }
 
-        // POV Result
         let result: "win" | "loss" | "draw" = "draw";
         if (game.winnerId === userId) {
           result = "win";
@@ -582,7 +576,6 @@ export async function userRoutes(app: FastifyInstance) {
           result = "loss";
         }
 
-        // Detail
         let detail = "";
         if (game.status === "abandoned") {
           detail = game.winnerId === userId ? "Opponent resigned" : "Resigned";
@@ -632,19 +625,16 @@ export async function userRoutes(app: FastifyInstance) {
         conditions.push(eq(games.aiDifficulty, difficulty as any));
       }
 
-      // Fetch filtered finished or abandoned games for user, ordered oldest to newest for streak calculation
       const userGames = await db
         .select()
         .from(games)
         .where(and(...conditions))
-        .orderBy(asc(games.finishedAt)); // Chronological order
+        .orderBy(asc(games.finishedAt));
 
-      // 1. Streaks
       let currentStreak = 0;
       let longestStreak = 0;
       let runningStreak = 0;
 
-      // Streaks are computed in chronological order
       for (const game of userGames) {
         if (game.winnerId === userId) {
           runningStreak++;
@@ -654,7 +644,6 @@ export async function userRoutes(app: FastifyInstance) {
         }
       }
 
-      // Current streak: count from newest to oldest
       for (let i = userGames.length - 1; i >= 0; i--) {
         const game = userGames[i];
         if (game.winnerId === userId) {
@@ -664,16 +653,13 @@ export async function userRoutes(app: FastifyInstance) {
         }
       }
 
-      // 2. Form (last 10 games outcomes, oldest to newest)
-      const last10Games = userGames.slice(-10); // Take last 10
+      const last10Games = userGames.slice(-10);
       const form = last10Games.map((game) => {
         if (game.winnerId === userId) return "win";
         if (game.winnerId === null) return "draw";
         return "loss";
       });
 
-      // 3. By Time Control
-      // Cadences: Bullet (180s), Blitz (600s), Daily (3600s)
       const timeControlBuckets = [
         { label: "Bullet", duration: "3 min", seconds: 180 },
         { label: "Blitz", duration: "10 min", seconds: 600 },
@@ -700,8 +686,6 @@ export async function userRoutes(app: FastifyInstance) {
         };
       });
 
-      // 4. By Opponent Strength
-      // For each game, find the opponent rating.
       const opponentIds = Array.from(
         new Set(
           userGames
@@ -714,7 +698,7 @@ export async function userRoutes(app: FastifyInstance) {
       const opponentsData = opponentIds.length > 0
         ? await db.select({ id: users.id, rating: users.rating }).from(users).where(inArray(users.id, opponentIds))
         : [];
-      
+
       const opponentRatingsMap = new Map(opponentsData.map((o) => [o.id, o.rating]));
 
       let lowerPlayed = 0, lowerWon = 0;
@@ -776,8 +760,6 @@ export async function userRoutes(app: FastifyInstance) {
         },
       ];
 
-      // 5. Milestones
-      // - Total play time (seconds)
       let totalSecondsPlayed = 0;
       for (const game of userGames) {
         if (game.finishedAt && game.startedAt) {
@@ -785,7 +767,6 @@ export async function userRoutes(app: FastifyInstance) {
         }
       }
 
-      // - Fastest win (least moves)
       const wonGameIds = userGames.filter((g) => g.winnerId === userId).map((g) => g.id);
       let fastestWin = null;
       if (wonGameIds.length > 0) {
@@ -806,7 +787,6 @@ export async function userRoutes(app: FastifyInstance) {
         }
       }
 
-      // - Longest game (most moves)
       const finishedGameIds = userGames.map((g) => g.id);
       let longestGame = null;
       if (finishedGameIds.length > 0) {
@@ -844,4 +824,66 @@ export async function userRoutes(app: FastifyInstance) {
       });
     }
   );
+
+  app.get<{ Params: { id: string } }>("/users/:id/opponents", async (request, reply) => {
+    const id = Number(request.params.id);
+    if (isNaN(id)) return reply.code(400).send({ error: "Invalid id" });
+
+    const [user] = await db.select({ id: users.id }).from(users).where(eq(users.id, id));
+    if (!user) return reply.code(404).send({ error: "User not found" });
+
+    const opponentIdExpr = sql<number>`CASE WHEN ${games.player1Id} = ${id} THEN ${games.player2Id} ELSE ${games.player1Id} END`;
+
+    const rows = await db
+      .select({
+        opponentId: opponentIdExpr,
+        gamesAgainst: sql<number>`count(*)::int`,
+      })
+      .from(games)
+      .where(
+        and(
+          or(eq(games.player1Id, id), eq(games.player2Id, id)),
+          eq(games.isAiOpponent, false),
+          inArray(games.status, ["finished", "abandoned"]),
+        ),
+      )
+      .groupBy(sql`1`)
+      .orderBy(sql`count(*) desc`)
+      .limit(3);
+
+    const map = await loadPublicUsers(rows.map((r) => r.opponentId));
+    const opponents = rows.map((r) => {
+      const u = map.get(r.opponentId) ?? { id: r.opponentId, username: "Joueur supprimé", avatarUrl: null };
+      return { ...u, gamesAgainst: r.gamesAgainst };
+    });
+
+    return reply.send({ opponents });
+  });
+}
+
+async function loadPublicUsers(
+  ids: number[],
+): Promise<Map<number, { id: number; username: string; avatarUrl: string | null }>> {
+  const map = new Map<number, { id: number; username: string; avatarUrl: string | null }>();
+  if (ids.length === 0) return map;
+
+  const rows = await db
+    .select({
+      id: users.id,
+      username: users.username,
+      avatarUrl: users.avatarUrl,
+      isDeleted: users.isDeleted,
+    })
+    .from(users)
+    .where(inArray(users.id, ids));
+
+  for (const u of rows) {
+    map.set(
+      u.id,
+      u.isDeleted
+        ? { id: u.id, username: "Joueur supprimé", avatarUrl: null }
+        : { id: u.id, username: u.username, avatarUrl: u.avatarUrl },
+    );
+  }
+  return map;
 }

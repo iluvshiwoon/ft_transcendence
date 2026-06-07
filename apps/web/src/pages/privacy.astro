@@ -1,0 +1,79 @@
+---
+import RootLayout from "~/layouts/RootLayout.astro";
+
+const lastUpdated = "Mai 2026";
+
+const sections = [
+  {
+    title: "Données collectées",
+    body: `Informations de compte — votre email, nom d'utilisateur, et (si vous vous inscrivez avec un mot de passe) un hash sécurisé, jamais stocké en clair. Profil — bio optionnelle, avatar, skins choisis. Données de jeu — votre historique de parties, résultats et statistiques. Si vous vous connectez via 42, nous recevons uniquement votre login, email et avatar depuis leur API.`,
+  },
+  {
+    title: "Utilisation",
+    body: `Vos données font tourner la plateforme : authentification, affichage de votre profil aux autres joueurs, matchmaking, livraison des messages, calcul de vos stats. Nous ne vendons pas vos données, n'affichons pas de publicités, et ne partageons rien avec des tiers.`,
+  },
+  {
+    title: "Sécurité",
+    body: `Les mots de passe sont hashés avec bcrypt. Les sessions utilisent des tokens signés dans des cookies HttpOnly, inaccessibles aux scripts côté client. Les secrets sont gérés via HashiCorp Vault, et le trafic passe à travers un pare-feu applicatif (WAF).`,
+  },
+  {
+    title: "Vos droits",
+    body: `Vous pouvez modifier votre profil à tout moment et supprimer votre compte depuis vos paramètres. À la suppression, vos données personnelles sont anonymisées — votre pseudo devient « Joueur supprimé » — tandis que les parties passées restent dans l'historique des autres joueurs par souci d'intégrité.`,
+  },
+  {
+    title: "Contact",
+    body: `Ceci est un projet scolaire non-commercial. Pour toute question concernant vos données, contactez l'équipe du projet via l'école.`,
+  },
+];
+---
+
+<RootLayout title="4thewin — Politique de confidentialité" description="Comment 4thewin gère vos données.">
+  <main
+    id="main"
+    class="mx-auto w-full max-w-3xl flex-1 overflow-y-auto px-margin-mobile pt-[120px] pb-20 md:pt-[150px]"
+  >
+    <header class="page-reveal flex flex-col gap-4" style="--reveal-delay: 0.1s">
+      <span class="font-mono text-mono-sm uppercase text-accent">Légal</span>
+      <h1 class="font-display text-5xl font-semibold tracking-tight text-foreground md:text-6xl">
+        Politique de <span class="italic font-light">confidentialité</span>
+      </h1>
+      <p class="font-mono text-mono-sm uppercase text-muted-foreground">
+        Dernière mise à jour · {lastUpdated}
+      </p>
+    </header>
+
+    <p class="page-reveal mt-8 font-display text-xl font-light italic leading-relaxed text-foreground/70" style="--reveal-delay: 0.25s">
+      Un projet étudiant qui garde ses données au minimum — alors ça reste court.
+    </p>
+
+    <hr class="page-reveal mt-10 border-t border-border" style="--reveal-delay: 0.35s" />
+
+    <div class="mt-10 flex flex-col">
+      {sections.map((s, i) => (
+        <section
+          class="page-reveal grid gap-3 border-t border-border/60 py-8 first:border-t-0 md:grid-cols-[3rem_1fr] md:gap-8"
+          style={`--reveal-delay: ${0.4 + i * 0.1}s`}
+        >
+          <span class="font-mono text-mono-md text-accent md:pt-1">
+            {String(i + 1).padStart(2, "0")}
+          </span>
+          <div class="flex flex-col gap-3">
+            <h2 class="font-display text-2xl font-semibold tracking-tight text-foreground">
+              {s.title}
+            </h2>
+            <p class="leading-relaxed text-foreground/80">{s.body}</p>
+          </div>
+        </section>
+      ))}
+    </div>
+
+    <div class="page-reveal mt-12 flex justify-center" style="--reveal-delay: 1s">
+      <a
+        href="/"
+        class="font-mono text-mono-md uppercase text-muted-foreground underline underline-offset-4 decoration-transparent transition-colors duration-75 hover:text-accent hover:decoration-accent"
+      >
+        ← Retour à l'accueil
+      </a>
+    </div>
+  </main>
+</RootLayout>
