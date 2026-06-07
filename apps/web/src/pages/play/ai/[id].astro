@@ -42,8 +42,10 @@ const authed = true;
 const backendUrl = process.env.BACKEND_URL ?? "http://localhost:3000";
 const authToken = Astro.cookies.get("auth_token")?.value;
 let gridSkin = "liquid-glass"; // fallback default
+let pawnSkin = "default";
 let gameData: any = null;
 let userId: number | undefined = undefined;
+let aiStats: any = null;
 
 if (authToken) {
   try {
@@ -55,6 +57,7 @@ if (authToken) {
     if (profileRes.ok) {
       const profile = await profileRes.json();
       gridSkin = profile.gridSkin;
+      pawnSkin = profile.pawnSkin;
       userId = profile.id;
     }
 
@@ -67,6 +70,17 @@ if (authToken) {
       gameData = await gameRes.json();
     } else {
       return Astro.redirect("/play");
+    }
+
+    // 3. Fetch User AI Stats for this difficulty
+    if (userId && gameData?.game?.aiDifficulty) {
+      const statsRes = await fetch(`${backendUrl}/api/users/${userId}/stats?is_ai=true&difficulty=${gameData.game.aiDifficulty}`, {
+        headers: { Cookie: `auth_token=${authToken}` },
+        signal: AbortSignal.timeout(1500),
+      });
+      if (statsRes.ok) {
+        aiStats = await statsRes.json();
+      }
     }
   } catch (e) {
     // Fail silently on profile, but redirect on missing/broken game
@@ -92,15 +106,33 @@ interface AiOpponentMock {
 }
 const aiOpponent: AiOpponentMock = {
   difficulty: difficulty as Difficulty,
-  formLast5: ["win", "win", "loss", "win", "win"],
-  currentStreak: 3,
-  longestStreak: 7,
-  totalGames: 28,
+  formLast5: aiStats?.form ? aiStats.form.slice(-5) : [],
+  currentStreak: aiStats?.streaks?.current ?? 0,
+  longestStreak: aiStats?.streaks?.longest ?? 0,
+  totalGames: aiStats?.totalGames ?? 0,
+};
+
+const getP1Colors = (skin: string) => {
+  switch (skin) {
+    case "sunset": return "bg-pawn-sunset-p1";
+    case "royal":  return "bg-pawn-royal-p1";
+    case "forest": return "bg-pawn-forest-p1";
+    default:       return "bg-pawn-yellow";
+  }
+};
+
+const getP2Colors = (skin: string) => {
+  switch (skin) {
+    case "sunset": return "bg-pawn-sunset-p2";
+    case "royal":  return "bg-pawn-royal-p2";
+    case "forest": return "bg-pawn-forest-p2";
+    default:       return "bg-pawn-red";
+  }
 };
 
 const resultDot: Record<GameResult, string> = {
-  win:  "bg-pawn-yellow",
-  loss: "bg-pawn-red",
+  win:  getP1Colors(pawnSkin),
+  loss: getP2Colors(pawnSkin),
   draw: "bg-muted-foreground",
 };
 
@@ -117,7 +149,7 @@ const cardCls = "rounded-xl border border-border bg-surface text-surface-foregro
     data-difficulty={difficulty}
     data-time-limit={timePerPlayerSeconds}
     data-is-ai={isAiOpponent ? "true" : "false"}
-    class="relative mx-auto flex w-full max-w-7xl flex-col px-margin-mobile pt-28 pb-8 md:h-full md:overflow-hidden md:px-margin-desktop md:pt-28 md:pb-4"
+    class="relative mx-auto flex w-full max-w-7xl flex-col px-margin-mobile pt-28 pb-8 md:h-full md:overflow-hidden md:px-margin-desktop md:pt-28 md:pb-12"
   >
     {/* 3-col grid mirrors landing: AITelemetry / Board / right-stack.
         items-center anchors all three columns around the board's
@@ -130,14 +162,16 @@ const cardCls = "rounded-xl border border-border bg-surface text-surface-foregro
         class="page-reveal order-2 flex justify-center md:order-1 md:col-span-3"
         style="--reveal-delay: 0s"
       >
-        <AITelemetry client:load />
+        <AITelemetry pawnSkin={pawnSkin} client:load />
       </div>
 
       {/* Board — center column. EndGameOverlay shares the same relative
           wrapper so when the game ends the card overlays the board
           exactly. */}
       <div class="order-1 flex flex-col items-center gap-6 md:order-2 md:col-span-6 md:gap-6 relative">
-        <PlayerTimer client:load />
+        <div class="md:absolute md:bottom-[calc(100%+1.5rem)] md:left-1/2 md:-translate-x-1/2 md:w-auto">
+          <PlayerTimer pawnSkin={pawnSkin} client:load />
+        </div>
         <div
           class="page-reveal relative"
           style="--reveal-delay: 0.2s"
@@ -149,6 +183,7 @@ const cardCls = "rounded-xl border border-border bg-surface text-surface-foregro
             timeLimit={timePerPlayerSeconds}
             isAi={isAiOpponent}
             variant={gridSkin as any}
+            pawnSkin={pawnSkin}
             client:load
           />
           <EndGameOverlay authed={authed} client:load />
@@ -164,7 +199,16 @@ const cardCls = "rounded-xl border border-border bg-surface text-surface-foregro
         class="page-reveal order-3 flex justify-center md:order-3 md:col-span-3 md:justify-start md:pl-gutter"
         style="--reveal-delay: 0s"
       >
-        <RightToolPanel difficulty={difficulty} client:load />
+        <RightToolPanel
+          difficulty={difficulty}
+          isAi={true}
+          totalGames={aiOpponent.totalGames}
+          currentStreak={aiOpponent.currentStreak}
+          longestStreak={aiOpponent.longestStreak}
+          formLast5={aiOpponent.formLast5}
+          pawnSkin={pawnSkin}
+          client:load
+        />
       </div>
 
     </div>

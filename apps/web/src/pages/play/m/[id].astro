@@ -24,6 +24,7 @@ import { RightToolPanel } from "~/components/landing/RightToolPanel";
 import { buttonVariants } from "~/components/ui/button";
 import { getCurrentUser } from "~/lib/auth";
 import { cn } from "~/lib/utils";
+import ChatInterface from "~/components/chat/ChatInterface";
 
 const currentUser = await getCurrentUser(Astro);
 if (!currentUser) {
@@ -66,8 +67,11 @@ if (isNaN(gameId)) {
 }
 
 let gridSkin = "liquid-glass"; // fallback default
+let pawnSkin = "default";
 let gameData: any = null;
 let opponentData: any = null;
+let userStats: any = null;
+let opponentId: number | null = null;
 
 if (authToken) {
   try {
@@ -79,6 +83,7 @@ if (authToken) {
     if (profileRes.ok) {
       const profile = await profileRes.json();
       gridSkin = profile.gridSkin;
+      pawnSkin = profile.pawnSkin;
     }
 
     // 2. Fetch Game Info
@@ -88,13 +93,16 @@ if (authToken) {
     });
     if (gameRes.ok) {
       gameData = await gameRes.json();
+      if (gameData?.game?.status !== "in_progress") {
+        return Astro.redirect("/play");
+      }
     } else {
       return Astro.redirect("/play");
     }
 
     // 3. Fetch Opponent Info
     const isP1 = gameData.game.player1Id === currentUser.id;
-    const opponentId = isP1 ? gameData.game.player2Id : gameData.game.player1Id;
+    opponentId = isP1 ? gameData.game.player2Id : gameData.game.player1Id;
     if (opponentId) {
       const oppRes = await fetch(`${backendUrl}/api/users/${opponentId}`, {
         headers: { Cookie: `auth_token=${authToken}` },
@@ -103,6 +111,15 @@ if (authToken) {
       if (oppRes.ok) {
         opponentData = await oppRes.json();
       }
+    }
+
+    // 4. Fetch User Stats vs Players
+    const userStatsRes = await fetch(`${backendUrl}/api/users/${currentUser.id}/stats?is_ai=false`, {
+      headers: { Cookie: `auth_token=${authToken}` },
+      signal: AbortSignal.timeout(1500),
+    });
+    if (userStatsRes.ok) {
+      userStats = await userStatsRes.json();
     }
   } catch (e) {
     if (!gameData) {
@@ -120,6 +137,14 @@ const opponent = {
   rating: opponentData?.rating ?? 1000,
   gamesPlayed: opponentData?.gamesPlayed ?? 0,
   status: opponentData?.status ?? "offline",
+};
+
+const userPlayStats = {
+  rating: currentUser.rating ?? 1000,
+  gamesPlayed: currentUser.gamesPlayed ?? 0,
+  formLast5: userStats?.form ? userStats.form.slice(-5) : [],
+  currentStreak: userStats?.streaks?.current ?? 0,
+  longestStreak: userStats?.streaks?.longest ?? 0,
 };
 
 interface ChatMessage {
@@ -144,99 +169,30 @@ const cardCls = "rounded-xl border border-border bg-surface text-surface-foregro
 >
   <main
     id="main"
-    class="relative mx-auto flex w-full max-w-7xl flex-col px-margin-mobile pt-28 pb-8 md:h-full md:overflow-hidden md:px-margin-desktop md:pt-28 md:pb-4"
+    class="relative mx-auto flex w-full max-w-7xl flex-col px-margin-mobile pt-28 pb-8 md:h-full md:overflow-hidden md:px-margin-desktop md:pt-28 md:pb-12"
   >
     <div class="grid grid-cols-1 gap-16 md:flex-1 md:grid-cols-12 md:items-center md:gap-gutter">
 
       {/* ── Left column: Chat panel ─────────────────────────────────────── */}
       <div
-        class="page-reveal order-2 flex justify-center md:order-1 md:col-span-3"
+        class="page-reveal order-2 flex justify-center md:order-1 md:col-span-3 md:justify-end md:pr-gutter"
         style="--reveal-delay: 0s"
       >
-        <div class={cn(cardCls, "flex w-full max-w-[220px] flex-col gap-3 p-4")}>
-
-          {/* Opponent header */}
-          <div class="flex items-center gap-2.5">
-            <span
-              aria-hidden="true"
-              class="flex size-9 shrink-0 items-center justify-center rounded-md border border-border bg-foreground font-display italic text-base text-background"
-            >
-              {opponent.initial}
-            </span>
-            <div class="flex min-w-0 flex-col">
-              <span class="truncate font-sans text-sm font-semibold text-foreground">
-                {opponent.username}
-              </span>
-              <span class="flex items-center gap-1.5 font-mono text-mono-sm uppercase text-muted-foreground">
-                <span aria-hidden="true" class="size-2 rounded-full bg-pawn-yellow" />
-                {opponent.status} · {opponent.rating}{opponent.gamesPlayed < 20 ? "?" : ""}
-              </span>
-            </div>
-          </div>
-
-          {/* Message list */}
-          <ol
-            id="chat-messages"
-            aria-label="Chat messages"
-            aria-live="polite"
-            class="flex max-h-64 flex-col gap-2 overflow-y-auto pr-1"
-          >
-            {messages.map((m) => (
-              <li
-                class:list={[
-                  "flex flex-col gap-0.5",
-                  m.from === "me" ? "items-end" : "items-start",
-                ]}
-              >
-                <span
-                  class:list={[
-                    "max-w-[90%] rounded-xl px-3 py-1.5 font-sans text-sm",
-                    m.from === "me"
-                      ? "bg-foreground text-background rounded-br-sm"
-                      : "bg-muted text-foreground rounded-bl-sm",
-                  ]}
-                >
-                  {m.text}
-                </span>
-                <span class="font-mono text-mono-sm uppercase text-muted-foreground">
-                  {m.time}
-                </span>
-              </li>
-            ))}
-          </ol>
-
-          {/* Input row */}
-          <form
-            id="chat-form"
-            class="flex items-center gap-2"
-            onsubmit="return false"
-          >
-            <input
-              id="chat-input"
-              type="text"
-              placeholder="Message…"
-              autocomplete="off"
-              maxlength="200"
-              class="min-w-0 flex-1 rounded-full border border-border bg-muted px-3 py-1.5 font-sans text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-foreground"
-            />
-            <button
-              type="submit"
-              aria-label="Send"
-              class="grid size-8 shrink-0 place-items-center rounded-full bg-foreground text-background hover:bg-foreground/80 active:scale-[0.96] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-foreground"
-            >
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="size-3.5" aria-hidden="true">
-                <line x1="22" y1="2" x2="11" y2="13" />
-                <polygon points="22 2 15 22 11 13 2 9 22 2" />
-              </svg>
-            </button>
-          </form>
-
+        <div class="w-full max-w-[280px] h-[450px] flex">
+          <ChatInterface
+            currentUserId={currentUser.id}
+            currentUsername={currentUser.username}
+            embeddedOpponentId={opponentId ?? undefined}
+            client:load
+          />
         </div>
       </div>
 
       {/* ── Center column: Board ─────────────────────────────────────────── */}
       <div class="order-1 flex flex-col items-center gap-6 md:order-2 md:col-span-6 md:gap-6 relative">
-        <PlayerTimer client:load />
+        <div class="md:absolute md:bottom-[calc(100%+1.5rem)] md:left-1/2 md:-translate-x-1/2 md:w-auto">
+          <PlayerTimer pawnSkin={pawnSkin} client:load />
+        </div>
         <div
           class="page-reveal relative"
           style="--reveal-delay: 0.2s"
@@ -247,6 +203,7 @@ const cardCls = "rounded-xl border border-border bg-surface text-surface-foregro
             timeLimit={timePerPlayerSeconds}
             isAi={isAiOpponent}
             variant={gridSkin as any}
+            pawnSkin={pawnSkin}
             client:load
           />
           <EndGameOverlay authed={authed} client:load />
@@ -260,8 +217,14 @@ const cardCls = "rounded-xl border border-border bg-surface text-surface-foregro
       >
         <RightToolPanel
           isAi={false}
-          opponentName={opponent.username}
-          opponentRating={`${opponent.rating}${opponent.gamesPlayed < 20 ? "?" : ""}`}
+          opponentName="Vs Player"
+          opponentRating={`${userPlayStats.rating}${userPlayStats.gamesPlayed < 20 ? "?" : ""}`}
+          totalGames={userPlayStats.gamesPlayed}
+          currentStreak={userPlayStats.currentStreak}
+          longestStreak={userPlayStats.longestStreak}
+          formLast5={userPlayStats.formLast5}
+          pawnSkin={pawnSkin}
+          opponentId={opponentId}
           client:load
         />
       </div>
@@ -280,32 +243,5 @@ const cardCls = "rounded-xl border border-border bg-surface text-surface-foregro
     </defs>
   </svg>
 
-  {/* Chat — local-only send for v1. Real wiring uses socket.io
-      chat events once Tim's game socket lands. */}
-  <script>
-    const form = document.getElementById("chat-form") as HTMLFormElement | null;
-    const input = document.getElementById("chat-input") as HTMLInputElement | null;
-    const list  = document.getElementById("chat-messages") as HTMLOListElement | null;
 
-    if (form && input && list) {
-      form.addEventListener("submit", (e) => {
-        e.preventDefault();
-        const text = input.value.trim();
-        if (!text) return;
-
-        const now = new Date();
-        const time = `${now.getHours().toString().padStart(2, "0")}:${now.getMinutes().toString().padStart(2, "0")}`;
-
-        const li = document.createElement("li");
-        li.className = "flex flex-col gap-0.5 items-end";
-        li.innerHTML = `
-          <span class="max-w-[90%] rounded-xl rounded-br-sm bg-foreground px-3 py-1.5 font-sans text-sm text-background">${text.replace(/</g, "&lt;")}</span>
-          <span class="font-mono text-mono-sm uppercase text-muted-foreground">${time}</span>
-        `;
-        list.appendChild(li);
-        list.scrollTop = list.scrollHeight;
-        input.value = "";
-      });
-    }
-  </script>
 </RootLayout>

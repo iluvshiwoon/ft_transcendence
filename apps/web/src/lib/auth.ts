@@ -41,6 +41,8 @@ export interface CurrentUser {
   rank: number;
   /** Derived from `rating` (Beginner/Apprentice/Expert/Master/Grandmaster). */
   title: Title;
+  pawnSkin?: string;
+  gridSkin?: string;
 }
 
 /** Backend URL — `http://server:3000` inside compose, `localhost:3000` for `make dev`. */

@@ -111,6 +111,8 @@ export interface PlayStoreState {
   gameEndState: "won" | "lost" | "draw" | null;
   /** Computed user score for the just-finished game. */
   gameScore: number | null;
+  /** Elo change of the current user for the just-finished game. */
+  eloChange: number | null;
   /** Maximum AI search depth seen across all AI moves this game. */
   maxAiDepth: number;
   /** End-game UI phase. */
@@ -140,6 +142,7 @@ const initialState: PlayStoreState = {
   hasPlayed: false,
   gameEndState: null,
   gameScore: null,
+  eloChange: null,
   maxAiDepth: 0,
   endGamePhase: "idle",
   error: null,
@@ -156,11 +159,11 @@ function computeScore(
   return Math.max(0, 1000 + maxAiDepth * 50 - moveCount * 20 + outcomeBonus);
 }
 
-function deriveEndState(view: PublicGameView): "won" | "lost" | "draw" | null {
+function deriveEndState(view: PublicGameView, userSlot: 1 | 2): "won" | "lost" | "draw" | null {
   if (view.status !== "finished" && view.status !== "abandoned") return null;
-  if (view.winner === 1) return "won";
-  if (view.winner === 2) return "lost";
-  return "draw";
+  if (view.winner === userSlot) return "won";
+  if (view.winner === null) return "draw";
+  return "lost";
 }
 
 class PlayStore {
@@ -265,7 +268,7 @@ class PlayStore {
       });
     });
 
-    socket.on("game:state", (data: { state: any; aiMove?: { col: number; row: number; telemetry: AiTelemetry } }) => {
+    socket.on("game:state", (data: { state: any; aiMove?: { col: number; row: number; telemetry: AiTelemetry }; p1EloChange?: number | null; p2EloChange?: number | null }) => {
       const serverState = data.state;
       if (!serverState) return;
 
@@ -293,13 +296,14 @@ class PlayStore {
             : 1
           : 1;
 
-      const endState = deriveEndState(view);
+      const endState = deriveEndState(view, userSlot);
       
       const newMaxDepth = data.aiMove
         ? Math.max(this.state.maxAiDepth, data.aiMove.telemetry.depth)
         : this.state.maxAiDepth;
 
       const score = endState ? computeScore(view, newMaxDepth, endState) : null;
+      const userDelta = userSlot === 1 ? data.p1EloChange : data.p2EloChange;
 
       const telemetry = data.aiMove 
         ? data.aiMove.telemetry 
@@ -325,6 +329,7 @@ class PlayStore {
         timerP2: serverState.timerP2,
         gameEndState: endState,
         gameScore: score,
+        eloChange: userDelta ?? null,
         thinking: view.currentPlayer !== userSlot && view.status === "in_progress",
         telemetry,
         lastAiMove,
@@ -348,7 +353,7 @@ class PlayStore {
       });
     });
 
-    socket.on("game:over", (data: { winner: 1 | 2 | null; status: string }) => {
+    socket.on("game:over", (data: { winner: 1 | 2 | null; status: string; p1EloChange?: number | null; p2EloChange?: number | null }) => {
       if (!this.state.view) return;
 
       const view: PublicGameView = {
@@ -360,13 +365,15 @@ class PlayStore {
           data.winner !== null ? findWinningLine(this.state.view.board) : null,
       };
 
-      const endState = deriveEndState(view);
+      const endState = deriveEndState(view, this.state.userSlot);
       const score = endState ? computeScore(view, 0, endState) : null;
+      const userDelta = this.state.userSlot === 1 ? data.p1EloChange : data.p2EloChange;
 
       this.set({
         view,
         gameEndState: endState,
         gameScore: score,
+        eloChange: userDelta ?? null,
         thinking: false,
       });
 
@@ -565,7 +572,7 @@ class PlayStore {
       const newMaxDepth = res.aiMove
         ? Math.max(this.state.maxAiDepth, res.aiMove.telemetry.depth)
         : this.state.maxAiDepth;
-      const endState = deriveEndState(res.state);
+      const endState = deriveEndState(res.state, this.state.userSlot);
       const score = endState
         ? computeScore(res.state, newMaxDepth, endState)
         : null;

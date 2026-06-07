@@ -1,8 +1,19 @@
 import { playStore } from "~/lib/play-store";
 
-export function NewGameButton() {
-  const handleNewGame = () => {
-    void playStore.restart();
+interface NewGameButtonProps {
+  opponentId?: number | null;
+}
+
+export function NewGameButton({ opponentId }: NewGameButtonProps) {
+  const handleNewGame = async () => {
+    if (opponentId) {
+      playStore.resign();
+      // Allow a brief delay for the websocket surrender packet to exit the browser
+      await new Promise((resolve) => setTimeout(resolve, 250));
+      window.location.href = `/chat?user=${opponentId}&challenge=true`;
+    } else {
+      void playStore.restart();
+    }
   };
 
   return (

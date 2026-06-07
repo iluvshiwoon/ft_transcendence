@@ -32,7 +32,6 @@ import type { ProfileMe } from "~/lib/api/profile";
 import { SettingsProfile } from "~/components/settings/SettingsProfile";
 import { SettingsAppearance } from "~/components/settings/SettingsAppearance";
 import { SettingsAccount } from "~/components/settings/SettingsAccount";
-import { SettingsPrivacy } from "~/components/settings/SettingsPrivacy";
 
 if (!(await isAuthenticated(Astro))) {
   return Astro.redirect("/signup?step=1");
@@ -110,7 +109,7 @@ try {
         Customize
       </h1>
       <p class="mt-2 font-sans text-base text-muted-foreground">
-        Profile, appearance, account, privacy. Changes save automatically
+        Profile, appearance, and account. Changes save automatically
         unless a Save button says otherwise.
       </p>
     </header>
@@ -119,7 +118,6 @@ try {
       <SettingsProfile client:load initial={profile} />
       <SettingsAppearance client:load initial={profile} />
       <SettingsAccount client:load initial={profile} />
-      <SettingsPrivacy client:load />
     </div>
   </main>
 </RootLayout>

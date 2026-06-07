@@ -48,15 +48,18 @@ interface EndGameCardProps {
   score: number;
   rank: number | null;
   authed: boolean;
+  eloChange: number | null;
   onSignup: () => void;
   onReplay: () => void;
 }
 
-function EndGameCard({ outcome, score, rank, authed, onSignup, onReplay }: EndGameCardProps) {
+function EndGameCard({ outcome, score, rank, authed, eloChange, onSignup, onReplay }: EndGameCardProps) {
   const heading =
-    outcome === "won" ? "You won!" : outcome === "lost" ? "AI won" : "Even game";
+    outcome === "won" ? "You won!" : outcome === "lost" ? "You lost!" : "It's a draw";
 
-  // Pitch line varies by outcome — wins emphasize "save it", losses
+  const isLandingPage = typeof window !== "undefined" && window.location.pathname === "/";
+  const showElo = !isLandingPage && authed;
+
   // Pitch line varies by outcome — wins emphasize "save it", losses
   // emphasize "rematch", draws are neutral. Each version accents
   // (text-foreground + font-bold) the words that matter most so
@@ -96,10 +99,10 @@ function EndGameCard({ outcome, score, rank, authed, onSignup, onReplay }: EndGa
         // viewport-margins on mobile so it doesn't spill off-screen.
         "flex min-h-full min-w-full flex-col items-center gap-7",
         "max-w-[calc(100vw-2rem)] md:max-w-none",
-        // Desktop: center content vertically instead of pushing buttons
+        // Center content vertically instead of pushing buttons
         // to the bottom — looked like a slab of empty space between the
         // pitch and the Play again button.
-        "md:justify-center",
+        "justify-center",
         // Small margin-block so the card on mobile keeps a visible gap
         // to the AITelemetry / Leaderboard sections that stack above
         // and below it. Desktop has the grid gutter for that.
@@ -111,23 +114,39 @@ function EndGameCard({ outcome, score, rank, authed, onSignup, onReplay }: EndGa
         <h3 className="font-display text-5xl font-light italic leading-none text-foreground">
           {heading}
         </h3>
-        <p className="mt-3 font-mono text-mono-sm uppercase tracking-wide text-muted-foreground">
-          You scored
-        </p>
-        <p className="font-display text-4xl font-light leading-none tabular-nums text-foreground">
-          {score}
-        </p>
-        <p className="mt-1 font-mono text-mono-sm text-muted-foreground">
-          {rank !== null ? (
-            <>
-              Rank{" "}
-              <span className="font-semibold tabular-nums text-foreground">#{rank}</span>{" "}
-              on the leaderboard
-            </>
-          ) : (
-            <>Loading leaderboard…</>
-          )}
-        </p>
+        {showElo ? (
+          <>
+            <p className="mt-3 font-mono text-mono-sm uppercase tracking-wide text-muted-foreground">
+              Rating Change
+            </p>
+            <p className="font-display text-4xl font-light leading-none tabular-nums text-foreground">
+              {eloChange !== null ? (eloChange >= 0 ? `+${eloChange}` : eloChange) : "+0"}
+            </p>
+            <p className="mt-1 font-mono text-mono-sm text-muted-foreground">
+              Elo rating points
+            </p>
+          </>
+        ) : (
+          <>
+            <p className="mt-3 font-mono text-mono-sm uppercase tracking-wide text-muted-foreground">
+              You scored
+            </p>
+            <p className="font-display text-4xl font-light leading-none tabular-nums text-foreground">
+              {score}
+            </p>
+            <p className="mt-1 font-mono text-mono-sm text-muted-foreground">
+              {rank !== null ? (
+                <>
+                  Rank{" "}
+                  <span className="font-semibold tabular-nums text-foreground">#{rank}</span>{" "}
+                  on the leaderboard
+                </>
+              ) : (
+                <>Loading leaderboard…</>
+              )}
+            </p>
+          </>
+        )}
       </div>
 
       {!authed && (
@@ -258,6 +277,7 @@ export function EndGameOverlay({ authed = false }: EndGameOverlayProps) {
           score={score}
           rank={rank}
           authed={authed}
+          eloChange={snap.eloChange}
           onSignup={handleSignup}
           onReplay={handleReplay}
         />

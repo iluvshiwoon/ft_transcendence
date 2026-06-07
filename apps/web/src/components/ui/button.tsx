@@ -49,6 +49,7 @@ const buttonVariants = cva(
         icon: "size-9 rounded-full",
         // 4thewin nav pill: rounded-full + mono-uppercase
         pill: "h-9 px-5 rounded-full font-mono text-mono-sm uppercase",
+        xs: "h-7 px-3 text-xs rounded-md",
       },
     },
     defaultVariants: {

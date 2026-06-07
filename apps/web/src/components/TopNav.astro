@@ -21,6 +21,7 @@
 import { Button, buttonVariants } from "~/components/ui/button";
 import { cn } from "~/lib/utils";
 import type { CurrentUser } from "~/lib/auth";
+import NotificationDropdown from "~/components/social/NotificationDropdown";
 
 interface Props {
   /** Full user object (null when not signed in). Set by RootLayout. */
@@ -195,13 +196,22 @@ const initial = user?.username?.[0]?.toUpperCase() ?? "?";
         href="/profile"
         class="ml-2 flex items-center gap-2.5 rounded-md p-1 pr-2 transition-colors hover:bg-foreground/10 focus-visible:outline-none focus-visible:bg-foreground/10 xs:ml-3"
       >
-        <span
-          id="topnav-initial"
-          aria-hidden="true"
-          class="flex size-9 shrink-0 items-center justify-center rounded-md border border-border bg-foreground font-display italic text-base text-background"
-        >
-          {initial}
-        </span>
+        {user?.avatarUrl ? (
+          <img
+            src={user.avatarUrl}
+            alt=""
+            id="topnav-avatar"
+            class="size-9 shrink-0 rounded-md border border-border object-cover"
+          />
+        ) : (
+          <span
+            id="topnav-initial"
+            aria-hidden="true"
+            class="flex size-9 shrink-0 items-center justify-center rounded-md border border-border bg-foreground font-display italic text-base text-background"
+          >
+            {initial}
+          </span>
+        )}
         <span class="hidden flex-col leading-tight xs:flex">
           <span id="topnav-username" class="truncate font-sans text-sm font-semibold text-foreground">
             {user!.username}
@@ -211,6 +221,9 @@ const initial = user?.username?.[0]?.toUpperCase() ?? "?";
           </span>
         </span>
       </a>
+
+      {/* Notification Dropdown — top utmost right */}
+      <NotificationDropdown client:only="react" />
     </div>
   </header>
 

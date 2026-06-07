@@ -59,6 +59,7 @@ interface AITelemetryProps {
   };
   /** Value slider score (centipawn-style). */
   evalScore?: number;
+  pawnSkin?: string;
 }
 
 const ROWS = 6;
@@ -156,7 +157,10 @@ export function AITelemetry({
   evalRatio,
   stats,
   evalScore,
+  pawnSkin = "default",
 }: AITelemetryProps) {
+  const p1BgClass = "bg-pawn-yellow/40";
+  const p2BgClass = "bg-pawn-red/40";
   // Subscribe to the live game store. SSR returns initialState (view=null,
   // telemetry=null) so the component falls back to the wireframe defaults
   // until the first AI move arrives.
@@ -335,11 +339,11 @@ export function AITelemetry({
             return (
               <>
                 <div
-                  className="absolute left-0 top-0 h-full bg-pawn-red/40 transition-[width] duration-500"
+                  className={cn("absolute left-0 top-0 h-full transition-[width] duration-500", p2BgClass)}
                   style={{ width: `${mainRed}%` }}
                 />
                 <div
-                  className="absolute right-0 top-0 h-full bg-pawn-yellow/40 transition-[width] duration-500"
+                  className={cn("absolute right-0 top-0 h-full transition-[width] duration-500", p1BgClass)}
                   style={{ width: `${mainYellow}%` }}
                 />
               </>
@@ -374,11 +378,11 @@ export function AITelemetry({
             return (
               <>
                 <div
-                  className="absolute left-0 top-0 h-full bg-pawn-red/40 transition-[width] duration-500"
+                  className={cn("absolute left-0 top-0 h-full transition-[width] duration-500", p2BgClass)}
                   style={{ width: `${smallRed}%` }}
                 />
                 <div
-                  className="absolute right-0 top-0 h-full bg-pawn-yellow/40 transition-[width] duration-500"
+                  className={cn("absolute right-0 top-0 h-full transition-[width] duration-500", p1BgClass)}
                   style={{ width: `${smallYellow}%` }}
                 />
               </>

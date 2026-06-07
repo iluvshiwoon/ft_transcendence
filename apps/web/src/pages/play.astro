@@ -21,9 +21,10 @@
  * /me and friends endpoints are wired.
  */
 import RootLayout from "~/layouts/RootLayout.astro";
-import { Button, buttonVariants } from "~/components/ui/button";
+import { buttonVariants } from "~/components/ui/button";
 import { cn } from "~/lib/utils";
 import { isAuthenticated } from "~/lib/auth";
+import { ChallengeSearchModal } from "~/components/landing/ChallengeSearchModal";
 
 if (!(await isAuthenticated(Astro))) {
   return Astro.redirect("/signup?step=1");
@@ -87,12 +88,12 @@ const cardCls = "rounded-xl border border-border bg-surface text-surface-foregro
         ========================================================= */}
     <section
       aria-label="Quick play"
-      class="page-reveal grid grid-cols-1 gap-gutter md:grid-cols-2"
+      class="page-reveal grid grid-cols-1 gap-x-gutter gap-y-gutter md:grid-cols-2 md:grid-rows-[repeat(4,auto)] md:gap-y-5 overflow-visible relative z-10"
       style="--reveal-delay: 0s"
       data-quickplay
     >
       {/* ── Play AI card ─────────────────────────────────────── */}
-      <article class={cn(cardCls, "flex flex-col gap-5 p-5")}>
+      <article class={cn(cardCls, "flex flex-col gap-5 p-5 md:row-span-4 md:grid md:grid-rows-subgrid")}>
         <header class="flex items-baseline justify-between gap-3">
           <p class="font-mono text-mono-md uppercase text-foreground">
             Vs AI
@@ -102,68 +103,66 @@ const cardCls = "rounded-xl border border-border bg-surface text-surface-foregro
           </p>
         </header>
 
-        {/* Inline pills: difficulty + time control. Click sets aria-checked
-            via inline script; aria-checked drives styling. */}
-        <div class="flex flex-col gap-3">
-          <div>
-            <p class="font-mono text-mono-sm uppercase text-muted-foreground">Difficulty</p>
-            <ul role="radiogroup" aria-label="AI difficulty" data-pills="ai-difficulty" class="mt-2 flex flex-wrap gap-2">
-              {DIFFICULTIES.map((d) => (
-                <li>
-                  <button
-                    type="button"
-                    role="radio"
-                    aria-checked={d.id === defaultDifficulty ? "true" : "false"}
-                    data-value={d.id}
-                    class:list={[
-                      "px-3 py-1 rounded-full font-mono text-mono-sm uppercase",
-                      "border border-border bg-muted text-muted-foreground",
-                      "transition-colors",
-                      "hover:border-foreground hover:bg-foreground/20 hover:text-foreground",
-                      "aria-checked:border-foreground aria-checked:bg-foreground aria-checked:text-background",
-                      "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-foreground",
-                    ]}
-                  >
-                    {d.label}
-                  </button>
-                </li>
-              ))}
-            </ul>
-          </div>
-
-          <div>
-            <p class="font-mono text-mono-sm uppercase text-muted-foreground">Time control</p>
-            <ul role="radiogroup" aria-label="Time control" data-pills="ai-time" class="mt-2 flex flex-wrap gap-2">
-              {TIME_CONTROLS.map((tc) => (
-                <li>
-                  <button
-                    type="button"
-                    role="radio"
-                    aria-checked={tc.id === defaultTimeControl ? "true" : "false"}
-                    data-value={tc.id}
-                    data-seconds={tc.seconds}
-                    class:list={[
-                      "px-3 py-1 rounded-full font-mono text-mono-sm uppercase tabular-nums",
-                      "border border-border bg-muted text-muted-foreground",
-                      "transition-colors",
-                      "hover:border-foreground hover:bg-foreground/20 hover:text-foreground",
-                      "aria-checked:border-foreground aria-checked:bg-foreground aria-checked:text-background",
-                      "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-foreground",
-                    ]}
-                  >
-                    {tc.duration}
-                  </button>
-                </li>
-              ))}
-            </ul>
-          </div>
+        {/* Row 2 — Difficulty */}
+        <div>
+          <p class="font-mono text-mono-sm uppercase text-muted-foreground">Difficulty</p>
+          <ul role="radiogroup" aria-label="AI difficulty" data-pills="ai-difficulty" class="mt-2 flex flex-wrap gap-2">
+            {DIFFICULTIES.map((d) => (
+              <li>
+                <button
+                  type="button"
+                  role="radio"
+                  aria-checked={d.id === defaultDifficulty ? "true" : "false"}
+                  data-value={d.id}
+                  class:list={[
+                    "px-3 py-1 rounded-full font-mono text-mono-sm uppercase",
+                    "border border-border bg-muted text-muted-foreground",
+                    "transition-colors",
+                    "hover:border-foreground hover:bg-foreground/20 hover:text-foreground",
+                    "aria-checked:border-foreground aria-checked:bg-foreground aria-checked:text-background",
+                    "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-foreground",
+                  ]}
+                >
+                  {d.label}
+                </button>
+              </li>
+            ))}
+          </ul>
         </div>
 
-        {/* Primary action — pinned to bottom of card via mt-auto */}
+        {/* Row 3 — Time control */}
+        <div>
+          <p class="font-mono text-mono-sm uppercase text-muted-foreground">Time control</p>
+          <ul role="radiogroup" aria-label="Time control" data-pills="ai-time" class="mt-2 flex flex-wrap gap-2">
+            {TIME_CONTROLS.map((tc) => (
+              <li>
+                <button
+                  type="button"
+                  role="radio"
+                  aria-checked={tc.id === defaultTimeControl ? "true" : "false"}
+                  data-value={tc.id}
+                  data-seconds={tc.seconds}
+                  class:list={[
+                    "px-3 py-1 rounded-full font-mono text-mono-sm uppercase tabular-nums",
+                    "border border-border bg-muted text-muted-foreground",
+                    "transition-colors",
+                    "hover:border-foreground hover:bg-foreground/20 hover:text-foreground",
+                    "aria-checked:border-foreground aria-checked:bg-foreground aria-checked:text-background",
+                    "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-foreground",
+                  ]}
+                >
+                  {tc.duration}
+                </button>
+              </li>
+            ))}
+          </ul>
+        </div>
+
+        {/* Row 4 — CTA */}
         <button
           type="button"
           data-play-ai-start
-          class={cn(buttonVariants({ variant: "brand-filled", size: "pill" }), "mt-auto w-full justify-center gap-1.5 cursor-pointer")}
+          class={cn(buttonVariants({ variant: "brand-filled", size: "pill" }), "self-end w-full justify-center gap-1.5 cursor-pointer")}
         >
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="size-3.5" aria-hidden="true">
             <path d="M5 3l14 9-14 9V3z" />
@@ -173,7 +172,7 @@ const cardCls = "rounded-xl border border-border bg-surface text-surface-foregro
       </article>
 
       {/* ── Challenge card ───────────────────────────────────── */}
-      <article class={cn(cardCls, "flex flex-col gap-5 p-5")}>
+      <article class={cn(cardCls, "flex flex-col gap-5 p-5 overflow-visible z-10 md:row-span-4 md:grid md:grid-rows-subgrid")}>
         <header class="flex items-baseline justify-between gap-3">
           <p class="font-mono text-mono-md uppercase text-foreground">
             Vs a friend
@@ -183,14 +182,12 @@ const cardCls = "rounded-xl border border-border bg-surface text-surface-foregro
           </p>
         </header>
 
+        {/* Row 2 — Description (aligns with AI card's Difficulty row) */}
         <p class="font-sans text-sm text-muted-foreground">
-          Send a private invite, or queue for a random opponent.
+          Search for a friend and send them a challenge directly in chat.
         </p>
 
-        {/* Time control — mirrors the AI card so both modes share parallel
-            structure. The chosen time control is sent with POST /api/lobbies
-            (when the Challenge a friend button is wired) or the future
-            POST /api/match/queue. */}
+        {/* Row 3 — Time control (aligns with AI card's Time control row) */}
         <div>
           <p class="font-mono text-mono-sm uppercase text-muted-foreground">Time control</p>
           <ul role="radiogroup" aria-label="Time control" data-pills="multi-time" class="mt-2 flex flex-wrap gap-2">
@@ -218,26 +215,12 @@ const cardCls = "rounded-xl border border-border bg-surface text-surface-foregro
           </ul>
         </div>
 
-        {/* Two action rows — primary at the bottom (Challenge), secondary
-            above (Find match, disabled v1 → HANDOFF §3.10). */}
-        <div class="mt-auto flex flex-col gap-3">
+        {/* Row 4 — CTA + dropdown */}
+        <div class="relative self-end w-full">
           <button
             type="button"
-            disabled
-            title="Matchmaking queue — coming soon (HANDOFF §3.10)"
-            class={cn(
-              buttonVariants({ variant: "brand-outline", size: "pill" }),
-              "w-full justify-center disabled:opacity-50 disabled:cursor-not-allowed",
-            )}
-          >
-            Find match · soon
-          </button>
-
-          <a
-            id="challenge-friend-btn"
-            href="/play/m/test?time=600"
-            data-todo-integration="POST /api/lobbies — Tim's endpoint, exists post-rebase; replace href with real gameId once wired"
-            class={cn(buttonVariants({ variant: "brand-filled", size: "pill" }), "w-full justify-center gap-1.5")}
+            id="open-challenge-modal-btn"
+            class={cn(buttonVariants({ variant: "brand-filled", size: "pill" }), "w-full justify-center gap-1.5 cursor-pointer")}
           >
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="size-3.5" aria-hidden="true">
               <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2" />
@@ -246,7 +229,10 @@ const cardCls = "rounded-xl border border-border bg-surface text-surface-foregro
               <line x1="22" y1="11" x2="16" y2="11" />
             </svg>
             Challenge a friend
-          </a>
+          </button>
+
+          {/* Challenge friend search dropdown (React island) */}
+          <ChallengeSearchModal client:only="react" />
         </div>
       </article>
     </section>
@@ -270,19 +256,21 @@ const cardCls = "rounded-xl border border-border bg-surface text-surface-foregro
       pills.forEach((pill) => {
         pill.addEventListener("click", () => {
           pills.forEach((p) => p.setAttribute("aria-checked", p === pill ? "true" : "false"));
-
-          if (group.getAttribute("data-pills") === "multi-time") {
-            const seconds = pill.getAttribute("data-seconds") || "600";
-            const challengeBtn = document.getElementById("challenge-friend-btn") as HTMLAnchorElement | null;
-            if (challengeBtn) {
-              challengeBtn.setAttribute("href", `/play/m/test?time=${seconds}`);
-            }
-          }
         });
       });
     }
 
     document.querySelectorAll<HTMLElement>("[data-pills]").forEach(wirePillGroup);
+
+    // Wire the challenge-a-friend button → dispatch event to the React modal island
+    const challengeBtn = document.getElementById("open-challenge-modal-btn");
+    if (challengeBtn) {
+      challengeBtn.addEventListener("click", () => {
+        const activeTimeBtn = document.querySelector<HTMLButtonElement>("[data-pills='multi-time'] [aria-checked='true']");
+        const seconds = parseInt(activeTimeBtn?.getAttribute("data-seconds") || "600", 10);
+        window.dispatchEvent(new CustomEvent("challenge-modal:open", { detail: { time: seconds } }));
+      });
+    }
 
     // AI Game creation handler
     const startAiButton = document.querySelector<HTMLButtonElement>("[data-play-ai-start]");

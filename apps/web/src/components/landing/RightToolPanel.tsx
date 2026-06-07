@@ -12,6 +12,8 @@ interface RightToolPanelProps {
   currentStreak?: number;
   longestStreak?: number;
   formLast5?: Array<"win" | "loss" | "draw">;
+  pawnSkin?: string;
+  opponentId?: number | null;
 }
 
 export function RightToolPanel({
@@ -23,6 +25,8 @@ export function RightToolPanel({
   currentStreak = 3,
   longestStreak = 7,
   formLast5 = ["win", "win", "loss", "win", "win"],
+  pawnSkin = "default",
+  opponentId = null,
 }: RightToolPanelProps) {
   const [isConfirmingResign, setIsConfirmingResign] = useState(false);
 
@@ -31,11 +35,17 @@ export function RightToolPanel({
     setIsConfirmingResign(false);
   };
 
-  const resultDot = {
+  const resultDot: Record<string, string> = {
     win: "bg-pawn-yellow",
     loss: "bg-pawn-red",
     draw: "bg-muted-foreground",
+    empty: "bg-muted-foreground",
   };
+
+  const paddedForm = [
+    ...Array(Math.max(0, 5 - (formLast5?.length ?? 0))).fill("empty"),
+    ...(formLast5 || []),
+  ].slice(-5);
 
   const resolvedIsAi = difficulty !== undefined ? isAi : false;
 
@@ -54,25 +64,23 @@ export function RightToolPanel({
           </div>
 
           {/* Form (last 5) */}
-          {resolvedIsAi && (
-            <div>
-              <p className="font-mono text-mono-sm uppercase text-muted-foreground">
-                Form · last 5
-              </p>
-              <ol className="mt-2 flex items-center gap-2" aria-label={`Last 5 results vs AI ${difficulty}`}>
-                {formLast5.map((r, idx) => (
-                  <li
-                    key={idx}
-                    aria-label={r}
-                    className={cn("size-3 rounded-full border border-border", resultDot[r])}
-                  />
-                ))}
-              </ol>
-            </div>
-          )}
-
+          <div>
+            <p className="font-mono text-mono-sm uppercase text-muted-foreground">
+              Form · last 5
+            </p>
+            <ol className="mt-2 flex items-center justify-center gap-2" aria-label={resolvedIsAi ? `Last 5 results vs AI ${difficulty}` : `Last 5 results vs ${opponentName}`}>
+              {paddedForm.map((r, idx) => (
+                <li
+                  key={idx}
+                  aria-label={r}
+                  className={cn("size-3 rounded-full border border-border", resultDot[r])}
+                />
+              ))}
+            </ol>
+          </div>
+ 
           {/* Current streak */}
-          {resolvedIsAi && (
+          {currentStreak !== undefined && (
             <div>
               <p className="font-mono text-mono-sm uppercase text-muted-foreground">
                 Current streak
@@ -86,7 +94,7 @@ export function RightToolPanel({
 
           {/* Controls */}
           <div className="flex flex-col items-center gap-3 pt-1">
-            <NewGameButton />
+            <NewGameButton opponentId={opponentId} />
             <button
               type="button"
               onClick={() => setIsConfirmingResign(true)}

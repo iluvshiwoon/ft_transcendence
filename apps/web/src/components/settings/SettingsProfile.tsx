@@ -32,15 +32,6 @@ import {
   type ProfileMe,
 } from "~/lib/api/profile";
 
-// Backend's allow-list. Mirrored in apps/server/src/routes/users.ts:33-34
-// and Step3Profile.tsx — if you add a skin there, add it here too.
-const PAWN_SKINS = [
-  { id: "default", label: "Classic", swatchClass: "bg-pawn-red" },
-  { id: "wine",    label: "Wine",    swatchClass: "bg-pawn-wine"  },
-  { id: "coral",   label: "Coral",   swatchClass: "bg-pawn-coral" },
-  { id: "brick",   label: "Brick",   swatchClass: "bg-pawn-brick" },
-] as const;
-
 const BIO_MAX = 160;
 const USERNAME_RE = /^[a-zA-Z0-9_]{3,30}$/;
 
@@ -53,7 +44,6 @@ interface SettingsProfileProps {
 export function SettingsProfile({ initial }: SettingsProfileProps) {
   // Local copies of the server's state. Updated optimistically on save.
   const [avatarUrl, setAvatarUrl] = useState<string | null>(initial.avatarUrl);
-  const [pawnSkin, setPawnSkin] = useState<string>(initial.pawnSkin);
 
   return (
     <section
@@ -70,18 +60,6 @@ export function SettingsProfile({ initial }: SettingsProfileProps) {
           avatarUrl={avatarUrl}
           username={initial.username}
           onUploaded={(url) => setAvatarUrl(url)}
-        />
-        <PawnSkinBlock
-          value={pawnSkin}
-          onChange={(next) => {
-            const prev = pawnSkin;
-            setPawnSkin(next); // optimistic
-            void updateProfile({ pawnSkin: next }).catch((e: unknown) => {
-              setPawnSkin(prev);
-              const msg = e instanceof ProfileApiError ? e.message : "Save failed";
-              window.alert(`Pawn skin: ${msg}`);
-            });
-          }}
         />
         <UsernameBlock initialUsername={initial.username} />
         <BioBlock initialBio={initial.bio ?? ""} />
@@ -201,46 +179,7 @@ function AvatarBlock({
   );
 }
 
-// ─── Pawn colour (auto-save) ──────────────────────────────────────────
 
-function PawnSkinBlock({
-  value,
-  onChange,
-}: {
-  value: string;
-  onChange: (next: string) => void;
-}) {
-  return (
-    <div className="flex flex-col gap-2 border-t border-border pt-6">
-      <p className="font-mono text-mono-sm uppercase text-muted-foreground">Pawn skin</p>
-      <p className="font-sans text-sm text-muted-foreground">
-        Your in-game piece on the board.
-      </p>
-      <ul role="radiogroup" aria-label="Pawn skin" className="mt-1 flex flex-wrap gap-2">
-        {PAWN_SKINS.map((skin) => (
-          <li key={skin.id}>
-            <button
-              type="button"
-              role="radio"
-              aria-checked={value === skin.id ? "true" : "false"}
-              aria-label={skin.label}
-              title={skin.label}
-              data-value={skin.id}
-              onClick={() => value !== skin.id && onChange(skin.id)}
-              className={cn(
-                "size-8 rounded-full border-2 border-transparent transition-all cursor-pointer",
-                "aria-checked:border-foreground aria-checked:scale-110",
-                "hover:scale-105",
-                "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-foreground",
-                skin.swatchClass,
-              )}
-            />
-          </li>
-        ))}
-      </ul>
-    </div>
-  );
-}
 
 // ─── Username (Save + live availability check) ────────────────────────
 

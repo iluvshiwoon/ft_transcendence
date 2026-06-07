@@ -42,7 +42,8 @@ export type BoardVariant =
   | "none"
   | "recessed"
   | "liquid-glass"
-  | "raised";
+  | "raised"
+  | "frosted-obsidian";
 
 export const ROWS = 6;
 export const COLS = 7;
@@ -86,6 +87,8 @@ interface BoardProps {
   className?: string;
   /** EXPERIMENT — visual variant. Defaults to "default" (current style). */
   variant?: BoardVariant;
+  /** Custom pawn skin selected by the user. */
+  pawnSkin?: string;
   
   // Socket game properties
   gameId?: number;
@@ -104,6 +107,8 @@ function cellLabel(cell: Cell, row: number, col: number): string {
 /** Plate-level classes per variant. */
 function plateClasses(variant: BoardVariant): string {
   switch (variant) {
+    case "frosted-obsidian":
+      return "board-frosted-obsidian shadow-2xl";
     case "branded":
       return "board-branded shadow-2xl";
     case "glass":
@@ -129,6 +134,8 @@ function plateClasses(variant: BoardVariant): string {
 /** Empty-cell classes per variant. */
 function emptyCellClasses(variant: BoardVariant): string {
   switch (variant) {
+    case "frosted-obsidian":
+      return "board-frosted-obsidian-cell";
     case "branded":
       return "board-branded-cell";
     case "glass":
@@ -150,10 +157,29 @@ function emptyCellClasses(variant: BoardVariant): string {
   }
 }
 
+function getP1Classes(skin: string) {
+  switch (skin) {
+    case "sunset": return { bg: "bg-pawn-sunset-p1", top: "pawn-sunset-p1" };
+    case "royal":  return { bg: "bg-pawn-royal-p1",  top: "pawn-royal-p1"  };
+    case "forest": return { bg: "bg-pawn-forest-p1", top: "pawn-forest-p1" };
+    default:       return { bg: "bg-pawn-yellow",    top: "pawn-yellow"    };
+  }
+}
+
+function getP2Classes(skin: string) {
+  switch (skin) {
+    case "sunset": return { bg: "bg-pawn-sunset-p2", top: "pawn-sunset-p2" };
+    case "royal":  return { bg: "bg-pawn-royal-p2",  top: "pawn-royal-p2"  };
+    case "forest": return { bg: "bg-pawn-forest-p2", top: "pawn-forest-p2" };
+    default:       return { bg: "bg-pawn-red",       top: "pawn-red"       };
+  }
+}
+
 export function Board({
   pieces,
   className,
   variant = "default",
+  pawnSkin = "default",
   gameId,
   userId,
   difficulty,
@@ -318,9 +344,9 @@ export function Board({
                       key={`under-${rowIdx}-${colIdx}`}
                       className={cn(
                         "size-9 rounded-full sm:size-12",
-                        cell === "red" && "bg-pawn-red",
+                        cell === "red" && getP2Classes(pawnSkin).bg,
                         cell === "red" && shouldAnimate && "piece-drop",
-                        cell === "yellow" && "bg-pawn-yellow",
+                        cell === "yellow" && getP1Classes(pawnSkin).bg,
                         cell === "yellow" && shouldAnimate && "piece-drop",
                       )}
                       style={
@@ -377,8 +403,8 @@ export function Board({
                           className={cn(
                             "absolute inset-0 rounded-full",
                             !isPreExisting(rowIdx, colIdx) && "piece-fade-in",
-                            cell === "red" && "pawn-red",
-                            cell === "yellow" && "pawn-yellow",
+                            cell === "red" && getP2Classes(pawnSkin).top,
+                            cell === "yellow" && getP1Classes(pawnSkin).top,
                             winningCellSet.has(`${rowIdx},${colIdx}`) && "winning-cell",
                           )}
                         />
@@ -454,8 +480,8 @@ export function Board({
                     className={cn(
                       "absolute inset-0 rounded-full",
                       !isPreExisting(rowIdx, colIdx) && "piece-drop",
-                      cell === "red" && "pawn-red",
-                      cell === "yellow" && "pawn-yellow",
+                      cell === "red" && getP2Classes(pawnSkin).top,
+                      cell === "yellow" && getP1Classes(pawnSkin).top,
                       winningCellSet.has(`${rowIdx},${colIdx}`) && "winning-cell",
                     )}
                     style={
