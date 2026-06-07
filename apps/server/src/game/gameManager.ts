@@ -5,9 +5,9 @@
 // - Timer 1 s decrement le timer du joueur actif et declenche une defaite a 0.
 
 import type { Server } from "socket.io";
-import { eq, sql } from "drizzle-orm";
+import { eq, sql, and, or } from "drizzle-orm";
 import { db } from "../db/client.js";
-import { games, moves, users } from "../db/schema.js";
+import { games, moves, users, friendships } from "../db/schema.js";
 import { GameState } from "./gameState.js";
 import { findBestMove, type FindBestMoveOptions, type MoveTelemetry, type MoveResult } from "./ai.js";
 import { getValidMoves } from "./board.js";
@@ -43,6 +43,8 @@ interface ActiveGame
   aiDifficulty?: AiDifficulty;
   lastAiTelemetry?: MoveTelemetry | null;
   lastAiMove?: { col: number; row: number } | null;
+  p1EloChange?: number | null;
+  p2EloChange?: number | null;
 }
 
 class GameManager
@@ -139,6 +141,13 @@ class GameManager
     this.games.set(opts.gameId, active);
 
     this.startTimer(opts.gameId);
+
+    // Update player statuses to "in_game"
+    this.updateUserStatus(opts.player1Id, "in_game");
+    if (opts.player2Id) {
+      this.updateUserStatus(opts.player2Id, "in_game");
+    }
+
     return active;
   }
 
@@ -212,6 +221,11 @@ class GameManager
       if (g.state.status !== "in_progress") continue;
       if (g.disconnectTimers.has(userId)) continue;
       if (g.isAi) continue;
+
+      // If they are still connected to this specific game via any socket, do not start disconnect timer
+      if (this.isUserConnectedToGame(gameId, userId)) {
+        continue;
+      }
 
       const t = setTimeout(async () => {
         // Toujours en cours apres 60 s ? -> abandon.
@@ -304,26 +318,26 @@ class GameManager
     oppId: number | null,
     aiDifficulty: AiDifficulty | null,
     score: GameOutcome,
-  ): Promise<void> {
-    if (myId === null) return;
-    if (aiDifficulty !== null) return; // Guard: skip Elo update for vs-AI games
+  ): Promise<number> {
+    if (myId === null) return 0;
+    if (aiDifficulty !== null) return 0; // Guard: skip Elo update for vs-AI games
 
     const myRow = (await db.select({ rating: users.rating, gamesPlayed: users.gamesPlayed })
       .from(users)
       .where(eq(users.id, myId)))[0];
-    if (!myRow) return;
+    if (!myRow) return 0;
     const myRating = myRow.rating;
     const myGamesPlayed = myRow.gamesPlayed;
 
     let oppRating: number;
     if (oppId === null) {
-      if (aiDifficulty === null) return;
+      if (aiDifficulty === null) return 0;
       oppRating = phantomRatingForDifficulty(aiDifficulty);
     } else {
       const oppRow = (await db.select({ rating: users.rating })
         .from(users)
         .where(eq(users.id, oppId)))[0];
-      if (!oppRow) return;
+      if (!oppRow) return 0;
       oppRating = oppRow.rating;
     }
 
@@ -337,6 +351,8 @@ class GameManager
         peakRating: sql`GREATEST(${users.peakRating}, ${newRating})`,
       })
       .where(eq(users.id, myId));
+
+    return newRating - myRating;
   }
 
   private broadcastState(gameId: number): void
@@ -351,6 +367,8 @@ class GameManager
         telemetry: g.lastAiTelemetry,
       };
     }
+    if (g.p1EloChange !== undefined && g.p1EloChange !== null) payload.p1EloChange = g.p1EloChange;
+    if (g.p2EloChange !== undefined && g.p2EloChange !== null) payload.p2EloChange = g.p2EloChange;
     g.io.to(`game:${gameId}`).emit("game:state", payload);
   }
 
@@ -443,19 +461,95 @@ class GameManager
     const p1Score: GameOutcome = s.winner === 1 ? 1 : s.winner === 2 ? 0 : 0.5;
     const p2Score: GameOutcome = s.winner === 2 ? 1 : s.winner === 1 ? 0 : 0.5;
 
-    await this.applyEloForPlayer(p1, p2, aiDifficulty, p1Score);
-    if (p2 !== null) {
-      await this.applyEloForPlayer(p2, p1, aiDifficulty, p2Score);
-    }
+    const p1Delta = await this.applyEloForPlayer(p1, p2, aiDifficulty, p1Score);
+    const p2Delta = p2 !== null ? await this.applyEloForPlayer(p2, p1, aiDifficulty, p2Score) : null;
+
+    g.p1EloChange = p1Delta;
+    g.p2EloChange = p2Delta;
 
     g.io.to(`game:${gameId}`).emit("game:over", {
       gameId,
       winner: s.winner,
       winnerUserId,
       status: s.status,
+      p1EloChange: p1Delta,
+      p2EloChange: p2Delta,
     });
 
+    // Notify both players in real-time to update their game notification status
+    const finalStatus = s.status === "abandoned" ? "abandoned" : "finished";
+    if (this.io) {
+      if (p1 !== null) {
+        this.io.to(`user:${p1}`).emit("notification:game-status-update", { gameId, status: finalStatus });
+      }
+      if (p2 !== null) {
+        this.io.to(`user:${p2}`).emit("notification:game-status-update", { gameId, status: finalStatus });
+      }
+    }
+
+    // Restore player status back to online if they are still connected to Socket.io,
+    // otherwise set to offline.
+    if (p1 !== null) {
+      const p1Connected = this.io?.sockets.adapter.rooms.has(`user:${p1}`) ?? false;
+      await this.updateUserStatus(p1, p1Connected ? "online" : "offline");
+    }
+    if (p2 !== null) {
+      const p2Connected = this.io?.sockets.adapter.rooms.has(`user:${p2}`) ?? false;
+      await this.updateUserStatus(p2, p2Connected ? "online" : "offline");
+    }
+
     this.games.delete(gameId);
+  }
+
+  isUserInGame(userId: number): boolean {
+    for (const g of this.games.values()) {
+      if (g.state.status === "in_progress" && (g.state.players[1] === userId || g.state.players[2] === userId)) {
+        return true;
+      }
+    }
+    return false;
+  }
+
+  isUserConnectedToGame(gameId: number, userId: number): boolean {
+    const roomName = `game:${gameId}`;
+    const socketsInRoom = this.io?.sockets.adapter.rooms.get(roomName);
+    if (!socketsInRoom) return false;
+
+    for (const socketId of socketsInRoom) {
+      const socket = this.io?.sockets.sockets.get(socketId);
+      if (socket && socket.data.userId === userId) {
+        return true;
+      }
+    }
+    return false;
+  }
+
+  async updateUserStatus(userId: number, status: "online" | "in_game" | "offline"): Promise<void> {
+    try {
+      await db.update(users).set({ status }).where(eq(users.id, userId));
+      
+      // Notify friends of the status change
+      const friendIds = await this.getFriendIds(userId);
+      const eventName = status === "offline" ? "user:offline" : "user:online";
+      for (const fid of friendIds) {
+        this.io?.to(`user:${fid}`).emit(eventName, { userId });
+      }
+    } catch (err) {
+      console.error(`Error updating status for user ${userId}:`, err);
+    }
+  }
+
+  private async getFriendIds(userId: number): Promise<number[]> {
+    const rows = await db
+      .select()
+      .from(friendships)
+      .where(
+        and(
+          eq(friendships.status, "accepted"),
+          or(eq(friendships.userId, userId), eq(friendships.friendId, userId))
+        )
+      );
+    return rows.map((r) => (r.userId === userId ? r.friendId : r.userId));
   }
 }
 
