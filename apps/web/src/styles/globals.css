@@ -60,11 +60,13 @@
   --color-pawn-red: oklch(42% 0.19 25);        /* warm crimson — sister to brand accent (same hue 25), slightly darker so it doesn't compete with buttons */
   --color-pawn-yellow: oklch(73% 0.16 72);     /* editorial amber gold — distinct hue from the linen bg (85) so it pops */
 
-  /* Optional pawn skin colors offered in /signup?step=3. Same warm hue family
-     as the brand so the chosen pawn always looks like it belongs to the system. */
-  --color-pawn-wine: oklch(35% 0.14 15);       /* deep wine — sits below pawn-red on the warm axis */
-  --color-pawn-coral: oklch(58% 0.18 30);      /* lighter, more orange-leaning */
-  --color-pawn-brick: oklch(45% 0.12 40);      /* desaturated terracotta */
+  /* Optional pawn skin colors. */
+  --color-pawn-sunset-p1: oklch(65% 0.2 40);
+  --color-pawn-sunset-p2: oklch(60% 0.16 190);
+  --color-pawn-royal-p1: oklch(50% 0.2 280);
+  --color-pawn-royal-p2: oklch(72% 0.18 80);
+  --color-pawn-forest-p1: oklch(55% 0.18 150);
+  --color-pawn-forest-p2: oklch(65% 0.2 340);
 
   /* Optional grid skin colors (background of the playing surface). */
   --color-grid-linen: var(--color-background);  /* default — matches the page bg */
@@ -255,10 +257,13 @@
   --color-pawn-red: oklch(63% 0.21 25);        /* glowing — collapses with accent in dark */
   --color-pawn-yellow: oklch(76% 0.16 85);     /* honey #eab308 */
 
-  /* Pawn skin colors — slightly lifted so they don't disappear on the dark bg. */
-  --color-pawn-wine: oklch(50% 0.15 15);
-  --color-pawn-coral: oklch(68% 0.18 30);
-  --color-pawn-brick: oklch(55% 0.13 40);
+  /* Pawn skin colors. */
+  --color-pawn-sunset-p1: oklch(70% 0.2 40);
+  --color-pawn-sunset-p2: oklch(68% 0.16 190);
+  --color-pawn-royal-p1: oklch(60% 0.2 280);
+  --color-pawn-royal-p2: oklch(78% 0.18 80);
+  --color-pawn-forest-p1: oklch(62% 0.18 150);
+  --color-pawn-forest-p2: oklch(72% 0.2 340);
 
   /* Grid skin colors. Linen tracks the surface, ink goes deeper, slate stays
      a cool mid-tone. */
@@ -272,6 +277,54 @@
 }
 
 /* =============================================================================
+   Pawn skin brand color accent overrides (site-wide accent harmonization)
+   ============================================================================= */
+html[data-pawn-skin="sunset"] {
+  --color-accent: var(--color-pawn-sunset-p1);
+  --color-ring: var(--color-pawn-sunset-p1);
+  --color-pawn-red: var(--color-pawn-sunset-p2);
+  --color-pawn-yellow: var(--color-pawn-sunset-p1);
+  --color-pawn-red-winning-glow: oklch(60% 0.16 190 / 0.55);
+  --color-pawn-yellow-winning-glow: oklch(65% 0.2 40 / 0.55);
+}
+.dark html[data-pawn-skin="sunset"] {
+  --color-pawn-red-glow: oklch(68% 0.16 190 / 0.4);
+  --color-pawn-yellow-glow: oklch(70% 0.2 40 / 0.4);
+  --color-pawn-red-winning-glow: oklch(68% 0.16 190 / 0.55);
+  --color-pawn-yellow-winning-glow: oklch(70% 0.2 40 / 0.55);
+}
+
+html[data-pawn-skin="royal"] {
+  --color-accent: var(--color-pawn-royal-p1);
+  --color-ring: var(--color-pawn-royal-p1);
+  --color-pawn-red: var(--color-pawn-royal-p2);
+  --color-pawn-yellow: var(--color-pawn-royal-p1);
+  --color-pawn-red-winning-glow: oklch(72% 0.18 80 / 0.55);
+  --color-pawn-yellow-winning-glow: oklch(50% 0.2 280 / 0.55);
+}
+.dark html[data-pawn-skin="royal"] {
+  --color-pawn-red-glow: oklch(78% 0.18 80 / 0.4);
+  --color-pawn-yellow-glow: oklch(60% 0.2 280 / 0.4);
+  --color-pawn-red-winning-glow: oklch(78% 0.18 80 / 0.55);
+  --color-pawn-yellow-winning-glow: oklch(60% 0.2 280 / 0.55);
+}
+
+html[data-pawn-skin="forest"] {
+  --color-accent: var(--color-pawn-forest-p1);
+  --color-ring: var(--color-pawn-forest-p1);
+  --color-pawn-red: var(--color-pawn-forest-p2);
+  --color-pawn-yellow: var(--color-pawn-forest-p1);
+  --color-pawn-red-winning-glow: oklch(65% 0.2 340 / 0.55);
+  --color-pawn-yellow-winning-glow: oklch(55% 0.18 150 / 0.55);
+}
+.dark html[data-pawn-skin="forest"] {
+  --color-pawn-red-glow: oklch(72% 0.2 340 / 0.4);
+  --color-pawn-yellow-glow: oklch(62% 0.18 150 / 0.4);
+  --color-pawn-red-winning-glow: oklch(72% 0.2 340 / 0.55);
+  --color-pawn-yellow-winning-glow: oklch(62% 0.18 150 / 0.55);
+}
+
+/* =============================================================================
  * @layer base — element defaults applied through tokens
  * ============================================================================= */
 @layer base {
@@ -279,6 +332,11 @@
   ::before,
   ::after {
     border-color: var(--color-border);
+  }
+
+  button,
+  [role="button"] {
+    cursor: pointer;
   }
 
   html {
@@ -351,7 +409,7 @@
 }
 .dark .pawn-red {
   box-shadow:
-    0 0 12px oklch(63% 0.21 25 / 0.4),
+    0 0 12px var(--color-pawn-red-glow, oklch(63% 0.21 25 / 0.4)),
     inset 0 -2px 4px oklch(0% 0 0 / 0.4);
 }
 
@@ -364,7 +422,7 @@
 }
 .dark .pawn-yellow {
   box-shadow:
-    0 0 12px oklch(76% 0.16 85 / 0.4),
+    0 0 12px var(--color-pawn-yellow-glow, oklch(76% 0.16 85 / 0.4)),
     inset 0 -2px 4px oklch(0% 0 0 / 0.4);
 }
 
@@ -1032,19 +1090,19 @@ html.hero-seen .page-reveal {
 }
 .winning-cell.pawn-red,
 .winning-cell.bg-pawn-red {
-  --winning-glow: oklch(42% 0.19 25 / 0.55);
+  --winning-glow: var(--color-pawn-red-winning-glow, oklch(42% 0.19 25 / 0.55));
 }
 .winning-cell.pawn-yellow,
 .winning-cell.bg-pawn-yellow {
-  --winning-glow: oklch(73% 0.16 72 / 0.55);
+  --winning-glow: var(--color-pawn-yellow-winning-glow, oklch(73% 0.16 72 / 0.55));
 }
 .dark .winning-cell.pawn-red,
 .dark .winning-cell.bg-pawn-red {
-  --winning-glow: oklch(63% 0.21 25 / 0.55);
+  --winning-glow: var(--color-pawn-red-winning-glow, oklch(63% 0.21 25 / 0.55));
 }
 .dark .winning-cell.pawn-yellow,
 .dark .winning-cell.bg-pawn-yellow {
-  --winning-glow: oklch(76% 0.16 85 / 0.55);
+  --winning-glow: var(--color-pawn-yellow-winning-glow, oklch(76% 0.16 85 / 0.55));
 }
 @keyframes winning-pulse {
   0%, 100% {
@@ -1161,4 +1219,235 @@ body.is-scrolled .topnav-bar {
   .topnav-bar {
     transition: none;
   }
+}
+
+/* =============================================================================
+   Scrollbar styling best practices (eliminates gutter/scrollbar when not scrollable)
+   ============================================================================= */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: var(--color-border) transparent;
+}
+
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--color-border);
+  border-radius: 9999px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--color-accent);
+}
+
+/* Hover-only scrollbars to keep clean lists scrollbar-free unless hovered/scrolling */
+.hover-scrollbar {
+  scrollbar-width: none; /* Firefox: hide unless hovered */
+}
+
+.hover-scrollbar::-webkit-scrollbar {
+  width: 4px;
+  height: 4px;
+}
+
+.hover-scrollbar::-webkit-scrollbar-thumb {
+  background: transparent; /* Webkit: hide thumb by default */
+  border-radius: 9999px;
+}
+
+.hover-scrollbar:hover {
+  scrollbar-width: thin; /* Firefox: show thin scrollbar on hover */
+}
+
+.hover-scrollbar:hover::-webkit-scrollbar-thumb {
+  background: var(--color-border); /* Webkit: show thumb on hover */
+}
+
+/* Complete scrollbar hiding (retains scroll functionality) */
+.no-scrollbar {
+  -ms-overflow-style: none;  /* IE and Edge */
+  scrollbar-width: none;  /* Firefox */
+}
+.no-scrollbar::-webkit-scrollbar {
+  display: none; /* Webkit */
+}
+
+/* =============================================================================
+   Pawn skin variants: sunset, royal, forest (dome box-shadow in light mode,
+   glowing halo box-shadow in dark mode)
+   ============================================================================= */
+@utility pawn-sunset-p1 {
+  background-color: var(--color-pawn-sunset-p1);
+  box-shadow:
+    inset 0 -2px 3px oklch(0% 0 0 / 0.18),
+    inset 0 1px 1px oklch(100% 0 0 / 0.25),
+    0 1px 2px oklch(0% 0 0 / 0.15);
+}
+.dark .pawn-sunset-p1 {
+  box-shadow:
+    0 0 12px oklch(70% 0.2 40 / 0.4),
+    inset 0 -2px 4px oklch(0% 0 0 / 0.4);
+}
+
+@utility pawn-sunset-p2 {
+  background-color: var(--color-pawn-sunset-p2);
+  box-shadow:
+    inset 0 -2px 3px oklch(0% 0 0 / 0.18),
+    inset 0 1px 1px oklch(100% 0 0 / 0.25),
+    0 1px 2px oklch(0% 0 0 / 0.15);
+}
+.dark .pawn-sunset-p2 {
+  box-shadow:
+    0 0 12px oklch(68% 0.16 190 / 0.4),
+    inset 0 -2px 4px oklch(0% 0 0 / 0.4);
+}
+
+@utility pawn-royal-p1 {
+  background-color: var(--color-pawn-royal-p1);
+  box-shadow:
+    inset 0 -2px 3px oklch(0% 0 0 / 0.18),
+    inset 0 1px 1px oklch(100% 0 0 / 0.25),
+    0 1px 2px oklch(0% 0 0 / 0.15);
+}
+.dark .pawn-royal-p1 {
+  box-shadow:
+    0 0 12px oklch(60% 0.2 280 / 0.4),
+    inset 0 -2px 4px oklch(0% 0 0 / 0.4);
+}
+
+@utility pawn-royal-p2 {
+  background-color: var(--color-pawn-royal-p2);
+  box-shadow:
+    inset 0 -2px 3px oklch(0% 0 0 / 0.18),
+    inset 0 1px 1px oklch(100% 0 0 / 0.25),
+    0 1px 2px oklch(0% 0 0 / 0.15);
+}
+.dark .pawn-royal-p2 {
+  box-shadow:
+    0 0 12px oklch(78% 0.18 80 / 0.4),
+    inset 0 -2px 4px oklch(0% 0 0 / 0.4);
+}
+
+@utility pawn-forest-p1 {
+  background-color: var(--color-pawn-forest-p1);
+  box-shadow:
+    inset 0 -2px 3px oklch(0% 0 0 / 0.18),
+    inset 0 1px 1px oklch(100% 0 0 / 0.25),
+    0 1px 2px oklch(0% 0 0 / 0.15);
+}
+.dark .pawn-forest-p1 {
+  box-shadow:
+    0 0 12px oklch(62% 0.18 150 / 0.4),
+    inset 0 -2px 4px oklch(0% 0 0 / 0.4);
+}
+
+@utility pawn-forest-p2 {
+  background-color: var(--color-pawn-forest-p2);
+  box-shadow:
+    inset 0 -2px 3px oklch(0% 0 0 / 0.18),
+    inset 0 1px 1px oklch(100% 0 0 / 0.25),
+    0 1px 2px oklch(0% 0 0 / 0.15);
+}
+.dark .pawn-forest-p2 {
+  box-shadow:
+    0 0 12px oklch(72% 0.2 340 / 0.4),
+    inset 0 -2px 4px oklch(0% 0 0 / 0.4);
+}
+
+/* Winning line glows for the new pawn skins */
+.winning-cell.pawn-sunset-p1,
+.winning-cell.bg-pawn-sunset-p1 {
+  --winning-glow: oklch(65% 0.2 40 / 0.55);
+}
+.winning-cell.pawn-sunset-p2,
+.winning-cell.bg-pawn-sunset-p2 {
+  --winning-glow: oklch(60% 0.16 190 / 0.55);
+}
+.winning-cell.pawn-royal-p1,
+.winning-cell.bg-pawn-royal-p1 {
+  --winning-glow: oklch(50% 0.2 280 / 0.55);
+}
+.winning-cell.pawn-royal-p2,
+.winning-cell.bg-pawn-royal-p2 {
+  --winning-glow: oklch(72% 0.18 80 / 0.55);
+}
+.winning-cell.pawn-forest-p1,
+.winning-cell.bg-pawn-forest-p1 {
+  --winning-glow: oklch(55% 0.18 150 / 0.55);
+}
+.winning-cell.pawn-forest-p2,
+.winning-cell.bg-pawn-forest-p2 {
+  --winning-glow: oklch(65% 0.2 340 / 0.55);
+}
+
+/* Dark mode overrides for winning glows */
+.dark .winning-cell.pawn-sunset-p1,
+.dark .winning-cell.bg-pawn-sunset-p1 {
+  --winning-glow: oklch(70% 0.2 40 / 0.55);
+}
+.dark .winning-cell.pawn-sunset-p2,
+.dark .winning-cell.bg-pawn-sunset-p2 {
+  --winning-glow: oklch(68% 0.16 190 / 0.55);
+}
+.dark .winning-cell.pawn-royal-p1,
+.dark .winning-cell.bg-pawn-royal-p1 {
+  --winning-glow: oklch(60% 0.2 280 / 0.55);
+}
+.dark .winning-cell.pawn-royal-p2,
+.dark .winning-cell.bg-pawn-royal-p2 {
+  --winning-glow: oklch(78% 0.18 80 / 0.55);
+}
+.dark .winning-cell.pawn-forest-p1,
+.dark .winning-cell.bg-pawn-forest-p1 {
+  --winning-glow: oklch(62% 0.18 150 / 0.55);
+}
+.dark .winning-cell.pawn-forest-p2,
+.dark .winning-cell.bg-pawn-forest-p2 {
+  --winning-glow: oklch(72% 0.2 340 / 0.55);
+}
+
+/* =============================================================================
+   Board variant: Frosted Obsidian (replacing classic)
+   ============================================================================= */
+@utility board-frosted-obsidian {
+  /* Translucent dark obsidian glass in light mode, heavy blur, inset rim highlights */
+  background-color: oklch(25% 0.02 240 / 0.75);
+  backdrop-filter: blur(16px) saturate(1.2);
+  -webkit-backdrop-filter: blur(16px) saturate(1.2);
+  border: 1px solid oklch(100% 0 0 / 0.15);
+  box-shadow:
+    inset 0 1px 1px oklch(100% 0 0 / 0.2),
+    inset 0 -1px 1px oklch(0% 0 0 / 0.4);
+}
+.dark .board-frosted-obsidian {
+  /* Sleek contrasting obsidian glass in dark mode, soft drop shadow */
+  background-color: oklch(24% 0.02 240 / 0.65);
+  backdrop-filter: blur(20px) saturate(1.4);
+  -webkit-backdrop-filter: blur(20px) saturate(1.4);
+  border: 1px solid oklch(100% 0 0 / 0.18);
+  box-shadow:
+    inset 0 -1.5px 0 oklch(0% 0 0 / 0.5),
+    0 20px 40px -10px oklch(0% 0 0 / 0.65);
+}
+
+@utility board-frosted-obsidian-cell {
+  /* Empty holes carved into the obsidian plate showing page background */
+  background-color: oklch(96% 0.015 85 / 0.5);
+  box-shadow:
+    inset 0 2px 4px oklch(0% 0 0 / 0.45),
+    inset 0 -1px 1px oklch(100% 0 0 / 0.12);
+}
+.dark .board-frosted-obsidian-cell {
+  /* Deeper carved hollows in dark mode */
+  background-color: oklch(10% 0 0 / 0.65);
+  box-shadow:
+    inset 0 2px 5px oklch(0% 0 0 / 0.8),
+    inset 0 -1px 1px oklch(100% 0 0 / 0.05);
 }

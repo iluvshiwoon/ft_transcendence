@@ -28,11 +28,18 @@ import {
 type Theme = "light" | "dark" | "auto";
 type Status = "idle" | "saving" | "saved" | "error";
 
-// Backend allow-list (apps/server/src/routes/users.ts:34). Mirrored in
-// SettingsProfile.tsx / Step3Profile.tsx.
+// Backend allow-list. Mirrored in apps/server/src/routes/users.ts:33-34
+// and Step3Profile.tsx — if you add a skin there, add it here too.
+const PAWN_SKINS = [
+  { id: "default", label: "Classic (Red & Yellow)", swatchClass: "bg-gradient-to-r from-pawn-red to-pawn-yellow" },
+  { id: "sunset",  label: "Sunset Glow (Orange & Teal)", swatchClass: "bg-gradient-to-r from-pawn-sunset-p1 to-pawn-sunset-p2" },
+  { id: "royal",   label: "Royal Velvet (Indigo & Amber)", swatchClass: "bg-gradient-to-r from-pawn-royal-p1 to-pawn-royal-p2" },
+  { id: "forest",  label: "Forest Mint (Emerald & Rose)", swatchClass: "bg-gradient-to-r from-pawn-forest-p1 to-pawn-forest-p2" },
+] as const;
+
 const GRID_SKINS = [
   { id: "liquid-glass", label: "Liquid glass", swatchClass: "bg-sky-200 dark:bg-sky-900" },
-  { id: "default", label: "Classic", swatchClass: "bg-board" },
+  { id: "frosted-obsidian", label: "Frosted Obsidian", swatchClass: "bg-stone-800 dark:bg-stone-950 border border-white/10" },
 ] as const;
 
 const THEME_OPTIONS: { id: Theme; label: string }[] = [
@@ -54,7 +61,10 @@ export function SettingsAppearance({ initial }: SettingsAppearanceProps) {
   const [gridError, setGridError] = useState<string | null>(null);
   const [, startGridTransition] = useTransition();
 
-
+  const [pawnSkin, setPawnSkin] = useState<string>(initial.pawnSkin);
+  const [pawnStatus, setPawnStatus] = useState<Status>("idle");
+  const [pawnError, setPawnError] = useState<string | null>(null);
+  const [, startPawnTransition] = useTransition();
 
   return (
     <section
@@ -92,7 +102,32 @@ export function SettingsAppearance({ initial }: SettingsAppearanceProps) {
           status={gridStatus}
           error={gridError}
         />
-
+        <PawnSkinBlock
+          value={pawnSkin}
+          onChange={(next) => {
+            const prev = pawnSkin;
+            setPawnSkin(next); // optimistic
+            document.documentElement.setAttribute("data-pawn-skin", next);
+            setPawnStatus("saving");
+            setPawnError(null);
+            startPawnTransition(async () => {
+              try {
+                await updateProfile({ pawnSkin: next });
+                setPawnStatus("saved");
+                setTimeout(() => setPawnStatus("idle"), 1500);
+              } catch (e) {
+                setPawnSkin(prev);
+                document.documentElement.setAttribute("data-pawn-skin", prev);
+                setPawnStatus("error");
+                setPawnError(
+                  e instanceof ProfileApiError ? e.message : "Save failed",
+                );
+              }
+            });
+          }}
+          status={pawnStatus}
+          error={pawnError}
+        />
       </div>
     </section>
   );
@@ -101,22 +136,8 @@ export function SettingsAppearance({ initial }: SettingsAppearanceProps) {
 // ─── Theme ────────────────────────────────────────────────────────────
 
 function ThemeBlock() {
-  // The window.__4thewin* helpers are set by RootLayout.astro's IIFE;
-  // they may not exist in early hydration flashes (very rare) so the
-  // typecheck is loose and we fall back to defaults.
   const [theme, setThemeState] = useState<Theme>("auto");
 
-  // Keep the radio in sync with whatever the DOM's authoritative state is.
-  // Three sources can change the theme out-of-band from this radio:
-  //   1. TopNav's [data-theme-toggle] button (light ↔ dark).
-  //   2. The OS-pref listener when the user is in "auto".
-  //   3. Another tab on the same domain (storage event, currently unused
-  //      but cheap to support).
-  // The IIFE dispatches "themechange" on any of these; we re-read the
-  // resolved value and patch state. Without this, the radio sticks on
-  // whatever the user last clicked here even if the DOM has moved on —
-  // e.g. user picks auto, then clicks the TopNav toggle (which forces
-  // light/dark) — the radio would still read "auto" until a refresh.
   useEffect(() => {
     function onThemeChange() {
       const get = (window as unknown as { __4thewinGetTheme?: () => string })
@@ -126,7 +147,6 @@ function ThemeBlock() {
       setThemeState((prev) => (prev === next ? prev : next));
     }
 
-    // Sync initial state safely on client mount to avoid hydration mismatch
     onThemeChange();
 
     window.addEventListener("themechange", onThemeChange);
@@ -180,9 +200,12 @@ function GridSkinBlock({
   error: string | null;
 }) {
   return (
-    <div className="flex flex-col gap-2">
+    <div className="flex flex-col gap-2 border-t border-border pt-6">
       <p className="font-mono text-mono-sm uppercase text-muted-foreground">Grid skin</p>
-      <ul role="radiogroup" aria-label="Grid skin" className="flex flex-wrap gap-2">
+      <p className="font-sans text-sm text-muted-foreground">
+        Visual theme of the Connect 4 playing grid.
+      </p>
+      <ul role="radiogroup" aria-label="Grid skin" className="mt-1 flex flex-wrap gap-2">
         {GRID_SKINS.map((opt) => (
           <li key={opt.id}>
             <button
@@ -201,6 +224,55 @@ function GridSkinBlock({
                 className={cn("inline-block size-3 shrink-0 rounded-full", opt.swatchClass)}
               />
               {opt.label}
+            </button>
+          </li>
+        ))}
+      </ul>
+      {status === "error" ? <AlertBox>{error ?? "Save failed"}</AlertBox> : null}
+    </div>
+  );
+}
+
+// ─── Pawn skin (auto-save) ────────────────────────────────────────────
+
+function PawnSkinBlock({
+  value,
+  onChange,
+  status,
+  error,
+}: {
+  value: string;
+  onChange: (next: string) => void;
+  status: Status;
+  error: string | null;
+}) {
+  return (
+    <div className="flex flex-col gap-2 border-t border-border pt-6">
+      <p className="font-mono text-mono-sm uppercase text-muted-foreground">Pawn skin</p>
+      <p className="font-sans text-sm text-muted-foreground">
+        Your in-game piece set on the board.
+      </p>
+      <ul role="radiogroup" aria-label="Pawn skin" className="mt-1 flex flex-wrap gap-2">
+        {PAWN_SKINS.map((skin) => (
+          <li key={skin.id}>
+            <button
+              type="button"
+              role="radio"
+              aria-checked={value === skin.id ? "true" : "false"}
+              aria-label={skin.label}
+              title={skin.label}
+              data-state={value === skin.id ? "checked" : "unchecked"}
+              onClick={() => value !== skin.id && onChange(skin.id)}
+              className={cn(
+                PILL_CLS,
+                "inline-flex items-center gap-2",
+              )}
+            >
+              <span
+                aria-hidden="true"
+                className={cn("inline-block size-3 shrink-0 rounded-full", skin.swatchClass)}
+              />
+              {skin.label}
             </button>
           </li>
         ))}
