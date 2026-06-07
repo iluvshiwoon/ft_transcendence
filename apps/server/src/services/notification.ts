@@ -4,7 +4,8 @@
 
 import type { Server } from "socket.io";
 import { db } from "../db/client.js";
-import { notifications } from "../db/schema.js";
+import { notifications, users } from "../db/schema.js";
+import { eq } from "drizzle-orm";
 
 export type NotificationType =
   | "friend_request"
@@ -36,8 +37,31 @@ export async function sendNotification(
     })
     .returning();
 
+  let enriched = { ...created };
+  const payload = created.content as any;
+  if (payload?.from?.id) {
+    const [u] = await db
+      .select({
+        id: users.id,
+        username: users.username,
+        avatarUrl: users.avatarUrl,
+      })
+      .from(users)
+      .where(eq(users.id, Number(payload.from.id)));
+    if (u) {
+      enriched.content = {
+        ...payload,
+        from: {
+          ...payload.from,
+          username: u.username,
+          avatarUrl: u.avatarUrl,
+        },
+      };
+    }
+  }
+
   // Push live si Socket.io est initialisé.
   if (ioRef) {
-    ioRef.to(`user:${userId}`).emit("notification:new", created);
+    ioRef.to(`user:${userId}`).emit("notification:new", enriched);
   }
 }

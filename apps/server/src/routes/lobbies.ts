@@ -7,12 +7,13 @@
 // POST /api/lobbies/:id/start — démarre la partie (créateur seulement, 2 joueurs requis)
 
 import type { FastifyInstance } from "fastify";
-import { and, eq } from "drizzle-orm";
+import { and, eq, lt } from "drizzle-orm";
 import { db } from "../db/client.js";
-import { lobbies, games } from "../db/schema.js";
+import { lobbies, games, users } from "../db/schema.js";
 import { requireAuth } from "../auth/middleware.js";
 import { gameManager } from "../game/gameManager.js";
 import { broadcastLobbyUpdate } from "../socket/lobby.js";
+import { sendNotification } from "../services/notification.js";
 
 interface CreateLobbyBody {
   isPublic?: boolean;
@@ -48,6 +49,14 @@ export async function lobbyRoutes(app: FastifyInstance) {
       time?: string;
     };
 
+    // Auto-expire old lobbies before listing
+    const expiryTime = 10 * 60 * 1000;
+    const cutoff = new Date(Date.now() - expiryTime);
+    await db
+      .update(lobbies)
+      .set({ status: "closed" })
+      .where(and(eq(lobbies.status, "waiting"), lt(lobbies.createdAt, cutoff)));
+
     const filters = [];
     if (mode) filters.push(eq(lobbies.mode, mode as "connect4" | "connect5"));
     if (status) filters.push(eq(lobbies.status, status as "waiting" | "in_progress" | "closed"));
@@ -61,16 +70,66 @@ export async function lobbyRoutes(app: FastifyInstance) {
     return reply.send(rows);
   });
 
+  // GET /api/lobbies/:id — obtenir le détail et statut d'un lobby
+  app.get<{ Params: { id: string } }>(
+    "/lobbies/:id",
+    { preHandler: requireAuth },
+    async (request, reply) => {
+      const lobbyId = parseInt(request.params.id);
+      if (isNaN(lobbyId)) return reply.code(400).send({ error: "Lobby ID invalide" });
+
+      let [lobby] = await db.select().from(lobbies).where(eq(lobbies.id, lobbyId));
+      if (!lobby) return reply.status(404).send({ error: "Lobby introuvable" });
+
+      // Check for expiration (10 minutes)
+      const expiryTime = 10 * 60 * 1000;
+      if (lobby.status === "waiting" && Date.now() - new Date(lobby.createdAt).getTime() > expiryTime) {
+        [lobby] = await db
+          .update(lobbies)
+          .set({ status: "closed" })
+          .where(eq(lobbies.id, lobbyId))
+          .returning();
+        await broadcastLobbyUpdate(app.io, lobbyId);
+      }
+
+      return reply.send(lobby);
+    }
+  );
+
+  // POST /api/lobbies/:id/decline — décliner un lobby
+  app.post<{ Params: { id: string } }>(
+    "/lobbies/:id/decline",
+    { preHandler: requireAuth },
+    async (request, reply) => {
+      const lobbyId = parseInt(request.params.id);
+      const [lobby] = await db.select().from(lobbies).where(eq(lobbies.id, lobbyId));
+      if (!lobby) return reply.status(404).send({ error: "Lobby introuvable" });
+
+      if (lobby.status !== "waiting") {
+        return reply.status(400).send({ error: "Le lobby n'est plus en attente" });
+      }
+
+      const [updated] = await db
+        .update(lobbies)
+        .set({ status: "closed" })
+        .where(eq(lobbies.id, lobbyId))
+        .returning();
+
+      await broadcastLobbyUpdate(app.io, lobbyId);
+      return reply.send(updated);
+    }
+  );
+
   // POST /api/lobbies — créer un lobby
   app.post<{ Body: CreateLobbyBody }>(
     "/lobbies",
     { preHandler: requireAuth },
     async (request, reply) => {
-      const { isPublic = true, mode = "connect4", timePerPlayerSeconds = 300 } = request.body ?? {};
+      const { isPublic = true, mode = "connect4", timePerPlayerSeconds = 180 } = request.body ?? {};
 
-      const validTimes = [300, 600, 3600];
+      const validTimes = [180, 600, 3600];
       if (!validTimes.includes(timePerPlayerSeconds)) {
-        return reply.status(400).send({ error: "timePerPlayerSeconds doit être 300, 600 ou 3600" });
+        return reply.status(400).send({ error: "timePerPlayerSeconds doit être 180, 600 ou 3600" });
       }
 
       const code = await uniqueCode();
@@ -98,8 +157,20 @@ export async function lobbyRoutes(app: FastifyInstance) {
       const lobbyId = parseInt(request.params.id);
       const userId = request.userId!;
 
-      const [lobby] = await db.select().from(lobbies).where(eq(lobbies.id, lobbyId));
+      let [lobby] = await db.select().from(lobbies).where(eq(lobbies.id, lobbyId));
       if (!lobby) return reply.status(404).send({ error: "Lobby introuvable" });
+
+      // Check expiration before verifying status
+      const expiryTime = 10 * 60 * 1000;
+      if (lobby.status === "waiting" && Date.now() - new Date(lobby.createdAt).getTime() > expiryTime) {
+        [lobby] = await db
+          .update(lobbies)
+          .set({ status: "closed" })
+          .where(eq(lobbies.id, lobbyId))
+          .returning();
+        await broadcastLobbyUpdate(app.io, lobbyId);
+      }
+
       if (lobby.status !== "waiting")
         return reply.status(400).send({ error: "Ce lobby n'accepte plus de joueurs" });
       if (lobby.player2Id !== null)
@@ -116,11 +187,55 @@ export async function lobbyRoutes(app: FastifyInstance) {
 
       const [updated] = await db
         .update(lobbies)
-        .set({ player2Id: userId })
+        .set({ player2Id: userId, status: !lobby.isPublic ? "in_progress" : "waiting" })
         .where(eq(lobbies.id, lobbyId))
         .returning();
 
-      await broadcastLobbyUpdate(app.io, lobbyId);
+      if (!lobby.isPublic) {
+        // Crée la partie en DB
+        const [game] = await db
+          .insert(games)
+          .values({
+            player1Id: lobby.creatorId,
+            player2Id: userId,
+            isAiOpponent: false,
+            mode: lobby.mode,
+            timePerPlayerSeconds: lobby.timePerPlayerSeconds,
+            status: "in_progress",
+            startedAt: new Date(),
+          })
+          .returning();
+
+        // Enregistre la partie active en memoire (autorite serveur).
+        gameManager.createGame({
+          gameId: game.id,
+          player1Id: lobby.creatorId,
+          player2Id: userId,
+          timePerPlayerSeconds: lobby.timePerPlayerSeconds,
+          isAi: false,
+        });
+
+        // Notifie les 2 joueurs via leur room personnelle qu'ils doivent rejoindre la partie.
+        app.io.to(`user:${lobby.creatorId}`).emit("game:start", { gameId: game.id });
+        app.io.to(`user:${userId}`).emit("game:start", { gameId: game.id });
+
+        await broadcastLobbyUpdate(app.io, lobbyId);
+
+        // Envoyer une notification game_invite au créateur (User A)
+        const [meUser] = await db.select().from(users).where(eq(users.id, userId));
+        await sendNotification(lobby.creatorId, "game_invite", {
+          gameId: game.id,
+          lobbyId: lobby.id,
+          from: {
+            id: userId,
+            username: meUser.username,
+            avatarUrl: meUser.avatarUrl,
+          },
+        });
+      } else {
+        await broadcastLobbyUpdate(app.io, lobbyId);
+      }
+
       return reply.send(updated);
     }
   );

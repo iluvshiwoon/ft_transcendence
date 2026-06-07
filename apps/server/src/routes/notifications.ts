@@ -6,9 +6,9 @@
 // PATCH /api/notifications/read-all     — marque toutes mes notifs comme lues
 
 import type { FastifyInstance } from "fastify";
-import { and, asc, count, desc, eq } from "drizzle-orm";
+import { and, asc, count, desc, eq, inArray } from "drizzle-orm";
 import { db } from "../db/client.js";
-import { notifications } from "../db/schema.js";
+import { notifications, users, games, friendships } from "../db/schema.js";
 import { requireAuth } from "../auth/middleware.js";
 
 export async function notificationRoutes(app: FastifyInstance) {
@@ -24,7 +24,101 @@ export async function notificationRoutes(app: FastifyInstance) {
         .orderBy(asc(notifications.read), desc(notifications.createdAt))
         .limit(50);
 
-      return reply.send(rows);
+      // Collect all user IDs, game IDs, and friendship IDs to resolve in one query
+      const userIdsToFetch = new Set<number>();
+      const gameIdsToFetch = new Set<number>();
+      const friendshipIdsToFetch = new Set<number>();
+      for (const row of rows) {
+        const content = row.content as any;
+        if (content?.from?.id) {
+          userIdsToFetch.add(Number(content.from.id));
+        }
+        if (row.type === "game_invite" || row.type === "game_finished") {
+          if (content?.gameId) {
+            gameIdsToFetch.add(Number(content.gameId));
+          }
+        }
+        if (row.type === "friend_request") {
+          if (content?.friendshipId) {
+            friendshipIdsToFetch.add(Number(content.friendshipId));
+          }
+        }
+      }
+
+      const usersMap = new Map<number, { id: number; username: string; avatarUrl: string | null }>();
+      if (userIdsToFetch.size > 0) {
+        const fetchedUsers = await db
+          .select({
+            id: users.id,
+            username: users.username,
+            avatarUrl: users.avatarUrl,
+          })
+          .from(users)
+          .where(inArray(users.id, Array.from(userIdsToFetch)));
+        for (const u of fetchedUsers) {
+          usersMap.set(u.id, u);
+        }
+      }
+
+      const gamesMap = new Map<number, string>();
+      if (gameIdsToFetch.size > 0) {
+        const fetchedGames = await db
+          .select({
+            id: games.id,
+            status: games.status,
+          })
+          .from(games)
+          .where(inArray(games.id, Array.from(gameIdsToFetch)));
+        for (const g of fetchedGames) {
+          gamesMap.set(g.id, g.status);
+        }
+      }
+
+      const friendshipsMap = new Map<number, string>();
+      if (friendshipIdsToFetch.size > 0) {
+        const fetchedFriendships = await db
+          .select({
+            id: friendships.id,
+            status: friendships.status,
+          })
+          .from(friendships)
+          .where(inArray(friendships.id, Array.from(friendshipIdsToFetch)));
+        for (const f of fetchedFriendships) {
+          friendshipsMap.set(f.id, f.status);
+        }
+      }
+
+      // Enrich rows
+      const enrichedRows = rows.map((row) => {
+        const content = { ...(row.content as any) };
+        if (content?.from?.id) {
+          const u = usersMap.get(Number(content.from.id));
+          if (u) {
+            content.from = {
+              ...content.from,
+              username: u.username,
+              avatarUrl: u.avatarUrl,
+            };
+          }
+        }
+        if (row.type === "game_invite" || row.type === "game_finished") {
+          if (content?.gameId) {
+            content.gameStatus = gamesMap.get(Number(content.gameId)) || "unknown";
+          }
+        }
+        if (row.type === "friend_request") {
+          if (content?.friendshipId) {
+            const fId = Number(content.friendshipId);
+            content.friendshipStatus = friendshipsMap.get(fId) || "declined";
+          }
+        }
+        return {
+          ...row,
+          content,
+        };
+      });
+
+      return reply.send(enrichedRows);
     }
   );
 
@@ -88,6 +182,18 @@ export async function notificationRoutes(app: FastifyInstance) {
         );
 
       return reply.send({ message: "All marked as read" });
+    }
+  );
+
+  app.delete(
+    "/notifications",
+    { preHandler: requireAuth },
+    async (request, reply) => {
+      await db
+        .delete(notifications)
+        .where(eq(notifications.userId, request.userId!));
+
+      return reply.send({ message: "All notifications cleared" });
     }
   );
 }

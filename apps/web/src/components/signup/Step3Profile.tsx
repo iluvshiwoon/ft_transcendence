@@ -33,15 +33,15 @@ const PAWN_SKINS: SkinOption[] = [
   // the dome/drop shading lives in the `pawn-*` utility, used in the actual
   // game pieces). Token-driven: a single change in globals.css updates every
   // reference and supports both light and dark modes.
-  { id: "default", label: "Classic", swatchClass: "bg-pawn-red" },
-  { id: "wine", label: "Wine", swatchClass: "bg-pawn-wine" },
-  { id: "coral", label: "Coral", swatchClass: "bg-pawn-coral" },
-  { id: "brick", label: "Brick", swatchClass: "bg-pawn-brick" },
+  { id: "default", label: "Classic", swatchClass: "bg-gradient-to-r from-pawn-red to-pawn-yellow" },
+  { id: "sunset", label: "Sunset Glow", swatchClass: "bg-gradient-to-r from-pawn-sunset-p1 to-pawn-sunset-p2" },
+  { id: "royal", label: "Royal Velvet", swatchClass: "bg-gradient-to-r from-pawn-royal-p1 to-pawn-royal-p2" },
+  { id: "forest", label: "Forest Mint", swatchClass: "bg-gradient-to-r from-pawn-forest-p1 to-pawn-forest-p2" },
 ];
 
 const GRID_SKINS: SkinOption[] = [
   { id: "liquid-glass", label: "Liquid glass", swatchClass: "bg-sky-200 dark:bg-sky-900" },
-  { id: "default", label: "Classic", swatchClass: "bg-board" },
+  { id: "frosted-obsidian", label: "Frosted Obsidian", swatchClass: "bg-stone-800 dark:bg-stone-950 border border-white/10" },
 ];
 
 export function Step3Profile() {
@@ -247,7 +247,10 @@ export function Step3Profile() {
                 skin={skin}
                 groupName="pawn-skin"
                 selected={pawnSkin === skin.id}
-                onSelect={() => setPawnSkin(skin.id)}
+                onSelect={() => {
+                  setPawnSkin(skin.id);
+                  document.documentElement.setAttribute("data-pawn-skin", skin.id);
+                }}
                 shape="circle"
               />
             ))}
@@ -344,7 +347,7 @@ function SkinSwatch({
           )}
         />
       </span>
-      <span className="font-mono text-mono-sm uppercase text-muted-foreground whitespace-nowrap">
+      <span className="font-mono text-mono-sm uppercase text-muted-foreground">
         {skin.label}
       </span>
     </label>

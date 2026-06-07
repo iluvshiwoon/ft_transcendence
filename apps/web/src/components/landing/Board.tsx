@@ -42,7 +42,8 @@ export type BoardVariant =
   | "none"
   | "recessed"
   | "liquid-glass"
-  | "raised";
+  | "raised"
+  | "frosted-obsidian";
 
 export const ROWS = 6;
 export const COLS = 7;
@@ -86,6 +87,15 @@ interface BoardProps {
   className?: string;
   /** EXPERIMENT — visual variant. Defaults to "default" (current style). */
   variant?: BoardVariant;
+  /** Custom pawn skin selected by the user. */
+  pawnSkin?: string;
+  
+  // Socket game properties
+  gameId?: number;
+  userId?: number;
+  difficulty?: "easy" | "medium" | "hard";
+  timeLimit?: number;
+  isAi?: boolean;
 }
 
 function cellLabel(cell: Cell, row: number, col: number): string {
@@ -97,6 +107,8 @@ function cellLabel(cell: Cell, row: number, col: number): string {
 /** Plate-level classes per variant. */
 function plateClasses(variant: BoardVariant): string {
   switch (variant) {
+    case "frosted-obsidian":
+      return "board-frosted-obsidian shadow-2xl";
     case "branded":
       return "board-branded shadow-2xl";
     case "glass":
@@ -122,6 +134,8 @@ function plateClasses(variant: BoardVariant): string {
 /** Empty-cell classes per variant. */
 function emptyCellClasses(variant: BoardVariant): string {
   switch (variant) {
+    case "frosted-obsidian":
+      return "board-frosted-obsidian-cell";
     case "branded":
       return "board-branded-cell";
     case "glass":
@@ -143,7 +157,35 @@ function emptyCellClasses(variant: BoardVariant): string {
   }
 }
 
-export function Board({ pieces, className, variant = "default" }: BoardProps) {
+function getP1Classes(skin: string) {
+  switch (skin) {
+    case "sunset": return { bg: "bg-pawn-sunset-p1", top: "pawn-sunset-p1" };
+    case "royal":  return { bg: "bg-pawn-royal-p1",  top: "pawn-royal-p1"  };
+    case "forest": return { bg: "bg-pawn-forest-p1", top: "pawn-forest-p1" };
+    default:       return { bg: "bg-pawn-yellow",    top: "pawn-yellow"    };
+  }
+}
+
+function getP2Classes(skin: string) {
+  switch (skin) {
+    case "sunset": return { bg: "bg-pawn-sunset-p2", top: "pawn-sunset-p2" };
+    case "royal":  return { bg: "bg-pawn-royal-p2",  top: "pawn-royal-p2"  };
+    case "forest": return { bg: "bg-pawn-forest-p2", top: "pawn-forest-p2" };
+    default:       return { bg: "bg-pawn-red",       top: "pawn-red"       };
+  }
+}
+
+export function Board({
+  pieces,
+  className,
+  variant = "default",
+  pawnSkin = "default",
+  gameId,
+  userId,
+  difficulty,
+  timeLimit,
+  isAi,
+}: BoardProps) {
   // Subscribe to the play store. SSR returns initialState (view=null), so
   // we fall back to the explicit `pieces` prop or WIREFRAME_BOARD until the
   // server-side game session is up.
@@ -153,10 +195,25 @@ export function Board({ pieces, className, variant = "default" }: BoardProps) {
     playStore.getSnapshot,
   );
 
-  // Kick off /api/play/start once on mount (idempotent inside the store).
+  // Connect socket or initialize anonymous game on mount / settings update
   useEffect(() => {
-    playStore.ensureStarted();
-  }, []);
+    if (gameId !== undefined) {
+      playStore.connectGame(gameId, {
+        userId,
+        aiDifficulty: difficulty,
+        timePerPlayerSeconds: timeLimit,
+        isAiOpponent: isAi,
+      });
+    } else {
+      playStore.ensureStarted();
+    }
+
+    return () => {
+      if (gameId !== undefined) {
+        playStore.disconnectGame();
+      }
+    };
+  }, [gameId, userId, difficulty, timeLimit, isAi]);
 
   // Track the cursor's last-known position. Used to re-evaluate which
   // column should be highlighted after the end-game card unmounts on
@@ -199,11 +256,35 @@ export function Board({ pieces, className, variant = "default" }: BoardProps) {
   }, [snap.endGamePhase]);
 
   const livePieces: BoardState | null = snap.view ? viewBoardFromServer(snap.view.board) : null;
-  // Default to an empty board (not the wireframe) when neither live data
-  // nor an explicit prop is provided — avoids the "wireframe pieces flash
-  // on first paint before /start completes" problem that was visible on
-  // page refresh.
   const renderedPieces: BoardState = livePieces ?? pieces ?? EMPTY_BOARD;
+
+  // Keep track of the initial game board to prevent drop/fade animations for pre-existing cells
+  const initialPiecesRef = useRef<BoardState | null>(null);
+  const prevGameIdRef = useRef<number | undefined | null>(null);
+
+  // If the game ID changed, reset the initial pieces ref
+  if (gameId !== prevGameIdRef.current) {
+    initialPiecesRef.current = null;
+    prevGameIdRef.current = gameId;
+  }
+
+  // Capture initial pieces on the board to prevent them from animating on mount/load
+  const isGameLoaded = !!snap.view || !!pieces;
+  if (isGameLoaded) {
+    const isBoardEmpty = (board: BoardState) =>
+      board.every((row) => row.every((cell) => cell === "empty"));
+
+    if (isBoardEmpty(renderedPieces)) {
+      initialPiecesRef.current = renderedPieces;
+    } else if (!initialPiecesRef.current) {
+      initialPiecesRef.current = renderedPieces;
+    }
+  }
+
+  const isPreExisting = (row: number, col: number) => {
+    if (!initialPiecesRef.current) return false;
+    return initialPiecesRef.current[row]?.[col] !== "empty";
+  };
 
   // Set of "r,c" keys for cells in the winning 4-in-a-row. Empty when
   // game is in progress or ended in a draw. Cells in this set get the
@@ -257,16 +338,19 @@ export function Board({ pieces, className, variant = "default" }: BoardProps) {
               {renderedPieces.map((row, rowIdx) =>
                 row.map((cell, colIdx) => {
                   const isFilled = cell !== "empty";
+                  const shouldAnimate = isFilled && !isPreExisting(rowIdx, colIdx);
                   return (
                     <div
                       key={`under-${rowIdx}-${colIdx}`}
                       className={cn(
                         "size-9 rounded-full sm:size-12",
-                        cell === "red" && "bg-pawn-red piece-drop",
-                        cell === "yellow" && "bg-pawn-yellow piece-drop",
+                        cell === "red" && getP2Classes(pawnSkin).bg,
+                        cell === "red" && shouldAnimate && "piece-drop",
+                        cell === "yellow" && getP1Classes(pawnSkin).bg,
+                        cell === "yellow" && shouldAnimate && "piece-drop",
                       )}
                       style={
-                        isFilled
+                        shouldAnimate
                           ? ({ ["--drop-start" as never]: `-${(rowIdx + 1) * 100}%` } as React.CSSProperties)
                           : undefined
                       }
@@ -317,9 +401,10 @@ export function Board({ pieces, className, variant = "default" }: BoardProps) {
                       {isFilled && (
                         <div
                           className={cn(
-                            "absolute inset-0 rounded-full piece-fade-in",
-                            cell === "red" && "pawn-red",
-                            cell === "yellow" && "pawn-yellow",
+                            "absolute inset-0 rounded-full",
+                            !isPreExisting(rowIdx, colIdx) && "piece-fade-in",
+                            cell === "red" && getP2Classes(pawnSkin).top,
+                            cell === "yellow" && getP1Classes(pawnSkin).top,
                             winningCellSet.has(`${rowIdx},${colIdx}`) && "winning-cell",
                           )}
                         />
@@ -364,7 +449,7 @@ export function Board({ pieces, className, variant = "default" }: BoardProps) {
       aria-rowcount={ROWS}
       aria-colcount={COLS}
       className={cn(
-        "inline-block rounded-xl p-4 sm:p-6",
+        "relative inline-block rounded-xl p-4 sm:p-6",
         plateClasses(variant),
         snap.endGamePhase === "card" && "endgame-blur",
         className,
@@ -393,13 +478,16 @@ export function Board({ pieces, className, variant = "default" }: BoardProps) {
                 {isFilled && (
                   <div
                     className={cn(
-                      "absolute inset-0 rounded-full piece-drop",
-                      cell === "red" && "pawn-red",
-                      cell === "yellow" && "pawn-yellow",
+                      "absolute inset-0 rounded-full",
+                      !isPreExisting(rowIdx, colIdx) && "piece-drop",
+                      cell === "red" && getP2Classes(pawnSkin).top,
+                      cell === "yellow" && getP1Classes(pawnSkin).top,
                       winningCellSet.has(`${rowIdx},${colIdx}`) && "winning-cell",
                     )}
                     style={
-                      { ["--drop-start" as never]: `-${(rowIdx + 1) * 100}%` } as React.CSSProperties
+                      !isPreExisting(rowIdx, colIdx)
+                        ? ({ ["--drop-start" as never]: `-${(rowIdx + 1) * 100}%` } as React.CSSProperties)
+                        : undefined
                     }
                   />
                 )}
@@ -407,6 +495,28 @@ export function Board({ pieces, className, variant = "default" }: BoardProps) {
             );
           }),
         )}
+      </div>
+
+      {/* Column hit zones — overlaid on the board, extending 60px above
+          and below it so users can hover slightly outside the plate and
+          still target a column. cursor:pointer overrides the default
+          text-cursor that was visible over the cells. */}
+      <div
+        className="absolute -top-[60px] -bottom-[60px] left-0 right-0 z-20 grid grid-cols-7 gap-2 px-4 sm:gap-3 sm:px-5 md:gap-4 md:px-6"
+        onMouseLeave={() => setHoveredCol(null)}
+        aria-hidden="true"
+      >
+        {Array.from({ length: COLS }).map((_, c) => (
+          <button
+            key={`hit-${c}`}
+            type="button"
+            aria-label={`Drop in column ${c + 1}`}
+            className="h-full cursor-pointer bg-transparent p-0 focus:outline-none"
+            onMouseEnter={() => setHoveredCol(c)}
+            onClick={() => handleColumnClick(c)}
+            disabled={snap.thinking}
+          />
+        ))}
       </div>
     </div>
   );

@@ -49,11 +49,18 @@ export async function setupSocket(app: FastifyInstance) {
   app.io.on("connection", async (socket) => {
     const userId = socket.data.userId;
 
+    // Branche les handlers d'events specifiques de maniere synchrone avant tout await
+    // pour ne pas rater les premiers messages du client (ex: game:join)
+    registerChatHandlers(socket, app.io);
+    registerLobbyHandlers(socket, app.io);
+    registerGameHandlers(socket, app.io);
+
     // Chaque user rejoint sa room personnelle (utilisée pour le push ciblé : notifs, chat).
     socket.join(`user:${userId}`);
 
-    // Marque online en DB.
-    await db.update(users).set({ status: "online" }).where(eq(users.id, userId));
+    // Marque online ou in_game en DB.
+    const status = gameManager.isUserInGame(userId) ? "in_game" : "online";
+    await db.update(users).set({ status }).where(eq(users.id, userId));
 
     // Annule un eventuel timer d'abandon si l'user revient dans la grace de 60 s.
     gameManager.onReconnect(userId);
@@ -64,17 +71,18 @@ export async function setupSocket(app: FastifyInstance) {
       app.io.to(`user:${fid}`).emit("user:online", { userId });
     }
 
-    // Branche les handlers d'events specifiques.
-    registerChatHandlers(socket, app.io);
-    registerLobbyHandlers(socket, app.io);
-    registerGameHandlers(socket, app.io);
-
     socket.on("disconnect", async () => {
-      // Marque offline en DB.
-      await db.update(users).set({ status: "offline" }).where(eq(users.id, userId));
-
       // Declenche le timer de grace 60 s sur toutes les parties actives du joueur.
       gameManager.onDisconnect(userId);
+
+      // S'il reste d'autres sockets connectees pour cet user, on ne le marque pas offline.
+      const hasOtherSockets = app.io.sockets.adapter.rooms.has(`user:${userId}`);
+      if (hasOtherSockets) {
+        return;
+      }
+
+      // Marque offline en DB.
+      await db.update(users).set({ status: "offline" }).where(eq(users.id, userId));
 
       // Notifie les amis qu'on est offline.
       const friends = await getFriendIds(userId);

@@ -73,6 +73,16 @@ export function registerChatHandlers(socket: Socket, io: Server) {
     if (!data?.receiverId) return;
     io.to(`user:${data.receiverId}`).emit("chat:typing", { from: me });
   });
+
+  socket.on("chat:reaction", (data: { messageId: number; emoji: string; receiverId: number }) => {
+    const me = socket.data.userId;
+    if (!data?.messageId || !data?.emoji || !data?.receiverId) return;
+    io.to(`user:${data.receiverId}`).emit("chat:reaction", {
+      messageId: data.messageId,
+      emoji: data.emoji,
+      senderId: me,
+    });
+  });
 }
 
 function checkRate(socketId: string): boolean {

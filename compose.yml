@@ -113,6 +113,7 @@
         - "3000:3000"
       volumes:
         - vdata:/vault/file
+        - uploads:/app/server/dist/uploads
       networks:
           - backend
       restart: unless-stopped
@@ -154,7 +155,7 @@
         - MODSEC_AUDIT_LOG=/var/log/nginx/modsec_audit.log
         - ERRORLOG=/var/log/nginx/modsec_error.log
         - BACKEND=web:4321 
-        - ALLOWED_METHODS=GET POST PUT HEAD DELETE
+        - ALLOWED_METHODS=GET POST PUT PATCH HEAD DELETE
         # The image already wires nginx.conf's resolver from /etc/resolv.conf
         # at startup (see /docker-entrypoint.d/91-update-resolver.sh). That
         # gives us a cross-runtime resolver — Docker (127.0.0.11) and Podman
@@ -179,6 +180,7 @@
     pgdata:
     vdata:
     vlogs:
+    uploads:
 
   networks:
     backend:

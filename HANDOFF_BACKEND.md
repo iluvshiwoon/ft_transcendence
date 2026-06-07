@@ -1,5 +1,25 @@
 # Handoff backend — page `/profile`
 
+État au 2026-06-04, après implémentation de la transition du Resume strip, ELO AI bypass, dynamic K-factor, et du FOUC shield :
+
+- ✅ **Ajustements ELO livrés** :
+  - Les parties vs IA n'impactent plus l'ELO (guard `aiDifficulty !== null` dans `applyEloForPlayer`).
+  - ELO plancher à 100 appliqué.
+  - K-Factor dynamique selon les parties jouées ($K=40$ pour provisional $<20$ parties, $K=10$ si $\ge 2400$, sinon $K=20$).
+  - Indicateur `?` pour le statut provisional (games played $<20$) affiché partout à côté de l'ELO.
+- ✅ **Transitions Resume strip livrées** :
+  - À l'expiration du temps : passage à `"GAME OVER"` et `"Lost"`.
+  - Délai de 3 secondes avant de disparaître.
+  - Disparition progressive par CSS (opacity, scale, height, max-height sur 500ms).
+  - Transition fluide et sans à-coups vers le placeholder `"No active games"` en gardant le placeholder toujours présent dans le DOM et en le révélant par transition CSS de sa hauteur (`max-height` 0 à 200px) et de son opacité.
+- ✅ **FOUC Shield livré** :
+  - Prévention globale du Flash of Unstyled Content via l'ajout de règles CSS inlinées dans le `<head>` de `RootLayout.astro` pour `.page-reveal` (masqué par défaut à opacity 0.001 et translateY 20px avant le chargement des feuilles de style).
+- ✅ **Comptage robuste du temps de jeu** :
+  - Refonte des timers client-side dans `play-store.ts` pour utiliser la différence de temps absolue (`Date.now() - lastTimerUpdateAt`) par rapport au dernier tick serveur, éliminant les stutters, les longueurs de seconde variables et le saut de 1 seconde au changement de tour.
+- ✅ **Persistance de la télémétrie IA** :
+  - Ajout des colonnes `last_ai_telemetry` et `last_ai_move` (jsonb) à la table `games`, et mise à jour de `playAiMove` pour persister ces valeurs.
+  - Restauration de la télémétrie lors de `restoreGame` et envoi dans le payload `game:state` lors de l'event `game:join` pour rétablir les données d'évaluation de l'IA immédiatement après un rafraîchissement ou retour sur la page.
+
 État au 2026-06-02, après merge de `kgriset_landing_wire` dans `main`
 et début de la branche `kgriset_settings` :
 
@@ -361,7 +381,7 @@ LIMIT 1`.
 
 ---
 
-### 3.6 — Spectateur
+### 3.6 — Spectateur (Optionnel)
 
 **Pourquoi.** Bouton « Watch » sur un ami `in_game`. Aujourd'hui, le
 `GET /api/games/:id` de Tim et le socket `game:state` sont gated sur
@@ -545,7 +565,7 @@ gros morceau de la todo restante après §3.2.
 
 ---
 
-### 3.10 — File de matchmaking (`POST /api/match/queue`)
+### 3.10 — File de matchmaking (Optionnelle) (`POST /api/match/queue`)
 
 **Pourquoi.** Le **lobby** (`/play`) propose deux entrées principales :
 **Play AI** (instantané, déjà couvert par `POST /api/games/ai` de Tim) et
@@ -731,10 +751,10 @@ handler JS qui fait `fetch(POST /api/auth/logout)` puis
 6. **3.4 — Parties actives (`/users/me/games/active`).** Dépend de 3.2.
    Sert le panneau Daily games de l'Overview.
 7. **3.5 — `/friends` enrichi.** Petit, complète l'onglet Friends.
-8. **3.6 — Spectate.** Dépend de 3.4 pour le bouton Watch d'un ami.
+8. **3.6 — Spectate (Optionnel).** Dépend de 3.4 pour le bouton Watch d'un ami.
 9. **3.7 — Challenge direct.** Dépend du système de notifications déjà en
    place + lobby de Tim.
-10. **3.10 — Matchmaking queue.** Pas critique. Active le bouton « Find
+10. **3.10 — Matchmaking queue (Optionnel).** Pas critique. Active le bouton « Find
     match » sur le lobby. Peut attendre que le flow Challenge friend
     (3.7) soit éprouvé en prod avant d'ajouter cette deuxième entrée.
 11. **3.12 — Logout content-negotiation.** ✅ FAIT

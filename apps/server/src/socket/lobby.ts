@@ -17,8 +17,19 @@ export function registerLobbyHandlers(socket: Socket, io: Server)
 
     socket.join(`lobby:${lobbyId}`);
 
-    const [lobby] = await db.select().from(lobbies).where(eq(lobbies.id, lobbyId));
-    if (lobby) io.to(`lobby:${lobbyId}`).emit("lobby:update", { lobby });
+    let [lobby] = await db.select().from(lobbies).where(eq(lobbies.id, lobbyId));
+    if (lobby) {
+      // Check for expiration (10 minutes)
+      const expiryTime = 10 * 60 * 1000;
+      if (lobby.status === "waiting" && Date.now() - new Date(lobby.createdAt).getTime() > expiryTime) {
+        [lobby] = await db
+          .update(lobbies)
+          .set({ status: "closed" })
+          .where(eq(lobbies.id, lobbyId))
+          .returning();
+      }
+      io.to(`lobby:${lobbyId}`).emit("lobby:update", { lobby });
+    }
   });
 
   socket.on("lobby:leave", (payload: { lobbyId: number }) => {

@@ -174,6 +174,16 @@ export async function authRoutes(app: FastifyInstance) {
     // re-entry (sinon la révisite de /signup?step=3 sans /settings écrase
     // les valeurs du profil avec les défauts de la form — voir DESIGN.md
     // §17 ou apps/web/docs/authed-nav-roadmap.md).
+    let pSkin = user.pawnSkin;
+    if (pSkin === "wine") pSkin = "royal";
+    else if (pSkin === "coral") pSkin = "sunset";
+    else if (pSkin === "brick") pSkin = "forest";
+    else if (!["default", "sunset", "royal", "forest"].includes(pSkin)) pSkin = "default";
+
+    let gSkin = user.gridSkin;
+    if (gSkin === "default") gSkin = "frosted-obsidian";
+    else if (!["liquid-glass", "frosted-obsidian"].includes(gSkin)) gSkin = "liquid-glass";
+
     const rank = await getUserRank(user.rating, user.peakRating, user.id);
     return reply.send({
       id: user.id,
@@ -184,8 +194,11 @@ export async function authRoutes(app: FastifyInstance) {
       signupCompletedAt: user.signupCompletedAt,
       rating: user.rating,
       peakRating: user.peakRating,
+      gamesPlayed: user.gamesPlayed,
       rank,
       title: titleForRating(user.rating),
+      pawnSkin: pSkin,
+      gridSkin: gSkin,
     });
   });
 

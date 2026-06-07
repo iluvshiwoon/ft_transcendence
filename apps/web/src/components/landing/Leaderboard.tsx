@@ -180,7 +180,7 @@ export function Leaderboard({ entries }: LeaderboardProps = {}) {
                   pixel offset whether the number is 4 digits (2854) or
                   the percent is 6 chars ('100.0%'). */}
               <div className="flex shrink-0 gap-3 font-semibold tabular-nums">
-                <span className="w-[3em] text-right">{entry.rating}</span>
+                <span className="w-[3.5em] text-right">{entry.rating}{entry.gamesPlayed < 20 ? "?" : ""}</span>
                 <span className="w-[3.75em] text-right">{entry.winRate.toFixed(1)}%</span>
               </div>
             </li>

@@ -33,6 +33,7 @@ export interface LeaderboardEntry {
   peakRating: number;
   winRate: number;
   title: Title;
+  gamesPlayed: number;
 }
 
 export interface LeaderboardStoreState {

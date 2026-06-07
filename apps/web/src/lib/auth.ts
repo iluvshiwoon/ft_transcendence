@@ -35,10 +35,14 @@ export interface CurrentUser {
   rating: number;
   /** Highest rating ever achieved. */
   peakRating: number;
+  /** Number of games played. */
+  gamesPlayed: number;
   /** 1-based global rank, matches the /api/leaderboard ordering. */
   rank: number;
   /** Derived from `rating` (Beginner/Apprentice/Expert/Master/Grandmaster). */
   title: Title;
+  pawnSkin?: string;
+  gridSkin?: string;
 }
 
 /** Backend URL — `http://server:3000` inside compose, `localhost:3000` for `make dev`. */

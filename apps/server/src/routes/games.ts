@@ -4,9 +4,9 @@
 // GET  /api/games/:id -> recupere l'etat d'une partie (pour reload depuis le front)
 
 import type { FastifyInstance } from "fastify";
-import { eq } from "drizzle-orm";
+import { eq, ne, and, or } from "drizzle-orm";
 import { db } from "../db/client.js";
-import { games } from "../db/schema.js";
+import { games, users } from "../db/schema.js";
 import { requireAuth } from "../auth/middleware.js";
 import { gameManager } from "../game/gameManager.js";
 
@@ -24,11 +24,11 @@ export async function gameRoutes(app: FastifyInstance)
     { preHandler: requireAuth },
     async (request, reply) => {
       const userId = request.userId!;
-      const { difficulty = "medium", timePerPlayerSeconds = 300 } = request.body ?? {};
+      const { difficulty = "medium", timePerPlayerSeconds = 180 } = request.body ?? {};
 
-      const validTimes = [300, 600, 3600];
+      const validTimes = [180, 600, 3600];
       if (!validTimes.includes(timePerPlayerSeconds))
-        return reply.status(400).send({ error: "timePerPlayerSeconds doit etre 300, 600 ou 3600" });
+        return reply.status(400).send({ error: "timePerPlayerSeconds doit etre 180, 600 ou 3600" });
 
       const [game] = await db.insert(games).values({
         player1Id: userId,
@@ -46,9 +46,135 @@ export async function gameRoutes(app: FastifyInstance)
         player2Id: null,
         timePerPlayerSeconds,
         isAi: true,
+        aiDifficulty: difficulty,
       });
 
       return reply.status(201).send({ gameId: game.id });
+    }
+  );
+
+  // POST /api/games/test-multiplayer
+  app.post<{ Body: { timePerPlayerSeconds?: number } }>(
+    "/games/test-multiplayer",
+    { preHandler: requireAuth },
+    async (request, reply) => {
+      const userId = request.userId!;
+      let { timePerPlayerSeconds = 180 } = request.body ?? {};
+
+      const validTimes = [180, 600, 3600];
+      if (!validTimes.includes(timePerPlayerSeconds)) {
+        timePerPlayerSeconds = 180;
+      }
+
+      // Find another user in the DB
+      const otherUsers = await db
+        .select()
+        .from(users)
+        .where(ne(users.id, userId))
+        .limit(1);
+
+      const player2Id = otherUsers[0]?.id ?? userId; // Fallback to playing against self if no other user exists
+
+      const [game] = await db.insert(games).values({
+        player1Id: userId,
+        player2Id,
+        isAiOpponent: false,
+        timePerPlayerSeconds,
+        status: "in_progress",
+        startedAt: new Date(),
+      }).returning();
+
+      gameManager.createGame({
+        gameId: game.id,
+        player1Id: userId,
+        player2Id,
+        timePerPlayerSeconds,
+        isAi: false,
+      });
+
+      return reply.status(201).send({ gameId: game.id });
+    }
+  );
+
+  // GET /api/games/active
+  app.get(
+    "/games/active",
+    { preHandler: requireAuth },
+    async (request, reply) => {
+      const userId = request.userId!;
+      
+      const activeDbGames = await db
+        .select()
+        .from(games)
+        .where(
+          and(
+            eq(games.status, "in_progress"),
+            or(
+              eq(games.player1Id, userId),
+              eq(games.player2Id, userId)
+            )
+          )
+        );
+
+      const results = [];
+      for (const game of activeDbGames) {
+        const active = await gameManager.getOrRestore(game.id);
+        if (!active) continue;
+
+        if (active.state.status !== "in_progress") {
+          continue;
+        }
+
+        const slot = active.state.slotForUser(userId);
+        if (slot === null) continue;
+
+        const opponentId = game.player1Id === userId ? game.player2Id : game.player1Id;
+        let opponent: {
+          username: string;
+          initial: string;
+          rating: number | null;
+          isAi: boolean;
+          aiDifficulty?: string;
+          gamesPlayed?: number;
+        } = {
+          username: `AI · ${game.aiDifficulty || "medium"}`,
+          initial: "✦",
+          rating: null,
+          isAi: true,
+          aiDifficulty: game.aiDifficulty || "medium",
+        };
+
+        if (opponentId !== null) {
+          const [oppUser] = await db
+            .select({ username: users.username, rating: users.rating, gamesPlayed: users.gamesPlayed })
+            .from(users)
+            .where(eq(users.id, opponentId));
+          if (oppUser) {
+            opponent = {
+              username: oppUser.username,
+              initial: oppUser.username.charAt(0).toUpperCase(),
+              rating: oppUser.rating,
+              isAi: false,
+              gamesPlayed: oppUser.gamesPlayed,
+            };
+          }
+        }
+
+        const yourTurn = slot === active.state.currentPlayer;
+
+        results.push({
+          id: game.id,
+          yourTurn,
+          moves: active.state.moveNumber,
+          timerP1: active.state.timerP1,
+          timerP2: active.state.timerP2,
+          userSlot: slot,
+          timeControl: game.timePerPlayerSeconds === 180 ? "Bullet" : game.timePerPlayerSeconds === 600 ? "Blitz" : "Daily",
+          opponent,
+        });
+      }
+
+      return reply.send(results);
     }
   );
 
@@ -66,7 +192,7 @@ export async function gameRoutes(app: FastifyInstance)
         return reply.status(403).send({ error: "Vous n'etes pas dans cette partie" });
 
       // Si la partie est encore en memoire, renvoyer l'etat live.
-      const active = gameManager.get(gameId);
+      const active = await gameManager.getOrRestore(gameId);
       if (active) return reply.send({ game, state: active.state.getState() });
 
       return reply.send({ game, state: null });

@@ -112,6 +112,8 @@ export const games = pgTable("games", {
   timePerPlayerSeconds: integer("time_per_player_seconds").notNull().default(300),
   startedAt: timestamp("started_at"),
   finishedAt: timestamp("finished_at"),
+  lastAiTelemetry: jsonb("last_ai_telemetry"),
+  lastAiMove: jsonb("last_ai_move"),
 });
 
 
