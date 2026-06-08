@@ -1035,44 +1035,9 @@ html.hero-seen .page-reveal {
   animation: piece-fade-in 0.45s forwards;
 }
 
-/* Piece-drop-behind — combines the bounce-drop movement of piece-drop with
-   the late fade-in of piece-fade-in. Used by frosted-obsidian where pawns
-   sit behind semi-transparent cell wells (z-index: 1 < cell z-index: 2).
-   The pawn falls visibly (translateY) while mostly transparent, then
-   materializes as it settles into the cutout. */
-@keyframes piece-drop-behind {
-  0% {
-    transform: translateY(var(--drop-start, -300%));
-    opacity: 0;
-    animation-timing-function: cubic-bezier(0.6, 0.04, 0.7, 0.4);
-  }
-  70% {
-    opacity: 0;
-    animation-timing-function: cubic-bezier(0.6, 0.04, 0.7, 0.4);
-  }
-  85% {
-    transform: translateY(0);
-    opacity: 1;
-    animation-timing-function: ease-out;
-  }
-  92% {
-    transform: translateY(-3px);
-    opacity: 1;
-    animation-timing-function: ease-in;
-  }
-  100% {
-    transform: translateY(0);
-    opacity: 1;
-  }
-}
-.piece-drop-behind {
-  animation: piece-drop-behind 0.45s forwards;
-}
-
 @media (prefers-reduced-motion: reduce) {
   .piece-drop,
-  .piece-fade-in,
-  .piece-drop-behind {
+  .piece-fade-in {
     animation: none;
   }
 }
@@ -1452,10 +1417,9 @@ body.is-scrolled .topnav-bar {
    Board variant: Frosted Obsidian (replacing classic)
    ============================================================================= */
 @utility board-frosted-obsidian {
-  /* Translucent dark obsidian glass in light mode, heavy blur, inset rim highlights */
-  position: relative;
-  isolation: isolate;
-  background-color: oklch(25% 0.02 240 / 0.75);
+  /* Frosted obsidian glass — low-opacity background so pawns show through
+     during the drop animation, blur + inset highlights for depth */
+  background-color: oklch(25% 0.02 240 / 0.15);
   backdrop-filter: blur(16px) saturate(1.2);
   -webkit-backdrop-filter: blur(16px) saturate(1.2);
   border: 1px solid oklch(100% 0 0 / 0.15);
@@ -1464,8 +1428,7 @@ body.is-scrolled .topnav-bar {
     inset 0 -1px 1px oklch(0% 0 0 / 0.4);
 }
 .dark .board-frosted-obsidian {
-  /* Sleek contrasting obsidian glass in dark mode, soft drop shadow */
-  background-color: oklch(24% 0.02 240 / 0.65);
+  background-color: oklch(24% 0.02 240 / 0.12);
   backdrop-filter: blur(20px) saturate(1.4);
   -webkit-backdrop-filter: blur(20px) saturate(1.4);
   border: 1px solid oklch(100% 0 0 / 0.18);
@@ -1475,20 +1438,14 @@ body.is-scrolled .topnav-bar {
 }
 
 @utility board-frosted-obsidian-cell {
-  /* Semi-transparent holes in the obsidian plate — lets the pawn color
-     bleed through during the drop animation (like liquid-glass under-glass
-     blobs). The sharp piece-fade-in pawn materializes on top once settled. */
-  z-index: 1;
-  background-color: oklch(96% 0.015 85 / 0.25);
+  background-color: oklch(96% 0.015 85 / 0.5);
   box-shadow:
-    inset 0 2px 4px oklch(0% 0 0 / 0.35),
+    inset 0 2px 4px oklch(0% 0 0 / 0.45),
     inset 0 -1px 1px oklch(100% 0 0 / 0.12);
 }
 .dark .board-frosted-obsidian-cell {
-  /* Semi-transparent hollows in dark mode */
-  z-index: 1;
-  background-color: oklch(10% 0 0 / 0.35);
+  background-color: oklch(10% 0 0 / 0.65);
   box-shadow:
-    inset 0 2px 5px oklch(0% 0 0 / 0.6),
+    inset 0 2px 5px oklch(0% 0 0 / 0.8),
     inset 0 -1px 1px oklch(100% 0 0 / 0.05);
 }
