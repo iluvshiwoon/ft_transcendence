@@ -132,8 +132,10 @@ const initial = user?.username?.[0]?.toUpperCase() ?? "?";
     {/* Right group — utility icons clustered tight, then a slightly bigger
         gap before the avatar group so identity reads as the cluster's
         anchor (industry convention: avatar is the rightmost endpoint).
-        Order: [theme] [logout] [avatar+name+rating]. */}
-    <div class="flex items-center gap-2 xs:gap-3">
+        Order: [theme] [notifications] [settings] [logout] [avatar+name+rating].
+        min-w reserves space for the notification bell (client:only renders
+        no SSR HTML, so without this the layout shifts when React mounts). */}
+    <div class="flex min-w-[10.75rem] items-center justify-end gap-2 xs:min-w-[11.25rem] xs:gap-3">
 
       {/* Theme toggle */}
       <button
