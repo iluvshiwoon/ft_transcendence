@@ -23,17 +23,23 @@ import { hashPassword, verifyPassword } from "../auth/password.js";
 import { titleForRating } from "../game/elo.js";
 import { sendError } from "../lib/errors.js";
 import { getUserRank } from "../lib/rank.js";
+import {
+  updateProfileSchema,
+  updateEmailSchema,
+  updatePasswordSchema,
+  userSearchSchema,
+  usernameCheckSchema,
+  userGamesSchema,
+  userStatsSchema,
+} from "../schemas/users.js";
+import { idParamSchema } from "../schemas/common.js";
 
 // Dossier de destination des avatars (créé au démarrage par server.ts).
 const AVATARS_DIR = join(import.meta.dirname, "..", "..", "uploads", "avatars");
 const ALLOWED_MIMETYPES = ["image/jpeg", "image/png", "image/webp"];
-
-// Validation constants for PUT /api/profile. Kept in sync with the frontend
-// equivalents in apps/web/src/components/signup/Step3Profile.tsx — if you add
-// a new pawn or grid skin there, add it here too.
-const BIO_MAX_LEN = 160;
 const ALLOWED_PAWN_SKINS = ["default", "sunset", "royal", "forest"] as const;
 const ALLOWED_GRID_SKINS = ["liquid-glass", "frosted-obsidian"] as const;
+const BIO_MAX_LEN = 160;
 
 function sanitizeSkins(pawnSkin: string, gridSkin: string) {
   let pSkin = pawnSkin;
@@ -47,23 +53,6 @@ function sanitizeSkins(pawnSkin: string, gridSkin: string) {
   else if (!ALLOWED_GRID_SKINS.includes(gSkin as any)) gSkin = "liquid-glass";
 
   return { pawnSkin: pSkin, gridSkin: gSkin };
-}
-
-interface UpdateProfileBody {
-  username?: string;
-  bio?: string;
-  pawnSkin?: string;
-  gridSkin?: string;
-}
-
-interface UpdateEmailBody {
-  currentPassword: string;
-  newEmail: string;
-}
-
-interface UpdatePasswordBody {
-  currentPassword: string;
-  newPassword: string;
 }
 
 // Construit la réponse publique d'un profil user. Même shape pour /users/:id
@@ -100,7 +89,10 @@ async function publicProfilePayload(user: typeof users.$inferSelect) {
 }
 
 export async function userRoutes(app: FastifyInstance) {
-  app.get<{ Params: { id: string } }>("/users/:id", async (request, reply) => {
+  app.get<{ Params: { id: string } }>(
+    "/users/:id",
+    { schema: { params: idParamSchema } },
+    async (request, reply) => {
     // Profil public : pas besoin d'être connecté pour voir.
     const id = Number(request.params.id);
     if (isNaN(id)) return reply.code(400).send({ error: "Invalid id" });
@@ -136,6 +128,7 @@ export async function userRoutes(app: FastifyInstance) {
 
   app.get<{ Querystring: { q?: string } }>(
     "/users/check-username",
+    { schema: { querystring: usernameCheckSchema } },
     async (request, reply) => {
       // Public endpoint used by the signup form to live-check username availability.
       // Returns just { available: boolean } — no other user data leaked.
@@ -163,7 +156,7 @@ export async function userRoutes(app: FastifyInstance) {
 
   app.get<{ Querystring: { q?: string } }>(
     "/users/search",
-    { preHandler: requireAuth },
+    { preHandler: requireAuth, schema: { querystring: userSearchSchema } },
     async (request, reply) => {
       // Recherche par username (insensible à la casse, contient la chaîne).
       const q = request.query.q?.trim();
@@ -215,9 +208,9 @@ export async function userRoutes(app: FastifyInstance) {
     }
   );
 
-  app.put<{ Body: UpdateProfileBody }>(
+  app.put<{ Body: { username?: string; bio?: string; pawnSkin?: string; gridSkin?: string } }>(
     "/profile",
-    { preHandler: requireAuth },
+    { preHandler: requireAuth, schema: { body: updateProfileSchema } },
     async (request, reply) => {
       // Édite username, bio, skins. Email et password ont leurs propres routes (re-auth).
       const { username, bio, pawnSkin, gridSkin } = request.body;
@@ -277,9 +270,9 @@ export async function userRoutes(app: FastifyInstance) {
     }
   );
 
-  app.put<{ Body: UpdateEmailBody }>(
+  app.put<{ Body: { currentPassword: string; newEmail: string } }>(
     "/profile/email",
-    { preHandler: requireAuth },
+    { preHandler: requireAuth, schema: { body: updateEmailSchema } },
     async (request, reply) => {
       // Re-auth obligatoire : on demande le mot de passe actuel avant de changer l'email.
       const { currentPassword, newEmail } = request.body;
@@ -318,9 +311,9 @@ export async function userRoutes(app: FastifyInstance) {
     }
   );
 
-  app.put<{ Body: UpdatePasswordBody }>(
+  app.put<{ Body: { currentPassword: string; newPassword: string } }>(
     "/profile/password",
-    { preHandler: requireAuth },
+    { preHandler: requireAuth, schema: { body: updatePasswordSchema } },
     async (request, reply) => {
       // Re-auth obligatoire : on demande le mot de passe actuel avant de changer.
       const { currentPassword, newPassword } = request.body;
@@ -494,6 +487,7 @@ export async function userRoutes(app: FastifyInstance) {
 
   app.get<{ Params: { id: string }; Querystring: { limit?: string; offset?: string } }>(
     "/users/:id/games",
+    { schema: { params: idParamSchema, querystring: userGamesSchema } },
     async (request, reply) => {
       const userId = Number(request.params.id);
       if (isNaN(userId)) return reply.code(400).send({ error: "Invalid user id" });
@@ -601,6 +595,7 @@ export async function userRoutes(app: FastifyInstance) {
 
   app.get<{ Params: { id: string }; Querystring: { is_ai?: string; difficulty?: string } }>(
     "/users/:id/stats",
+    { schema: { params: idParamSchema, querystring: userStatsSchema } },
     async (request, reply) => {
       const userId = Number(request.params.id);
       if (isNaN(userId)) return reply.code(400).send({ error: "Invalid user id" });

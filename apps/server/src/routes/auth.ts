@@ -46,17 +46,7 @@ import {
   exchangeCode,
   getUserInfo,
 } from "../auth/oauth42.js";
-
-interface SignupBody {
-  email: string;
-  username: string;
-  password: string;
-}
-
-interface LoginBody {
-  email: string;
-  password: string;
-}
+import { signupSchema, loginSchema, signupCompleteSchema } from "../schemas/auth.js";
 
 /** Cookie name for the OAuth state token + intent. Path-scoped to the OAuth callback only. */
 const OAUTH_STATE_COOKIE = "oauth42_state";
@@ -69,16 +59,11 @@ const OAUTH_STATE_COOKIE_OPTS = {
 };
 
 export async function authRoutes(app: FastifyInstance) {
-  app.post<{ Body: SignupBody }>("/signup", async (request, reply) => {
-    const { email, username, password } = request.body;
-
-    // Validation basique des champs reçus.
-    if (!email || !username || !password) {
-      return reply.code(400).send({ error: "Missing fields" });
-    }
-    if (password.length < 8) {
-      return reply.code(400).send({ error: "Password must be at least 8 chars" });
-    }
+  app.post<{ Body: { email: string; username: string; password: string } }>(
+    "/signup",
+    { schema: { body: signupSchema } },
+    async (request, reply) => {
+      const { email, username, password } = request.body;
 
     // Email et username doivent être uniques en base.
     // Pour l'email : on renvoie un message volontairement vague ("Account
@@ -113,13 +98,11 @@ export async function authRoutes(app: FastifyInstance) {
     });
   });
 
-  app.post<{ Body: LoginBody }>("/login", async (request, reply) => {
-    const { email, password } = request.body;
-
-    // Validation basique.
-    if (!email || !password) {
-      return reply.code(400).send({ error: "Missing fields" });
-    }
+  app.post<{ Body: { email: string; password: string } }>(
+    "/login",
+    { schema: { body: loginSchema } },
+    async (request, reply) => {
+      const { email, password } = request.body;
 
     // Cherche le user par email.
     const [user] = await db.select().from(users).where(eq(users.email, email));
@@ -202,22 +185,10 @@ export async function authRoutes(app: FastifyInstance) {
     });
   });
 
-  app.post(
+  app.post<{ Body: { initialRating?: number } }>(
     "/signup-complete",
     { preHandler: requireAuth },
     async (request, reply) => {
-      // Marque le flow /signup comme terminé pour ce user. Idempotent : si
-      // déjà mis, no-op. Appelé par le frontend quand /signup?step=4 monte
-      // (SignupCompleteTracker dans Step4Welcome). Une fois cette colonne
-      // posée, le gate dans apps/web/src/pages/signup.astro redirige
-      // /signup → / pour ce user.
-      //
-      // Body optionnel { initialRating?: number } : si l'user arrive depuis
-      // une démo anonyme (EndGameOverlay → /signup?step=1&score=…),
-      // Step1Save persiste le score en localStorage et SignupCompleteTracker
-      // le forward ici. On l'applique à users.rating + users.peak_rating
-      // uniquement quand la row est encore à 1000 — ça empêche un user OAuth
-      // qui repasserait par /signup de se faire écraser sa note.
       const body = (request.body ?? {}) as { initialRating?: unknown };
       const rawInitial = body.initialRating;
       const initial =
@@ -394,10 +365,6 @@ export async function authRoutes(app: FastifyInstance) {
     "/oauth42/unlink",
     { preHandler: requireAuth },
     async (request, reply) => {
-      // Dissocie le compte 42 du user courant. Bloqué si l'user n'a pas
-      // de mot de passe (sinon il perdrait tout moyen de se reconnecter —
-      // le flow OAuth n'est qu'un raccourci). On force la mise en place
-      // d'un password d'abord via PUT /api/profile/password.
       const [user] = await db
         .select({ id: users.id, password: users.password, oauth42Id: users.oauth42Id })
         .from(users)

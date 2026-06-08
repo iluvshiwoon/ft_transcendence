@@ -10,6 +10,7 @@ import { and, asc, count, desc, eq, inArray } from "drizzle-orm";
 import { db } from "../db/client.js";
 import { notifications, users, games, friendships } from "../db/schema.js";
 import { requireAuth } from "../auth/middleware.js";
+import { notificationIdParamSchema } from "../schemas/notifications.js";
 
 export async function notificationRoutes(app: FastifyInstance) {
   app.get(
@@ -143,7 +144,7 @@ export async function notificationRoutes(app: FastifyInstance) {
 
   app.patch<{ Params: { id: string } }>(
     "/notifications/:id/read",
-    { preHandler: requireAuth },
+    { preHandler: requireAuth, schema: { params: notificationIdParamSchema } },
     async (request, reply) => {
       const id = Number(request.params.id);
       if (isNaN(id)) return reply.code(400).send({ error: "Invalid id" });

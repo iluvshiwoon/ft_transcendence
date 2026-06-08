@@ -9,26 +9,17 @@ import { db } from "../db/client.js";
 import { games, users } from "../db/schema.js";
 import { requireAuth } from "../auth/middleware.js";
 import { gameManager } from "../game/gameManager.js";
-
-interface AiBody
-{
-  difficulty?: "easy" | "medium" | "hard";
-  timePerPlayerSeconds?: number;
-}
+import { aiGameSchema, gameIdParamSchema } from "../schemas/games.js";
 
 export async function gameRoutes(app: FastifyInstance)
 {
   // POST /api/games/ai
-  app.post<{ Body: AiBody }>(
+  app.post<{ Body: { difficulty?: "easy" | "medium" | "hard"; timePerPlayerSeconds?: number } }>(
     "/games/ai",
-    { preHandler: requireAuth },
+    { preHandler: requireAuth, schema: { body: aiGameSchema } },
     async (request, reply) => {
       const userId = request.userId!;
-      const { difficulty = "medium", timePerPlayerSeconds = 180 } = request.body ?? {};
-
-      const validTimes = [180, 600, 3600];
-      if (!validTimes.includes(timePerPlayerSeconds))
-        return reply.status(400).send({ error: "timePerPlayerSeconds doit etre 180, 600 ou 3600" });
+      const { difficulty, timePerPlayerSeconds } = request.body;
 
       const [game] = await db.insert(games).values({
         player1Id: userId,
@@ -181,7 +172,7 @@ export async function gameRoutes(app: FastifyInstance)
   // GET /api/games/:id
   app.get<{ Params: { id: string } }>(
     "/games/:id",
-    { preHandler: requireAuth },
+    { preHandler: requireAuth, schema: { params: gameIdParamSchema } },
     async (request, reply) => {
       const gameId = parseInt(request.params.id);
       const userId = request.userId!;

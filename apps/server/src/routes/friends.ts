@@ -14,19 +14,8 @@ import { db } from "../db/client.js";
 import { friendships, users, blockedUsers, games, notifications } from "../db/schema.js";
 import { requireAuth } from "../auth/middleware.js";
 import { sendNotification } from "../services/notification.js";
-
-interface SendRequestBody {
-  userId: number;
-}
-
-interface RespondRequestBody {
-  friendshipId: number;
-  accept: boolean;
-}
-
-interface BlockBody {
-  userId: number;
-}
+import { friendRequestSchema, friendRespondSchema, blockSchema } from "../schemas/friends.js";
+import { idParamSchema } from "../schemas/common.js";
 
 export async function friendRoutes(app: FastifyInstance) {
   app.get(
@@ -125,9 +114,9 @@ export async function friendRoutes(app: FastifyInstance) {
     }
   );
 
-  app.post<{ Body: SendRequestBody }>(
+  app.post<{ Body: { userId: number } }>(
     "/friends/request",
-    { preHandler: requireAuth },
+    { preHandler: requireAuth, schema: { body: friendRequestSchema } },
     async (request, reply) => {
       const me = request.userId!;
       const target = request.body.userId;
@@ -183,9 +172,9 @@ export async function friendRoutes(app: FastifyInstance) {
     }
   );
 
-  app.post<{ Body: RespondRequestBody }>(
+  app.post<{ Body: { friendshipId: number; accept: boolean } }>(
     "/friends/respond",
-    { preHandler: requireAuth },
+    { preHandler: requireAuth, schema: { body: friendRespondSchema } },
     async (request, reply) => {
       const me = request.userId!;
       const { friendshipId, accept } = request.body;
@@ -234,7 +223,7 @@ export async function friendRoutes(app: FastifyInstance) {
 
   app.delete<{ Params: { id: string } }>(
     "/friends/:id",
-    { preHandler: requireAuth },
+    { preHandler: requireAuth, schema: { params: idParamSchema } },
     async (request, reply) => {
       const me = request.userId!;
       const id = Number(request.params.id);
@@ -278,9 +267,9 @@ export async function friendRoutes(app: FastifyInstance) {
     }
   );
 
-  app.post<{ Body: BlockBody }>(
+  app.post<{ Body: { userId: number } }>(
     "/block",
-    { preHandler: requireAuth },
+    { preHandler: requireAuth, schema: { body: blockSchema } },
     async (request, reply) => {
       const me = request.userId!;
       const target = request.body.userId;

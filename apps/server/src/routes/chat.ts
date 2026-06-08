@@ -11,6 +11,7 @@ import { and, desc, eq, or } from "drizzle-orm";
 import { db } from "../db/client.js";
 import { chatMessages, users, blockedUsers } from "../db/schema.js";
 import { requireAuth } from "../auth/middleware.js";
+import { chatHistorySchema, chatPaginationSchema } from "../schemas/chat.js";
 
 export async function chatRoutes(app: FastifyInstance) {
   app.get(
@@ -80,7 +81,7 @@ export async function chatRoutes(app: FastifyInstance) {
 
   app.get<{ Params: { userId: string }; Querystring: { limit?: string; offset?: string } }>(
     "/chat/:userId",
-    { preHandler: requireAuth },
+    { preHandler: requireAuth, schema: { params: chatHistorySchema, querystring: chatPaginationSchema } },
     async (request, reply) => {
       const me = request.userId!;
       const contactId = Number(request.params.userId);

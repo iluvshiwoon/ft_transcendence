@@ -76,16 +76,22 @@ All 46 `console.log`, `console.error`, and `console.warn` statements removed fro
 - JWT: 7-day expiration, HttpOnly cookie (`httpOnly: true`, `sameSite: "lax"`)
 - OAuth 42: Full flow with CSRF state, account linking, auto-account creation
 
-### 12. Form/input validation on both frontend and backend — PARTIAL
-- **Frontend (good)**:
-  - Signup: email regex, username regex, password min length, live username check, strength meter
-  - Login: email regex, password presence
-  - Settings: email/password change forms with validation
-  - Avatar: size pre-validation before sending
-- **Backend (minimal)**:
-  - Only checks field existence and password length >= 8
-  - No schema validation library (zod, joi, etc.)
-  - Email format, username format, and other constraints only validated on frontend
+### 12. Form/input validation on both frontend and backend — PASS
+- **Backend**: Zod schemas with `@fastify/type-provider-zod` on all critical endpoints:
+  - `POST /signup`: email format, username format (3-30 chars alphanumeric+underscore), password min 8 / max 128
+  - `POST /login`: email format, password presence
+  - `PUT /profile`: username format, bio max 160, pawnSkin/gridSkin enum validation
+  - `PUT /profile/email`: email format, currentPassword presence
+  - `PUT /profile/password`: currentPassword presence, newPassword min 8 / max 128
+  - `POST /games/ai`: difficulty enum (easy/medium/hard), timePerPlayerSeconds enum (180/600/3600)
+  - `POST /lobbies`: mode enum (connect4/connect5), isPublic boolean, timePerPlayerSeconds enum
+  - `GET /lobbies`: mode/status query param enum validation
+  - `POST /friends/request`, `POST /friends/respond`, `POST /block`: positive integer userId/friendshipId
+  - `GET /chat/:userId`: pagination limit/offset integer validation
+  - `PATCH /notifications/:id/read`: integer id validation
+- **Frontend** (existing): email regex, username regex, password strength, live username check, avatar size pre-validation
+- **SQL injection**: Drizzle ORM parameterized queries throughout — no raw SQL with user input
+- **XSS**: React auto-escapes rendered content; user bio/username displayed in text context only
 
 ### 13. All browser-to-backend connections must use HTTPS — PASS
 - OWASP ModSecurity CRS image generates self-signed cert on first run
@@ -161,7 +167,7 @@ No Individual Contributions section.
 | 9 | .env ignored by Git, .env.example provided | **PASS** |
 | 10 | Database clear schema with relations | **PASS** |
 | 11 | Basic user management with hashed passwords | **PASS** |
-| 12 | Form/input validation frontend + backend | **PARTIAL** (backend minimal) |
+| 12 | Form/input validation frontend + backend | **PASS** (Zod schemas on all endpoints) |
 | 13 | All browser-to-backend connections use HTTPS | **PASS** (TLSv1.2/1.3, self-signed cert on :8443) |
 | 14 | README: First line italicized | **FAIL** |
 | 15 | README: Description section | **PARTIAL** |
@@ -175,7 +181,7 @@ No Individual Contributions section.
 | 23 | README: Modules section | **FAIL** |
 | 24 | README: Individual Contributions section | **FAIL** |
 
-**Result: 12 PASS, 3 PARTIAL, 9 FAIL**
+**Result: 13 PASS, 2 PARTIAL, 9 FAIL**
 
 ---
 
@@ -232,12 +238,10 @@ Source: `Intra Projects ft_transcendence Edit.pdf` (16-page evaluation form)
    - Max 5 bonus points
 
 ### Critical: Bonus is only evaluated if mandatory part is "entirely and perfectly done"
-Console statements removed, HTTPS configured. Remaining blocker: backend validation (PARTIAL) and README (incomplete).
+Console statements removed, HTTPS configured, backend validation with Zod. Remaining blocker: README (incomplete).
 
 ---
 
 ## Critical Fixes Needed Before Evaluation
 
 1. **README rewrite** — Missing 8 required sections (42 attribution, resources/AI usage, team info, project management, technical stack, database schema, features list, modules, individual contributions). The evaluator explicitly checks for each section.
-
-2. **Backend validation** — The evaluator asks: "Are all forms and user inputs validated in both frontend AND backend?" and tests with invalid inputs, SQL injection, XSS. Currently backend only checks field existence. Should add zod/joi validation.

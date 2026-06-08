@@ -8,6 +8,10 @@ import cookie from "@fastify/cookie";
 import cors from "@fastify/cors";
 import multipart from "@fastify/multipart";
 import fastifyStatic from "@fastify/static";
+import {
+  validatorCompiler,
+  serializerCompiler,
+} from "@fastify/type-provider-zod";
 import { authRoutes } from "./routes/auth.js";
 import { userRoutes } from "./routes/users.js";
 import { friendRoutes } from "./routes/friends.js";
@@ -26,6 +30,11 @@ export async function buildServer() {
   const app = Fastify({
     logger: true,
   });
+
+  // Zod schema validation — auto-validates request body/params/query and
+  // serializes responses. Returns 400 with Zod error details on invalid input.
+  app.setValidatorCompiler(validatorCompiler);
+  app.setSerializerCompiler(serializerCompiler);
 
   // Crée le dossier d'uploads à la première exécution.
   await mkdir(join(UPLOADS_DIR, "avatars"), { recursive: true });

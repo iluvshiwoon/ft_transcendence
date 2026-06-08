@@ -14,16 +14,12 @@ import { requireAuth } from "../auth/middleware.js";
 import { gameManager } from "../game/gameManager.js";
 import { broadcastLobbyUpdate } from "../socket/lobby.js";
 import { sendNotification } from "../services/notification.js";
-
-interface CreateLobbyBody {
-  isPublic?: boolean;
-  mode?: "connect4" | "connect5";
-  timePerPlayerSeconds?: number;
-}
-
-interface JoinLobbyBody {
-  code?: string;
-}
+import {
+  createLobbySchema,
+  joinLobbySchema,
+  lobbyListSchema,
+  lobbyIdParamSchema,
+} from "../schemas/lobbies.js";
 
 function generateCode(): string {
   return Math.random().toString(36).substring(2, 8).toUpperCase();
@@ -42,12 +38,11 @@ async function uniqueCode(): Promise<string>
 
 export async function lobbyRoutes(app: FastifyInstance) {
   // GET /api/lobbies — liste avec filtres optionnels
-  app.get("/lobbies", { preHandler: requireAuth }, async (request, reply) => {
-    const { mode, status, time } = request.query as {
-      mode?: string;
-      status?: string;
-      time?: string;
-    };
+  app.get<{ Querystring: { mode?: string; status?: string; time?: string } }>(
+    "/lobbies",
+    { preHandler: requireAuth, schema: { querystring: lobbyListSchema } },
+    async (request, reply) => {
+      const { mode, status, time } = request.query;
 
     // Auto-expire old lobbies before listing
     const expiryTime = 10 * 60 * 1000;
@@ -121,16 +116,11 @@ export async function lobbyRoutes(app: FastifyInstance) {
   );
 
   // POST /api/lobbies — créer un lobby
-  app.post<{ Body: CreateLobbyBody }>(
+  app.post<{ Body: { isPublic: boolean; mode: "connect4" | "connect5"; timePerPlayerSeconds: number } }>(
     "/lobbies",
-    { preHandler: requireAuth },
+    { preHandler: requireAuth, schema: { body: createLobbySchema } },
     async (request, reply) => {
-      const { isPublic = true, mode = "connect4", timePerPlayerSeconds = 180 } = request.body ?? {};
-
-      const validTimes = [180, 600, 3600];
-      if (!validTimes.includes(timePerPlayerSeconds)) {
-        return reply.status(400).send({ error: "timePerPlayerSeconds doit être 180, 600 ou 3600" });
-      }
+      const { isPublic, mode, timePerPlayerSeconds } = request.body;
 
       const code = await uniqueCode();
 
@@ -150,9 +140,9 @@ export async function lobbyRoutes(app: FastifyInstance) {
   );
 
   // POST /api/lobbies/:id/join — rejoindre un lobby
-  app.post<{ Params: { id: string }; Body: JoinLobbyBody }>(
+  app.post<{ Params: { id: string }; Body: { code?: string } }>(
     "/lobbies/:id/join",
-    { preHandler: requireAuth },
+    { preHandler: requireAuth, schema: { params: lobbyIdParamSchema, body: joinLobbySchema } },
     async (request, reply) => {
       const lobbyId = parseInt(request.params.id);
       const userId = request.userId!;
@@ -243,7 +233,7 @@ export async function lobbyRoutes(app: FastifyInstance) {
   // POST /api/lobbies/:id/leave — quitter un lobby
   app.post<{ Params: { id: string } }>(
     "/lobbies/:id/leave",
-    { preHandler: requireAuth },
+    { preHandler: requireAuth, schema: { params: lobbyIdParamSchema } },
     async (request, reply) => {
       const lobbyId = parseInt(request.params.id);
       const userId = request.userId!;
@@ -272,7 +262,7 @@ export async function lobbyRoutes(app: FastifyInstance) {
   // POST /api/lobbies/:id/start — démarrer la partie
   app.post<{ Params: { id: string } }>(
     "/lobbies/:id/start",
-    { preHandler: requireAuth },
+    { preHandler: requireAuth, schema: { params: lobbyIdParamSchema } },
     async (request, reply) => {
       const lobbyId = parseInt(request.params.id);
       const userId = request.userId!;
