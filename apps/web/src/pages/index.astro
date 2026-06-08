@@ -59,26 +59,6 @@ const requested = Astro.url.searchParams.get("board") ?? "liquid-glass";
 const boardVariant: BoardVariant = VALID_VARIANTS.includes(requested as BoardVariant)
   ? (requested as BoardVariant)
   : "liquid-glass";
-
-// Pre-fetch leaderboard server-side so the component renders with data
-// immediately — eliminates the empty-to-populated flash on refresh.
-let leaderboardEntries: Array<{
-  rank: number;
-  username: string;
-  rating: number;
-  peakRating: number;
-  winRate: number;
-  title: string;
-  gamesPlayed: number;
-}> = [];
-try {
-  const apiBase = import.meta.env.API_URL ?? "http://localhost:3000";
-  const res = await fetch(`${apiBase}/api/leaderboard?limit=6`);
-  if (res.ok) {
-    const data = await res.json();
-    leaderboardEntries = data.entries ?? [];
-  }
-} catch {}
 ---
 
 <RootLayout
@@ -211,7 +191,7 @@ try {
         class="page-reveal order-3 flex justify-center md:order-3 md:col-span-3"
         style="--reveal-delay: 2.9s"
       >
-        <Leaderboard client:load entries={leaderboardEntries} />
+        <Leaderboard client:load />
       </div>
 
     </div>
