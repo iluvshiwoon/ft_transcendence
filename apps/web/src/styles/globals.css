@@ -1035,9 +1035,44 @@ html.hero-seen .page-reveal {
   animation: piece-fade-in 0.45s forwards;
 }
 
+/* Piece-drop-behind — combines the bounce-drop movement of piece-drop with
+   the late fade-in of piece-fade-in. Used by frosted-obsidian where pawns
+   sit behind semi-transparent cell wells (z-index: 1 < cell z-index: 2).
+   The pawn falls visibly (translateY) while mostly transparent, then
+   materializes as it settles into the cutout. */
+@keyframes piece-drop-behind {
+  0% {
+    transform: translateY(var(--drop-start, -300%));
+    opacity: 0;
+    animation-timing-function: cubic-bezier(0.6, 0.04, 0.7, 0.4);
+  }
+  70% {
+    opacity: 0;
+    animation-timing-function: cubic-bezier(0.6, 0.04, 0.7, 0.4);
+  }
+  85% {
+    transform: translateY(0);
+    opacity: 1;
+    animation-timing-function: ease-out;
+  }
+  92% {
+    transform: translateY(-3px);
+    opacity: 1;
+    animation-timing-function: ease-in;
+  }
+  100% {
+    transform: translateY(0);
+    opacity: 1;
+  }
+}
+.piece-drop-behind {
+  animation: piece-drop-behind 0.45s forwards;
+}
+
 @media (prefers-reduced-motion: reduce) {
   .piece-drop,
-  .piece-fade-in {
+  .piece-fade-in,
+  .piece-drop-behind {
     animation: none;
   }
 }
