@@ -7,7 +7,7 @@ Audit of all non-module mandatory requirements from subject v21.1.
 ## General Requirements (III.2)
 
 ### 1. Web application with frontend, backend, and database — PASS
-- Frontend: `apps/web/` — Astro + React (SSR), port 4321 (dev) or 8080 (prod)
+- Frontend: `apps/web/` — Astro + React (SSR), port 4321 (dev) or 8443 (prod via HTTPS)
 - Backend: `apps/server/` — Fastify + TypeScript, port 3000
 - Database: PostgreSQL 17-alpine via `compose.yml`, schema in `apps/server/src/db/schema.ts`
 - Frontend proxies `/api/*` to backend (Vite proxy in dev, nginx in prod)
@@ -34,22 +34,8 @@ Audit of all non-module mandatory requirements from subject v21.1.
 - WebSocket (Socket.io) natively supported in Chrome
 - No automated browser testing or CI checks configured
 
-### 5. No warnings or errors in browser console — FAIL
-Found **46 instances** of `console.log`, `console.error`, and `console.warn` in `apps/web/src/`:
-
-| File | Count | Type |
-|------|-------|------|
-| `layouts/RootLayout.astro` | 5 | `console.log` (4), `console.error` (1) |
-| `components/chat/ChatInterface.tsx` | 18 | `console.log` (5), `console.error` (13) |
-| `components/social/NotificationDropdown.tsx` | 8 | `console.error` (8) |
-| `components/social/AddFriendButton.tsx` | 8 | `console.error` (8) |
-| `components/landing/ResumeStrip.tsx` | 1 | `console.error` (1) |
-| `components/landing/ChallengeSearchModal.tsx` | 2 | `console.error` (2) |
-| `pages/play.astro` | 1 | `console.error` (1) |
-| `pages/profile/[username].astro` | 3 | `console.error` (3) |
-| `lib/play-store.ts` | 2 | `console.log` (1), `console.error` (1) |
-
-These will emit in the browser console during normal use. All must be removed or guarded behind `NODE_ENV` checks.
+### 5. No warnings or errors in browser console — PASS
+All 46 `console.log`, `console.error`, and `console.warn` statements removed from frontend code (commit `e780b42`).
 
 ### 6. Privacy Policy and Terms of Service pages — PASS
 - `apps/web/src/pages/privacy.astro` — Real content in French, 5 sections (Données collectées, Utilisation, Sécurité, Vos droits, Contact)
@@ -101,12 +87,13 @@ These will emit in the browser console during normal use. All must be removed or
   - No schema validation library (zod, joi, etc.)
   - Email format, username format, and other constraints only validated on frontend
 
-### 13. All browser-to-backend connections must use HTTPS — FAIL
-- WAF/nginx: `waf/default.conf:2` — `listen 8080;` with no `ssl` directives
-- `compose.yml`: `OAUTH42_REDIRECT_URI: http://localhost:8080/...` — plain HTTP
-- `compose.yml`: `FRONTEND_URL: http://localhost:8080` — plain HTTP
-- No TLS termination configured anywhere
-- CLAUDE.md mentions "HTTPS everywhere via reverse proxy (Caddy or Nginx)" as TBD by cybersec dev — not implemented
+### 13. All browser-to-backend connections must use HTTPS — PASS
+- OWASP ModSecurity CRS image generates self-signed cert on first run
+- `waf/default.conf`: `listen 8443 ssl` with `ssl_certificate` / `ssl_certificate_key`
+- `compose.yml`: only port `8443` exposed (HTTP port 8080 removed)
+- `OAUTH42_REDIRECT_URI` and `FRONTEND_URL` updated to `https://localhost:8443`
+- TLSv1.2 + TLSv1.3 enabled, self-signed cert valid for 1 year
+- Browser shows expected "Not Secure" warning for self-signed cert on localhost
 
 ---
 
@@ -167,7 +154,7 @@ No Individual Contributions section.
 | 2 | Git with meaningful commits from ALL members | **PASS** |
 | 3 | Deployment with containerization (single command) | **PASS** |
 | 4 | Compatible with latest stable Google Chrome | **PARTIAL** |
-| 5 | No warnings or errors in browser console | **FAIL** (46 console statements) |
+| 5 | No warnings or errors in browser console | **PASS** (46 statements removed) |
 | 6 | Privacy Policy and Terms of Service pages | **PASS** |
 | 7 | Frontend responsive and accessible | **PASS** |
 | 8 | CSS framework (Tailwind) | **PASS** |
@@ -175,7 +162,7 @@ No Individual Contributions section.
 | 10 | Database clear schema with relations | **PASS** |
 | 11 | Basic user management with hashed passwords | **PASS** |
 | 12 | Form/input validation frontend + backend | **PARTIAL** (backend minimal) |
-| 13 | All browser-to-backend connections use HTTPS | **FAIL** (no TLS) |
+| 13 | All browser-to-backend connections use HTTPS | **PASS** (TLSv1.2/1.3, self-signed cert on :8443) |
 | 14 | README: First line italicized | **FAIL** |
 | 15 | README: Description section | **PARTIAL** |
 | 16 | README: Instructions section | **PASS** |
@@ -188,7 +175,7 @@ No Individual Contributions section.
 | 23 | README: Modules section | **FAIL** |
 | 24 | README: Individual Contributions section | **FAIL** |
 
-**Result: 10 PASS, 4 PARTIAL, 10 FAIL**
+**Result: 12 PASS, 3 PARTIAL, 9 FAIL**
 
 ---
 
@@ -220,7 +207,7 @@ Source: `Intra Projects ft_transcendence Edit.pdf` (16-page evaluation form)
    - Database schema clear with relations
    - Auth: hashed + salted passwords
    - Form validation: both frontend AND backend
-   - HTTPS: "All communication between frontend and backend must be encrypted using HTTPS"
+   - HTTPS: "All communication between frontend and backend must be encrypted using HTTPS" — **Done** (self-signed cert on :8443, TLSv1.2/1.3)
 
 4. **Modules Verification** (must reach 14 points):
    - README lists all claimed modules with point calculation
@@ -245,7 +232,7 @@ Source: `Intra Projects ft_transcendence Edit.pdf` (16-page evaluation form)
    - Max 5 bonus points
 
 ### Critical: Bonus is only evaluated if mandatory part is "entirely and perfectly done"
-This means failing on console statements or HTTPS = no bonus points at all, even if all 19 module points are valid.
+Console statements removed, HTTPS configured. Remaining blocker: backend validation (PARTIAL) and README (incomplete).
 
 ---
 
@@ -253,8 +240,4 @@ This means failing on console statements or HTTPS = no bonus points at all, even
 
 1. **README rewrite** — Missing 8 required sections (42 attribution, resources/AI usage, team info, project management, technical stack, database schema, features list, modules, individual contributions). The evaluator explicitly checks for each section.
 
-2. **Console statement cleanup** — Remove all 46 `console.log/error/warn` from frontend code. The evaluator opens Chrome DevTools and checks: "no errors or warnings in the console."
-
-3. **HTTPS** — The evaluator asks: "Is HTTPS used for all backend connections?" and "All communication between frontend and backend must be encrypted using HTTPS." Currently no TLS termination is configured. Need to add TLS or document why localhost HTTP is acceptable for the evaluation environment.
-
-4. **Backend validation** — The evaluator asks: "Are all forms and user inputs validated in both frontend AND backend?" and tests with invalid inputs, SQL injection, XSS. Currently backend only checks field existence. Should add zod/joi validation.
+2. **Backend validation** — The evaluator asks: "Are all forms and user inputs validated in both frontend AND backend?" and tests with invalid inputs, SQL injection, XSS. Currently backend only checks field existence. Should add zod/joi validation.

@@ -20,7 +20,7 @@ export default defineConfig({
       // backend at :3000. The browser sees a single origin (:4321), so the
       // backend's HttpOnly auth cookie stays scoped correctly.
       //
-      // Production runs through ModSec at :8080, which proxies to the web
+      // Production runs through ModSec at :8443 (HTTPS), which proxies to the web
       // container; Vite's dev server is not involved.
       proxy: {
         '/api': {
