@@ -1269,7 +1269,6 @@ body.is-scrolled .topnav-bar {
 .hover-scrollbar:hover::-webkit-scrollbar-thumb {
   background: var(--color-border); /* Webkit: show thumb on hover */
 }
-}
 
 /* Complete scrollbar hiding (retains scroll functionality) */
 .no-scrollbar {

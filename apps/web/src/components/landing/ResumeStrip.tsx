@@ -75,7 +75,6 @@ export function ResumeStrip() {
         });
       }
     } catch (e) {
-      console.error("[ResumeStrip] Failed to fetch active games", e);
     } finally {
       setLoading(false);
     }

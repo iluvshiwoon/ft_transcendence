@@ -132,7 +132,6 @@ export function ChallengeSearchModal() {
           );
         }
       } catch (err) {
-        console.error("Failed to search users", err);
       } finally {
         setIsSearching(false);
       }
@@ -154,7 +153,6 @@ export function ChallengeSearchModal() {
         );
       }
     } catch (err) {
-      console.error("Failed to fetch friends", err);
     }
   };
 

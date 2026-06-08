@@ -268,21 +268,17 @@ const user = await getCurrentUser(Astro);
         const socket = io({ transports: ["websocket"] });
 
         socket.on("connect", () => {
-          console.log("[Global Socket] Connected successfully");
         });
 
         socket.on("user:online", (data) => {
-          console.log("[Global Socket] Friend online:", data);
           document.dispatchEvent(new CustomEvent("friends-updated"));
         });
 
         socket.on("user:offline", (data) => {
-          console.log("[Global Socket] Friend offline:", data);
           document.dispatchEvent(new CustomEvent("friends-updated"));
         });
 
         socket.on("game:start", (data: { gameId: number }) => {
-          console.log("[Global Socket] Game starting, checking redirect conditions:", data.gameId);
           if (window.location.pathname.startsWith("/chat")) {
             const urlParams = new URLSearchParams(window.location.search);
             const chatUserParam = urlParams.get("user");
@@ -303,7 +299,6 @@ const user = await getCurrentUser(Astro);
                       }
                     }
                   })
-                  .catch((err) => console.error("[Global Socket] Error checking game details for redirect:", err));
               }
             }
           }

@@ -53,7 +53,6 @@ try {
     user = await res.json();
   }
 } catch (e) {
-  console.error(e);
   userNotFound = true;
 }
 
@@ -186,7 +185,6 @@ if (user) {
     if (statsRes.ok) statsData = await statsRes.json();
     if (friendsRes.ok) friends = await friendsRes.json();
   } catch (e) {
-    console.error("Error fetching user sub-data:", e);
   }
 }
 
@@ -999,7 +997,6 @@ const cardCls = "rounded-xl border border-border bg-surface text-surface-foregro
           }
         }
       } catch (e) {
-        console.error("Failed to dynamically update friends panel", e);
       }
     });
   </script>

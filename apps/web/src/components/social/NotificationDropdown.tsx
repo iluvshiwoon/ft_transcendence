@@ -65,7 +65,6 @@ export default function NotificationDropdown() {
         setUnreadCount(data.count);
       }
     } catch (e) {
-      console.error("Failed to fetch unread count", e);
     }
   };
 
@@ -77,7 +76,6 @@ export default function NotificationDropdown() {
         setNotifications(data);
       }
     } catch (e) {
-      console.error("Failed to fetch notifications", e);
     }
   };
 
@@ -176,7 +174,6 @@ export default function NotificationDropdown() {
         setUnreadCount(0);
       }
     } catch (e) {
-      console.error("Failed to mark all as read", e);
     }
   };
 
@@ -190,7 +187,6 @@ export default function NotificationDropdown() {
         setUnreadCount(0);
       }
     } catch (e) {
-      console.error("Failed to clear notifications", e);
     }
   };
 
@@ -221,7 +217,6 @@ export default function NotificationDropdown() {
         alert("Failed to respond to friend request. It may have already been handled.");
       }
     } catch (e) {
-      console.error(e);
     } finally {
       setActioningId(null);
     }
@@ -233,7 +228,6 @@ export default function NotificationDropdown() {
       setNotifications((prev) => prev.map((n) => (n.id === notifId ? { ...n, read: true } : n)));
       setUnreadCount((prev) => Math.max(0, prev - 1));
     } catch (e) {
-      console.error(e);
     }
     setIsOpen(false);
     window.location.href = `/chat?user=${senderId}`;
@@ -245,7 +239,6 @@ export default function NotificationDropdown() {
       setNotifications((prev) => prev.map((n) => (n.id === notifId ? { ...n, read: true } : n)));
       setUnreadCount((prev) => Math.max(0, prev - 1));
     } catch (e) {
-      console.error(e);
     }
     setIsOpen(false);
     window.location.href = `/play/m/${gameId}`;
@@ -257,7 +250,6 @@ export default function NotificationDropdown() {
       setNotifications((prev) => prev.map((n) => (n.id === notifId ? { ...n, read: true } : n)));
       setUnreadCount((prev) => Math.max(0, prev - 1));
     } catch (e) {
-      console.error(e);
     }
   };
 

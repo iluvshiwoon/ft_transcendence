@@ -91,7 +91,6 @@ export default function AddFriendButton({
         setPendingRequests(data);
       }
     } catch (e) {
-      console.error("Failed to fetch friends requests inbox", e);
     }
   };
 
@@ -103,7 +102,6 @@ export default function AddFriendButton({
         setFriendsList(data);
       }
     } catch (e) {
-      console.error("Failed to fetch friends list", e);
     }
   };
 
@@ -115,7 +113,6 @@ export default function AddFriendButton({
         setSentRequests(data);
       }
     } catch (e) {
-      console.error("Failed to fetch sent requests list", e);
     }
   };
 
@@ -248,7 +245,6 @@ export default function AddFriendButton({
           setSearchResults(data.filter((u: UserSearchResult) => u.id !== profileUserId || !isSelf));
         }
       } catch (e) {
-        console.error("Search failed", e);
       } finally {
         setLoadingSearch(false);
       }
@@ -278,10 +274,8 @@ export default function AddFriendButton({
         fetchSentRequests();
       } else {
         const errData = await res.json();
-        console.error(errData.error || "Failed to send request");
       }
     } catch (e) {
-      console.error("Failed to send request", e);
     }
   };
 
@@ -312,7 +306,6 @@ export default function AddFriendButton({
         );
       }
     } catch (e) {
-      console.error("Failed to respond to request", e);
     }
   };
 
@@ -332,7 +325,6 @@ export default function AddFriendButton({
         document.dispatchEvent(new CustomEvent("friends-updated"));
       }
     } catch (e) {
-      console.error("Failed to delete friendship", e);
     }
   };
 
@@ -357,7 +349,6 @@ export default function AddFriendButton({
         document.dispatchEvent(new CustomEvent("friends-updated"));
       }
     } catch (e) {
-      console.error("Failed to delete friendship by user id", e);
     }
   };
 

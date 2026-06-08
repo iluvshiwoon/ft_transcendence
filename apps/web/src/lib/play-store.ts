@@ -257,12 +257,10 @@ class PlayStore {
     this.socket = socket;
 
     socket.on("connect", () => {
-      console.log("[PlayStore] Socket connected successfully, joining game:", gameId);
       socket.emit("game:join", { gameId });
     });
 
     socket.on("connect_error", (err) => {
-      console.error("[PlayStore] Socket connect error:", err);
       this.set({
         error: new PlayApiError("INTERNAL", `Connection error: ${err.message}`),
       });

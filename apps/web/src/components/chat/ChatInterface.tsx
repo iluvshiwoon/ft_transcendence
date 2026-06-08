@@ -7,14 +7,10 @@ import {
   Send,
   Search,
   ChevronLeft,
-  User,
   Gamepad2,
   Check,
   CheckCheck,
-  ShieldAlert,
   X,
-  Sparkles,
-  Info,
   Smile,
   Plus
 } from "lucide-react";
@@ -102,7 +98,6 @@ export default function ChatInterface({ currentUserId, currentUsername, embedded
     socketRef.current = socket;
 
     socket.on("connect", () => {
-      console.log("[Chat Socket] Connected successfully");
 
       // Check query params to auto-challenge
       const params = new URLSearchParams(window.location.search);
@@ -146,7 +141,6 @@ export default function ChatInterface({ currentUserId, currentUsername, embedded
               const newUrl = window.location.pathname + `?user=${targetUserId}`;
               window.history.replaceState({ path: newUrl }, "", newUrl);
             } catch (err) {
-              console.error("Auto challenge failed", err);
             }
           }, 500);
         }
@@ -224,12 +218,10 @@ export default function ChatInterface({ currentUserId, currentUsername, embedded
     });
 
     socket.on("game:start", (data: { gameId: number }) => {
-      console.log("[Chat Socket] Game starting, redirecting:", data.gameId);
       window.location.href = `/play/m/${data.gameId}`;
     });
 
     socket.on("lobby:update", ({ lobby }: { lobby: any }) => {
-      console.log("[Chat Socket] Lobby update received:", lobby);
       setActiveLobbies((prev) => ({
         ...prev,
         [lobby.id]: lobby,
@@ -241,7 +233,6 @@ export default function ChatInterface({ currentUserId, currentUsername, embedded
         lobby.player2Id !== null &&
         lobby.status === "waiting"
       ) {
-        console.log("[Chat Socket] Opponent joined, auto-starting game...");
         startLobbyGame(lobby.id);
       }
     });
@@ -300,7 +291,6 @@ export default function ChatInterface({ currentUserId, currentUsername, embedded
           setSearchResults(data);
         }
       } catch (err) {
-        console.error("Failed to search users", err);
       } finally {
         setIsSearching(false);
       }
@@ -337,7 +327,6 @@ export default function ChatInterface({ currentUserId, currentUsername, embedded
           }));
         }
       } catch (err) {
-        console.error(`Failed to fetch lobby ${lobbyId}`, err);
         // Remove from set so we can retry later if it failed
         fetchedLobbiesRef.current.delete(lobbyId);
       }
@@ -352,7 +341,6 @@ export default function ChatInterface({ currentUserId, currentUsername, embedded
         setConversations(data);
       }
     } catch (err) {
-      console.error("Failed to fetch conversations", err);
     }
   };
 
@@ -364,7 +352,6 @@ export default function ChatInterface({ currentUserId, currentUsername, embedded
         setFriends(data);
       }
     } catch (err) {
-      console.error("Failed to fetch friends", err);
     }
   };
 
@@ -405,7 +392,6 @@ export default function ChatInterface({ currentUserId, currentUsername, embedded
         return prev;
       });
     } catch (err) {
-      console.error("Failed to start chat", err);
     }
   };
 
@@ -464,7 +450,6 @@ export default function ChatInterface({ currentUserId, currentUsername, embedded
         content: challengeMsg,
       });
     } catch (err) {
-      console.error("Failed to create challenge", err);
     }
   };
 
@@ -489,7 +474,6 @@ export default function ChatInterface({ currentUserId, currentUsername, embedded
         socketRef.current.emit("lobby:join", { lobbyId });
       }
     } catch (err) {
-      console.error("Failed to join challenge", err);
     }
   };
 
@@ -499,7 +483,6 @@ export default function ChatInterface({ currentUserId, currentUsername, embedded
         method: "POST",
       });
     } catch (err) {
-      console.error("Failed to decline challenge", err);
     }
   };
 
@@ -509,7 +492,6 @@ export default function ChatInterface({ currentUserId, currentUsername, embedded
         method: "POST",
       });
     } catch (err) {
-      console.error("Failed to start lobby game", err);
     }
   };
 
@@ -530,7 +512,6 @@ export default function ChatInterface({ currentUserId, currentUsername, embedded
         fetchConversations();
       }
     } catch (err) {
-      console.error("Failed to block user", err);
     }
   };
 

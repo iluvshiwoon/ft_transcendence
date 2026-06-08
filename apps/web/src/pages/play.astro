@@ -306,7 +306,6 @@ const cardCls = "rounded-xl border border-border bg-surface text-surface-foregro
           const data = await response.json();
           window.location.href = `/play/ai/${data.gameId}`;
         } catch (error) {
-          console.error(error);
           alert(error instanceof Error ? error.message : "An error occurred starting the game.");
           startAiButton.disabled = false;
           startAiButton.innerHTML = originalContent;
