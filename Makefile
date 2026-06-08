@@ -11,7 +11,8 @@
 # ==============================================================================
 
 .PHONY: all up down down-force build logs ps clean re help \
-		dev rebuild-server rebuild-web redeploy-stub \
+		dev rebuild-server rebuild-web rebuild-server-nocache rebuild-nocache \
+		redeploy-stub \
 		ps-all shell-app shell-server shell-postgres shell-vault \
 		psql db-tables db-list \
 		volumes volume-pg images prune \
@@ -86,6 +87,15 @@ rebuild-server:
 
 rebuild-web:
 	$(COMPOSE) up -d --build web
+
+# Full rebuild ignoring Docker layer cache (fixes stale pnpm installs, etc.).
+rebuild-server-nocache:
+	$(COMPOSE) build --no-cache server
+	$(COMPOSE) up -d server
+
+rebuild-nocache:
+	$(COMPOSE) build --no-cache
+	$(COMPOSE) up -d
 
 # ──────────────────────────────────────────
 # DEV LOOP — backend in compose, frontend via pnpm dev (HMR)
@@ -219,6 +229,8 @@ help:
 	@echo "  $(GREEN)make up$(NC)               $(GRAY)→ Start without rebuild$(NC)"
 	@echo "  $(GREEN)make rebuild-server$(NC)   $(GRAY)→ Rebuild + restart server only$(NC)"
 	@echo "  $(GREEN)make rebuild-web$(NC)      $(GRAY)→ Rebuild + restart web only$(NC)"
+	@echo "  $(GREEN)make rebuild-server-nocache$(NC) $(GRAY)→ Rebuild server ignoring Docker cache$(NC)"
+	@echo "  $(GREEN)make rebuild-nocache$(NC)  $(GRAY)→ Rebuild everything ignoring Docker cache$(NC)"
 	@echo "  $(GREEN)make down$(NC)             $(GRAY)→ Stop containers (volumes preserved)$(NC)"
 	@echo "  $(GREEN)make down-force$(NC)       $(GRAY)→ Force-stop everything$(NC)"
 	@echo "  $(GREEN)make clean$(NC)            $(GRAY)→ Stop + remove volumes (nukes Vault and DB)$(NC)"
