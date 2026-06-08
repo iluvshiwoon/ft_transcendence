@@ -351,9 +351,9 @@ The following features are partially built but do not meet all sub-requirements 
 - [Socket.io Documentation](https://socket.io/docs/v4/) — Real-time communication
 - [Tailwind CSS Documentation](https://tailwindcss.com/docs) — Styling framework
 - [Zod Documentation](https://zod.dev/) — Schema validation
-- [ModSecurity Documentation](https://github.com/owasp-modsecurity-crs) — WAF
+- [OWASP CRS Documentation](https://coreruleset.org/) — Core Rule Set
 - [HashiCorp Vault Documentation](https://developer.hashicorp.com/vault/docs) — Secrets management
-- [42 OAuth Documentation](https://github.com/42Docs/intra-api-docs/blob/master/auth.md) — 42 API auth
+- [42 API — Web Application Flow](https://api.intra.42.fr/apidoc/guides/web_application_flow) — 42 OAuth
 
 ### AI Usage
 
@@ -367,6 +367,5 @@ AI tools were used throughout the project for:
 
 ## Known Limitations
 
-- **Connect 5**: The database schema supports a `connect5` mode, but the win detection is hardcoded to 4-in-a-row. The mode selector is available in lobbies but does not change the win condition.
 - **HTTPS certificate**: Uses a self-signed certificate. Browsers will show a security warning.
 - **OAuth**: Requires a registered 42 OAuth application. Credentials must be pushed into Vault manually on first setup.
