@@ -230,7 +230,7 @@ users ──< notifications >── notifications
 | OAuth 42 | One-click login via 42 school SSO. Auto-creates account. CSRF protection via state param. | `auth/oauth42.ts`, `routes/auth.ts` | Rayane |
 | User profiles | Editable username, email, bio, avatar. Public profile pages with stats. | `routes/users.ts`, `schemas/users.ts`, `pages/profile/[username].astro`, `components/settings/SettingsProfile.tsx` | Rayane + Killian |
 | Avatar upload | 2MB max, JPG/PNG/WebP, auto-resize 500x500, WebP conversion. | `routes/users.ts`, `components/settings/SettingsAccount.tsx` | Rayane |
-| Friends system | Send/accept/reject friend requests. See online status. Block/unblock users. | `routes/friends.ts`, `schemas/friends.ts`, `components/social/AddFriendButton.tsx` | Rayane |
+| Friends system | Send/accept/reject friend requests. See online status. | `routes/friends.ts`, `schemas/friends.ts`, `components/social/AddFriendButton.tsx` | Rayane |
 | Chat | Direct 1-to-1 messaging. Persistent history. Real-time delivery via Socket.io. | `routes/chat.ts`, `schemas/chat.ts`, `socket/chat.ts`, `components/chat/ChatInterface.tsx` | Rayane |
 | Notifications | DB-persisted events. Real-time push via WebSocket. Dropdown in header with unread count. | `routes/notifications.ts`, `schemas/notifications.ts`, `services/notification.ts`, `components/social/NotificationDropdown.tsx` | Rayane |
 | Game engine | Connect 4 board (7x6). Drop token, check win (4-in-a-row), check draw. Chess-style timer. | `game/board.ts`, `game/check_board.ts`, `game/gameState.ts`, `game/gameManager.ts` | Tim |
@@ -268,7 +268,7 @@ Browser ──HTTPS──> ModSecurity (WAF, :8443) ──> Astro SSR (web, :432
 |---|---|---|
 | Framework Frontend + Backend | Astro + React frontend; Fastify + TypeScript backend | `server.ts`, `pages/*.astro`, `components/**/*.tsx` |
 | Real-time Features via WebSockets | Socket.io for game events, chat, notifications. Rooms, reconnection, graceful disconnect. | `socket/index.ts`, `socket/game.ts`, `socket/chat.ts`, `socket/lobby.ts` |
-| User Interaction | 1-to-1 chat with persistent history. Profile system. Friends with online status. Block/unblock. | `routes/chat.ts`, `routes/friends.ts`, `components/chat/*`, `components/social/*` |
+| User Interaction | 1-to-1 chat with persistent history. Profile system. Friends with online status. | `routes/chat.ts`, `routes/friends.ts`, `components/chat/*`, `components/social/*` |
 | Standard User Management | Profile editing. Avatar upload with default. Friends list. Public profiles. | `routes/auth.ts`, `routes/users.ts`, `components/settings/*` |
 | AI Opponent | Iterative deepening minimax. Alpha-beta pruning. Transposition table. 3 difficulty levels. Trap detection. | `game/ai.ts` |
 | WAF + Vault | ModSecurity with OWASP CRS (paranoia level 2). HashiCorp Vault for all secrets. | `waf/default.conf`, `config/vault.ts` |
