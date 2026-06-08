@@ -478,8 +478,8 @@ export function Board({
                 {isFilled && (
                   <div
                     className={cn(
-                      "absolute inset-0 rounded-full",
-                      !isPreExisting(rowIdx, colIdx) && "piece-drop",
+                      "absolute inset-0 rounded-full z-2",
+                      !isPreExisting(rowIdx, colIdx) && "piece-fade-in",
                       cell === "red" && getP2Classes(pawnSkin).top,
                       cell === "yellow" && getP1Classes(pawnSkin).top,
                       winningCellSet.has(`${rowIdx},${colIdx}`) && "winning-cell",
