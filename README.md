@@ -239,7 +239,6 @@ users ──< notifications >── notifications
 | Lobbies | Create public/private rooms with 6-char code. Choose mode and timer. | `routes/lobbies.ts`, `schemas/lobbies.ts`, `socket/lobby.ts` | Tim |
 | Game play | Real-time game flow: start, move, end. Reconnection within 60s. Auto-abandon on disconnect. | `routes/play.ts`, `routes/games.ts`, `schemas/games.ts`, `socket/game.ts` | Tim |
 | Frontend UI | Landing page, play page, signup flow, settings, chat, profiles, how-to-play. | `pages/*.astro`, `components/landing/*`, `components/ui/*`, `components/signup/*` | Killian |
-| Design system | Reusable UI components: buttons, inputs, form fields, alert boxes. | `components/ui/button.tsx`, `components/ui/input.tsx`, `components/ui/form-field.tsx`, `components/ui/alert-box.tsx` | Killian |
 | WAF | ModSecurity with OWASP CRS. Paranoia level 2. Custom rate limiting and security rules. | `waf/default.conf`, `compose.yml` (mod_security service) | Senshy |
 | Vault | All secrets in HashiCorp Vault. Loaded at startup. Falls back to env vars for local dev. | `config/vault.ts`, `infra/vault/*`, `scripts/*` | Senshy |
 
@@ -313,7 +312,6 @@ The following features are partially built but do not meet all sub-requirements 
 - Designed the entire UI/UX in Penpot before coding
 - Built all frontend pages (landing, play, signup, settings, profiles, chat, how-to-play)
 - Created the React components (game board, chat interface, notification dropdown, settings panels)
-- Implemented the design system (reusable buttons, inputs, form fields, alert boxes)
 - Built the signup flow (4-step onboarding wizard)
 - Translated legal pages (Privacy Policy, Terms of Service) from French to English
 - Simplified the frosted-obsidian theme and fixed piece-drop animation
