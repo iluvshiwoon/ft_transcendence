@@ -31,8 +31,9 @@ describe("eloDelta", () => {
   it("zero-sum: winner gain ≈ loser loss", () => {
     const myDelta = eloDelta(1500, 1500, 1);
     const oppDelta = eloDelta(1500, 1500, 0);
-    expect(myDelta).toBe(ELO_K);
-    expect(oppDelta).toBe(-ELO_K);
+    expect(myDelta).toBe(16); // K * (1 - 0.5) = 16
+    expect(oppDelta).toBe(-16); // K * (0 - 0.5) = -16
+    expect(myDelta).toBe(-oppDelta);
   });
 
   it("draw between unequal ratings: lower-rated gains, higher-rated loses", () => {
