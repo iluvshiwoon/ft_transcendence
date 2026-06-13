@@ -1,10 +1,8 @@
-// Routes chat (REST only — la partie Socket.io viendra quand B6 sera livré par Tim).
+// Routes chat REST. L'envoi temps réel (chat:send, chat:message, chat:typing) +
+// le rate limiting vivent côté Socket.io dans socket/chat.ts.
 //
 // GET /api/chat              — liste des conversations (1 entrée par contact, avec dernier message)
 // GET /api/chat/:userId      — historique des messages avec un user (paginé)
-//
-// TODO: ajouter les events Socket.io (chat:send, chat:message, chat:typing) + rate limiting
-//       quand B6 (Socket.io infrastructure) sera prêt.
 
 import type { FastifyInstance } from "fastify";
 import { and, desc, eq, or } from "drizzle-orm";
